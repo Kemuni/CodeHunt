@@ -1,0 +1,33 @@
+{
+  "entries": {
+    "mcp/framelink-mcp-for-figma": {
+      "agents": [],
+      "cliVersion": "0.4.0",
+      "commitSha": "c083d65c7e002923e7cb98f4e3bdafb105e90f6d",
+      "contentDigest": null,
+      "installedAt": "2026-10-11T12:40:01.169Z",
+      "items": [
+        {
+          "agent": "codex",
+          "component": "Figma-Context-MCP",
+          "kind": "instructions"
+        }
+      ],
+      "recipeHash": "sha256:95186bdc5a2db7bb681264ae1db02ac9d4394f29b087c814cb0e1360ebc59714",
+      "risk": "medium",
+      "scope": "project",
+      "section": "mcp",
+      "slug": "framelink-mcp-for-figma",
+      "status": "auto",
+      "updatedAt": "2026-10-11T12:40:01.169Z",
+      "vars": [
+        {
+          "name": "FIGMA_API_KEY",
+          "required": true,
+          "secret": true
+        }
+      ]
+    }
+  },
+  "lockfileVersion": 1
+}
