@@ -1,4 +1,5 @@
 ﻿import { Hero } from "@/components/landing/hero";
+import { CompanyMarquee } from "@/components/landing/company-marquee";
 import { SiteHeader } from "@/components/landing/site-header";
 
 export default function Home() {
@@ -7,6 +8,7 @@ export default function Home() {
       <SiteHeader />
       <main>
         <Hero />
+        <CompanyMarquee />
       </main>
     </div>
   );

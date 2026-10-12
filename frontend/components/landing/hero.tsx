@@ -92,7 +92,7 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
       {badges.map((badge) => (
         <span
           key={badge.label}
-          className={`absolute whitespace-nowrap rounded-2xl border border-[rgb(38_6_134_/_50%)] bg-white px-5 py-3 text-3xl font-medium leading-7 text-[var(--ink)] ${badge.className}`}
+          className={`absolute whitespace-nowrap rounded-2xl border border-[rgb(38_6_134_/_50%)] bg-white px-5 py-3 text-2xl font-semibold leading-7 text-[var(--ink)] ${badge.className}`}
         >
           {badge.label}
         </span>
@@ -150,7 +150,7 @@ export function Hero() {
           <ArrowRight aria-hidden="true" />
         </a>
         <a
-          className="inline-flex min-h-14 min-w-[236px] items-center justify-center rounded-full border border-[var(--ink)] bg-transparent px-9 py-3 text-2xl font-medium leading-7 whitespace-nowrap"
+          className="inline-flex min-h-14 min-w-[236px] items-center justify-center rounded-full border border-[var(--ink)] bg-transparent px-9 py-3 text-2xl font-semibold leading-7 whitespace-nowrap"
           href="#contact"
         >
           Для компаний

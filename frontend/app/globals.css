@@ -16,3 +16,10 @@
     opacity: 0;
   }
 }
+
+@keyframes marquee {
+  to {
+    transform: translateX(-25%);
+  }
+}
+

@@ -32,7 +32,7 @@ export function SiteHeader() {
 
       <div className="ml-auto flex gap-3">
         <a
-          className="inline-flex h-[38px] w-[153px] items-center justify-center rounded-full border border-[var(--ink)] text-xl font-medium leading-[22px] text-[var(--ink)]"
+          className="inline-flex h-[38px] w-[153px] items-center justify-center rounded-full border border-[var(--ink)] text-xl font-semibold leading-[22px] text-[var(--ink)]"
           href="#contact"
         >
           Войти
