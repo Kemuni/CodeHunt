@@ -33,12 +33,12 @@ export function HowToStart() {
         {/* ─────────── Левый блок ─────────── */}
         <div
           className="relative col-span-7 flex h-auto flex-col gap-6 rounded-2xl
-                     border border-[var(--grid)] overflow-hidden
-                     w-[round(down,100%,var(--cell))]
-                     bg-[linear-gradient(to_right,var(--grid)_1px,transparent_1px),linear-gradient(to_bottom,var(--grid)_1px,transparent_1px)]
-                     bg-[size:var(--cell)_var(--cell)]
-                     px-[var(--cell)] py-[var(--cell)]
-                     2xl:gap-10"
+                    border border-[var(--grid)] overflow-hidden
+                    w-[round(down,100%,var(--cell))]
+                    bg-[linear-gradient(to_right,#cccccc4D_1px,transparent_1px),linear-gradient(to_bottom,#cccccc4D_1px,transparent_1px)]
+                    bg-[size:var(--cell)_var(--cell)]
+                    px-[var(--cell)] py-[var(--cell)]
+                    2xl:gap-10"
         >
           {/* градиент поверх сетки */}
           <div className="pointer-events-none absolute inset-0
@@ -147,11 +147,11 @@ export function HowToStart() {
         {/* ─────────── Правый блок ─────────── */}
         <div
           className="relative col-span-3 flex items-center rounded-2xl
-                     border border-[var(--grid)] overflow-hidden
-                     w-[round(down,100%,var(--cell))]
-                     bg-[radial-gradient(circle,var(--grid)_4px,transparent_1px)]
-                     bg-[size:24px_24px]
-                     2xl:bg-[size:30px_30px]"
+                    border border-[var(--grid)] overflow-hidden
+                    w-[round(down,100%,var(--cell))]
+                    bg-[radial-gradient(circle,#cccccc4D_4px,transparent_1px)]
+                    bg-[size:24px_24px]
+                    2xl:bg-[size:30px_30px]"
         >
           <div className="pointer-events-none absolute inset-0
                           bg-[linear-gradient(to_left,#FFFFFF0D,#B6A2D44D)]"></div>
@@ -163,7 +163,7 @@ export function HowToStart() {
               <div className="w-fit rounded-lg bg-[var(--lavender)]/10">
                 <Lightbulb
                   className="m-auto size-14 p-2 text-[var(--lavender)]
-                             2xl:size-18 2xl:p-3"
+                            2xl:size-18 2xl:p-3"
                   strokeWidth={1}
                 />
               </div>
@@ -179,7 +179,7 @@ export function HowToStart() {
               <div className="w-fit rounded-lg bg-[var(--light-green)]/10">
                 <Puzzle
                   className="m-auto size-14 p-2 text-[var(--light-green)]
-                             2xl:size-18 2xl:p-3"
+                            2xl:size-18 2xl:p-3"
                   strokeWidth={1}
                 />
               </div>
