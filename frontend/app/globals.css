@@ -6,9 +6,15 @@
   --background: #fbfafd;
   --ink: #260686;
   --lavender: #b6a2d4;
+  --light-green: #4B8F8C;
   --muted: #636363;
+  --grid: #ccc;
+  --cell: 3cqw;
+  --green-check: #9ED570;
+  --orange-dots: #FA824C;
   --heading: "Tektur", "Arial Narrow", Arial, sans-serif;
   --body: Roboto, Arial, sans-serif;
+
 }
 
 @keyframes blink {
