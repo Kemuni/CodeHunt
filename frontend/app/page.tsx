@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <div id="top" className="min-w-[1440px] overflow-hidden">
       <SiteHeader />
-      <main>
+      <main className="flex flex-col items-center">
         <Hero />
         <CompanyMarquee />
         <HowToStart/>
