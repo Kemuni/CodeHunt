@@ -267,7 +267,7 @@ export function Hero() {
       {/* Кнопки */}
       <div
         className="absolute left-1/2 top-[62%] z-[3] flex -translate-x-1/2
-                   gap-5 2xl:top-[76.5%] 2xl:gap-7"
+                   gap-5 2xl:top-[86%] 2xl:gap-7"
       >
         <a
           className="inline-flex min-h-12 min-w-[190px] items-center justify-center

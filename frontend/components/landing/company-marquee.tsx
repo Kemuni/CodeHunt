@@ -60,8 +60,8 @@ export function CompanyMarquee() {
   return (
     <section className="overflow-hidden pb-20 pt-8" aria-labelledby="company-marquee-title" >
       <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-[var(--muted)]">
-          <Lightbulb className="size-4 text-[var(--lavender)]" strokeWidth={2} aria-hidden="true" />
+        <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-[var(--lavender)]">
+          <Lightbulb className="size-4" strokeWidth={2} aria-hidden="true" />
           Совершенствуемся решая
         </p>
         <h2

@@ -1,5 +1,6 @@
 ﻿import { Hero } from "@/components/landing/hero";
 import { CompanyMarquee } from "@/components/landing/company-marquee";
+import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { HowToStart } from "@/components/landing/how-to-start";
 
@@ -12,6 +13,7 @@ export default function Home() {
         <CompanyMarquee />
         <HowToStart/>
       </main>
+      <SiteFooter />
     </div>
   );
 }
