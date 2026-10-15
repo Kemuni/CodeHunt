@@ -13,9 +13,9 @@ export function SiteHeader() {
     <header className="relative flex h-23.5 w-screen items-center px-21.25">
       <Link href={""} className="block shrink-0">
         <Image
-          src="/figma/code-mentor-logo.svg"
-          alt="Код Ментор"
-          width={121}
+          src="/figma/our-logo.svg"
+          alt="Track dev"
+          width={90}
           height={64}
           priority
         />

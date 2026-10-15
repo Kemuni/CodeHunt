@@ -13,6 +13,8 @@ import FormField from "@/components/ui/form/form-field";
 import FormTextarea from "@/components/ui/form/textarea";
 import FormCheckbox from "@/components/ui/form/checkbox";
 import {companyContactMeSchema} from "@/schemas/company-contact";
+import {LandingSection} from "@/components/landing/landing-section";
+import Link from "next/link";
 
 
 export default function Home() {
@@ -74,37 +76,14 @@ function CompanyHeroSection() {
             </span>
 
         <div className="flex gap-6 m-auto">
-          <Button variant="default" size="xl">Зарегистрировать компанию</Button>
-          <Button variant="outline" size="xl">Связаться с нами</Button>
+          <Link href="#contactMeSection">
+            <Button variant="default" size="xl">Зарегистрировать компанию</Button>
+          </Link>
+          <Link href="#contactMeSection">
+            <Button variant="outline" size="xl">Связаться с нами</Button>
+          </Link>
         </div>
       </div>
-    </div>
-  );
-}
-
-
-interface LandingSection extends React.ComponentProps<"div"> {
-  subtitle: string
-  title: string
-  classname?: string
-}
-
-
-function LandingSection({ subtitle, title, classname, children}: LandingSection) {
-  return (
-    <div className={cn("relative w-full flex flex-col items-center gap-6", classname)}>
-      <span className="flex flex-col w-fit">
-        <p className="m-auto inline-flex items-center gap-2 text-primary font-light">
-          <Lightbulb className="size-4" strokeWidth={2} aria-hidden="true" />
-          {subtitle}
-        </p>
-        <h2
-          className="font-heading text-5xl font-medium tracking-wide text-primary"
-        >
-          {title}
-        </h2>
-      </span>
-      {children}
     </div>
   );
 }
@@ -298,7 +277,14 @@ function HowDoesItWork() {
 
 function ContactMeSection() {
   return (
-    <div className="w-4/5 xl:w-3/5 m-auto flex flex-col gap-12 border border-gray-200 bg-radial from-primary-pink/15 to-white shadow-xs px-32 py-8 rounded-2xl">
+    <div
+      id="contactMeSection"
+      className={cn(
+        "w-4/5 xl:w-3/5 m-auto flex flex-col gap-12",
+        " border border-gray-200 bg-radial from-primary-pink/15 to-white",
+        "shadow-xs px-32 py-8 rounded-2xl",
+      )}
+    >
       <span className="grid text-center gap-0.5">
         <h2 className="font-heading text-5xl font-medium tracking-wide text-primary">
           Заполните форму
