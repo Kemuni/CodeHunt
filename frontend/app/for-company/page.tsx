@@ -54,7 +54,7 @@ function CompanyHeroSection() {
              className="absolute w-37 h-auto right-20 top-60 2xl:right-30 2xl:top-80 2xl:scale-125"
              width={0} height={0} />
       <Image src="/figma/Teewee.svg" alt="asterisk"
-             className="absolute w-50 h-auto right-40 bottom-5 2xl:right-70 2xl:bottom-10 2xl:scale-125"
+             className="absolute w-50 h-auto right-30 bottom-5 2xl:right-70 2xl:bottom-10 2xl:scale-125"
              width={0} height={0} />
       <Image src="/figma/Orange Ricky.svg" alt="asterisk"
              className="absolute w-50 h-auto left-10 bottom-0 2xl:left-50 2xl:bottom-0 2xl:scale-125"
@@ -169,7 +169,7 @@ function TariffVariants() {
 function HowWeAreHelping() {
   return (
     <div
-      className="flex flex-col gap-6 w-3/5 2xl:w-1/2 px-12 py-12 border border-gray-200 rounded-4xl bg-[radial-gradient(transparent,#FFFFFF),radial-gradient(#B6A2D450,#FFFFFF20),url('/figma/DotGrid.svg')] bg-center"
+      className="flex flex-col gap-6 w-4/5 xl:w-3/5 2xl:w-1/2 px-12 py-12 border border-gray-200 rounded-4xl bg-[radial-gradient(transparent,#FFFFFF),radial-gradient(#B6A2D450,#FFFFFF20),url('/figma/DotGrid.svg')] bg-center"
     >
       <div className="flex w-full bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
         <div className="p-3 w-fit bg-[#260686]/10 text-[#260686] rounded-xl">
@@ -245,7 +245,7 @@ interface StepProps {
 
 
 function Step({index, title, subtitle, className}: StepProps) {
-  const margins = ["ml-0", "ml-30", "ml-60", "ml-90"]
+  const margins = ["ml-0", "ml-10 xl:ml-30", "ml-20 xl:ml-60", "ml-30 xl:ml-90"]
   return (
     <span className={cn(
       "w-175 grid gap-0.5 bg-white border border-gray-200 px-4 py-3 rounded-lg shadow-xs",
@@ -270,18 +270,18 @@ function HowDoesItWork() {
   return (
     <>
       <Image src="/figma/Asterisk 2.svg" alt="asterisk"
-             className="absolute w-37 h-auto right-20 top-40 2xl:right-60 2xl:top-30 2xl:scale-125"
+             className="absolute z-0 w-37 h-auto right-20 top-40 2xl:right-60 2xl:top-30 2xl:scale-125"
              width={0} height={0} />
       <Image src="/figma/Teewee.svg" alt="asterisk"
-             className="absolute w-50 h-auto right-30 bottom-50 -rotate-10 2xl:right-40 2xl:bottom-30 2xl:scale-125"
+             className="absolute z-0 hidden xl:block w-50 h-auto right-30 bottom-50 -rotate-10 2xl:right-40 2xl:bottom-30 2xl:scale-125"
              width={0} height={0} />
       <Image src="/figma/Orange Ricky.svg" alt="asterisk"
-             className="absolute w-50 h-auto right-90 top-50 2xl:right-150 2xl:top-45 2xl:scale-125 -rotate-150"
+             className="absolute z-0 hidden xl:block w-50 h-auto right-90 top-50 2xl:right-150 2xl:top-45 2xl:scale-125 -rotate-150"
              width={0} height={0} />
       <Image src="/figma/Rhode Island.svg" alt="asterisk"
-             className="absolute w-37 h-auto left-30 bottom-10 -rotate-20 2xl:left-70 2xl:bottom-10 2xl:scale-125"
+             className="absolute z-0 w-37 h-auto left-10 xl:left-30 bottom-10 -rotate-20 2xl:left-70 2xl:bottom-10 2xl:scale-125"
              width={0} height={0} />
-      <div className="w-4/5 2xl:w-[70%] flex flex-col gap-8">
+      <div className="w-4/5 z-1 2xl:w-[70%] flex flex-col gap-8">
         <Step index={1} title="Зарегистрируйтесь"
               subtitle="Чтобы получить доступ к нашему сервису" />
         <Step index={2} title="Опубликуйте тестовое"
@@ -298,7 +298,7 @@ function HowDoesItWork() {
 
 function ContactMeSection() {
   return (
-    <div className="w-3/5 m-auto flex flex-col gap-12 border border-gray-200 bg-radial from-primary-pink/15 to-white shadow-xs px-32 py-8 rounded-2xl">
+    <div className="w-4/5 xl:w-3/5 m-auto flex flex-col gap-12 border border-gray-200 bg-radial from-primary-pink/15 to-white shadow-xs px-32 py-8 rounded-2xl">
       <span className="grid text-center gap-0.5">
         <h2 className="font-heading text-5xl font-medium tracking-wide text-primary">
           Заполните форму

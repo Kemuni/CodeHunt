@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className={cn("scroll-smooth", "font-sans", tektur.variable, roboto.variable)}>
-      <body className="m-0 min-w-360 bg-background">
+      <body className="m-0 w-screen bg-background">
         {children}
       </body>
     </html>
