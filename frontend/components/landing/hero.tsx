@@ -145,15 +145,15 @@ function Typewriter() {
     <div
       className="absolute left-1/2 top-[164px] z-[2] w-[520px] -translate-x-1/2
                  whitespace-nowrap text-center text-xl leading-[32px]
-                 text-[var(--lavender)]
+                 text-primary-pink
                  2xl:top-[196px] 2xl:w-[600px] 2xl:text-2xl 2xl:leading-[37px]"
     >
       <motion.span initial={{ opacity: 0.5 }} animate={{ opacity: 1 }}>
         {reducedMotion ? phrase : phrase.slice(0, length)}
       </motion.span>
       <i
-        className="ml-2 inline-block h-8 w-px align-middle bg-[var(--lavender)]
-                   motion-safe:[animation:blink_1s_steps(1)_infinite]
+        className="ml-2 inline-block h-8 w-px align-middle bg-primary-pink
+                   motion-safe:animate-[blink_1s_steps(1)_infinite]
                    2xl:h-[37px]"
         aria-hidden="true"
       />
@@ -170,7 +170,7 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
           className={`absolute whitespace-nowrap rounded-2xl
                       border border-[rgb(38_6_134_/_50%)] bg-white
                       px-4 py-2 text-lg font-semibold leading-6
-                      text-[var(--ink)]
+                      text-primary
                       2xl:px-5 2xl:py-3 2xl:text-2xl 2xl:leading-7
                       ${badge.className}`}
         >
@@ -193,7 +193,7 @@ export function Hero() {
       {/* «Решим все ваши» */}
       <p
         className="absolute left-1/2 top-[120px] m-0 w-[320px] -translate-x-1/2
-                   text-center text-base leading-5 text-[var(--muted)]
+                   text-center text-base leading-5 text-muted-foreground
                    2xl:top-[164px] 2xl:w-[380px] 2xl:text-lg 2xl:leading-[22px]"
       >
         Решим все ваши
@@ -208,13 +208,13 @@ export function Hero() {
                    2xl:top-[328px] 2xl:w-[790px]"
       >
         <h1
-          className="m-0 font-[family-name:var(--heading)] font-medium
+          className="m-0 font-heading font-medium
                      text-[44px] leading-[1.22] tracking-[3px]
                      2xl:text-[64px] 2xl:tracking-[4.8px]"
         >
           ТАМ, ГДЕ{" "}
           <span
-            className="ml-3 inline-block rounded-full bg-[var(--ink)]
+            className="ml-3 inline-block rounded-full bg-primary
                        px-6 py-1 tracking-[2px] text-white
                        2xl:ml-[18px] 2xl:px-8 2xl:tracking-[3px]"
           >
@@ -271,7 +271,7 @@ export function Hero() {
       >
         <a
           className="inline-flex min-h-12 min-w-[190px] items-center justify-center
-                     gap-2 rounded-full border border-[var(--ink)] bg-[var(--ink)]
+                     gap-2 rounded-full border border-primary bg-primary
                      px-6 py-2 text-xl font-medium leading-6 whitespace-nowrap
                      text-white
                      2xl:min-h-14 2xl:min-w-[236px] 2xl:gap-3
@@ -283,7 +283,7 @@ export function Hero() {
         </a>
         <a
           className="inline-flex min-h-12 min-w-[190px] items-center justify-center
-                     rounded-full border border-[var(--ink)] bg-transparent
+                     rounded-full border border-primary bg-transparent
                      px-6 py-2 text-xl font-semibold leading-6 whitespace-nowrap
                      2xl:min-h-14 2xl:min-w-[236px]
                      2xl:px-9 2xl:py-3 2xl:text-2xl 2xl:leading-7"

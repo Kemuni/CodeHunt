@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { Lightbulb } from "lucide-react";
+import {DoubleSlash} from "@/components/icons";
 
 const companies = [
   {
@@ -60,13 +61,13 @@ export function CompanyMarquee() {
   return (
     <section className="flex flex-col overflow-hidden pb-20 pt-8 gap-20 w-full" aria-labelledby="company-marquee-title" >
       <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-[var(--lavender)]">
-          <Lightbulb className="size-4" strokeWidth={2} aria-hidden="true" />
+        <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-primary/50">
+          <DoubleSlash className="size-4" aria-hidden="true" />
           Совершенствуемся решая
         </p>
         <h2
           id="company-marquee-title"
-          className="m-0 mt-0.5 font-[family-name:var(--heading)] text-[60px] font-medium leading-[1.05] tracking-[1.2px] text-[var(--ink)]"
+          className="m-0 mt-0.5 font-heading text-[60px] font-medium leading-[1.05] tracking-[1.2px] text-primary"
         >
           Задачи Big Tech компаний
         </h2>
@@ -151,25 +152,25 @@ export function CompanyMarquee() {
           {/* ─── Контент ─── */}
           <p className="relative z-10 m-0 inline-flex items-center gap-2 text-lg
                         font-light leading-[19px] text-white font-[family-name:var(--body)]">
-            <Lightbulb className="size-6 text-[var(--lavender)]" strokeWidth={2} aria-hidden="true" />
+            <Lightbulb className="size-6 text-primary-pink" strokeWidth={2} aria-hidden="true" />
             Почему мы
           </p>
-          <h2 className="relative z-10 m-0 mt-0.5 w-2/5 font-[family-name:var(--heading)]
+          <h2 className="relative z-10 m-0 mt-0.5 w-2/5 font-heading
                         text-[40px] font-normal leading-[1.05] tracking-[1.2px] text-white">
             Помогаем по-настоящему проявить себя
           </h2>
 
           <div className="relative z-10 flex flex-row justify-between pe-20">
             <div className="flex w-1/2 flex-col border-b border-white/15 pb-2">
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-[var(--lavender)]">001</p>
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-white">Найдем задачи</p>
+              <p className="font-heading text-[20px] font-medium text-primary-pink">001</p>
+              <p className="font-heading text-[20px] font-medium text-white">Найдем задачи</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
                 Решая которые ты сможешь не только показать свои способности, но и улучшить их, благодаря целому каталогу.
               </p>
             </div>
             <div className="flex w-2/5 flex-col border-b border-white/15 pb-2">
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-[var(--lavender)]">002</p>
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-white">Составим портфолио</p>
+              <p className="font-heading text-[20px] font-medium text-primary-pink">002</p>
+              <p className="font-heading text-[20px] font-medium text-white">Составим портфолио</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
                 С помощью которого компании смогут по достоинству оценить тебя, благодаря более подробному описанию резюме и интересным задачам.
               </p>
@@ -178,15 +179,15 @@ export function CompanyMarquee() {
 
           <div className="relative z-10 flex flex-row justify-between pe-20">
             <div className="flex w-1/2 flex-col border-b border-white/15 pb-2">
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-[var(--lavender)]">003</p>
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-white">Покажем тестовые компаний</p>
+              <p className="font-heading text-[20px] font-medium text-primary-pink">003</p>
+              <p className="font-heading text-[20px] font-medium text-white">Покажем тестовые компаний</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
                 Решая которые ты сможешь доказать навыки, а наниматели смогут увидеть их и предложить тебе оффер.
               </p>
             </div>
             <div className="flex w-2/5 flex-col border-b border-white/15 pb-2">
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-[var(--lavender)]">004</p>
-              <p className="font-[family-name:var(--heading)] text-[20px] font-medium text-white">Продвинем тебя</p>
+              <p className="font-heading text-[20px] font-medium text-primary-pink">004</p>
+              <p className="font-heading text-[20px] font-medium text-white">Продвинем тебя</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
                 С помощью которого компании смогут по достоинству оценить тебя, благодаря более подробному описанию резюме и интересным задачам.
               </p>

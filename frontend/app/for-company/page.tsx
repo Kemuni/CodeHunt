@@ -19,7 +19,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div>
+    <div className="w-full overflow-hidden">
       <SiteHeader />
       <main className="[&>div:not(:first-child)]:mt-14 [&>div:last-child]:mb-28">
         <CompanyHeroSection />

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const roboto = Roboto({subsets:['latin', 'cyrillic'], variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "Код Ментор",
+  title: "Track Dev",
   description: "Платформа для задач, решений и профессионального развития.",
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className={cn("scroll-smooth", "font-sans", tektur.variable, roboto.variable)}>
-      <body className="m-0 w-screen bg-background">
+      <body className="m-0 w-full bg-background">
         {children}
       </body>
     </html>

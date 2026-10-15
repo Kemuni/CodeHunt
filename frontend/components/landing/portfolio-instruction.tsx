@@ -1,5 +1,5 @@
-import { Lightbulb } from "lucide-react"
 import Image from "next/image"
+import {DoubleSlash} from "@/components/icons";
 
 export function PortfolioInstruction() {
   return (
@@ -9,20 +9,16 @@ export function PortfolioInstruction() {
     >
       <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
         <p className="m-0 inline-flex items-center gap-2 text-base leading-[18px]
-                      text-[var(--muted)]
+                      text-primary/50
                       2xl:text-lg 2xl:leading-[19px]">
-          <Lightbulb
-            className="size-4 text-[var(--lavender)]"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <DoubleSlash className="size-4" aria-hidden="true" />
           Что делать если
         </p>
         <h2
           id="how-to-start-title"
-          className="m-0 mt-0.5 font-[family-name:var(--heading)]
+          className="m-0 mt-0.5 font-heading
                     text-[40px] font-medium leading-[1.05] tracking-[1px]
-                    text-[var(--ink)]
+                    text-primary
                     2xl:text-[60px] 2xl:tracking-[1.2px]"
         >
           Нет своего портфолио?
@@ -31,49 +27,49 @@ export function PortfolioInstruction() {
       <div className="flex flex-row px-10 2xl:px-40">
         <div className="flex flex-col w-1/2 gap-8">
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">
-            <h2 className="m-0 mt-0.5 font-[family-name:var(--heading)] text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-[var(--ink)]">
+            <h2 className="m-0 mt-0.5 font-heading text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-primary">
               1.
             </h2>
-            <p className="font-[family-name:var(--heading)] text-[24px] font-medium text-black">
+            <p className="font-heading text-[24px] font-medium text-black">
               Регистрируйся на сайте
             </p>
-            <p className="font-[family-name:var(--body)] text-[18px] font-normal text-black">
+            <p className="text-[18px] font-normal text-black">
               Просто подключи свой GitHub или укажи почту и расскажи немного о себе в профиле.  
             </p>
           </div>
 
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">
-            <h2 className="m-0 mt-0.5 font-[family-name:var(--heading)] text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-[var(--ink)]">
+            <h2 className="m-0 mt-0.5 font-heading text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-primary">
               2.
             </h2>
-            <p className="font-[family-name:var(--heading)] text-[24px] font-medium text-black">
+            <p className="font-heading text-[24px] font-medium text-black">
               Найди интерeсную задачу
             </p>
-            <p className="font-[family-name:var(--body)] text-[18px] font-normal text-black">
+            <p className="text-[18px] font-normal text-black">
               Перейди в каталог и, отфильтровав задачи на интересные тебе, реши одну из них.  
             </p>
           </div>
 
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">
-            <h2 className="m-0 mt-0.5 font-[family-name:var(--heading)] text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-[var(--ink)]">
+            <h2 className="m-0 mt-0.5 font-heading text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-primary">
               3.
             </h2>
-            <p className="font-[family-name:var(--heading)] text-[24px] font-medium text-black">
+            <p className="font-heading text-[24px] font-medium text-black">
               Опиши решение
             </p>
-            <p className="font-[family-name:var(--body)] text-[18px] font-normal text-black">
+            <p className="text-[18px] font-normal text-black">
               Пройдя простую и понятную форму, где ты расскажешь как реализовал решение и с чем столкнулся.  
             </p>
           </div>
 
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">
-            <h2 className="m-0 mt-0.5 font-[family-name:var(--heading)] text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-[var(--ink)]">
+            <h2 className="m-0 mt-0.5 font-heading text-[36px] font-bold leading-[1.05] tracking-[1.2px] text-primary">
               4.
             </h2>
-            <p className="font-[family-name:var(--heading)] text-[24px] font-medium text-black">
+            <p className="font-heading text-[24px] font-medium text-black">
               Портфолио готово!
             </p>
-            <p className="font-[family-name:var(--body)] text-[18px] font-normal text-black">
+            <p className="text-[18px] font-normal text-black">
               Его ты сможешь прикрепить к своему профилю, что позволит компаниям достойно оценить тебя. 
             </p>
           </div>

@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Lightbulb } from "lucide-react";
 
 const links = [
   { href: "#top", label: "Главная" },
@@ -60,25 +59,10 @@ export function SiteFooter() {
       >
         {/* Логотип */}
         <div className="flex flex-col gap-1.5">
-          <a
-            className="relative w-fit font-[family-name:var(--heading)]
-                      text-2xl font-medium leading-none text-white
-                      2xl:text-[2rem]"
-            href="#top"
-            aria-label="Код Ментор"
-          >
-            <span className="block">[Код]</span>
-            <span className="block">Ментор</span>
-            <Lightbulb
-              className="absolute right-0 top-1 size-5 text-[var(--lavender)]
-                        2xl:size-6"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-          </a>
+          <Image src="/figma/logo-white.svg" alt="Logo" width={90} height={64} />
           <p
-            className="m-0 max-w-[12rem] font-[family-name:var(--heading)]
-                      text-lg leading-[1.1] text-[var(--muted)]
+            className="m-0 max-w-[12rem] text-muted-foreground
+                      text-lg leading-[1.1]
                       2xl:text-xl"
           >
             Там, где идеи находят людей
@@ -88,7 +72,7 @@ export function SiteFooter() {
         {/* Ссылки */}
         <nav aria-label="Ссылки в подвале">
           <h2
-            className="m-0 mb-3 font-[family-name:var(--heading)]
+            className="m-0 mb-3 font-heading
                       text-lg font-normal leading-[1.3]
                       2xl:text-xl"
           >
@@ -105,7 +89,7 @@ export function SiteFooter() {
                   className="transition-opacity hover:opacity-70
                             focus-visible:outline focus-visible:outline-2
                             focus-visible:outline-offset-4
-                            focus-visible:outline-[var(--lavender)]"
+                            focus-visible:outline-primary-pink"
                   href={link.href}
                 >
                   {link.label}
@@ -118,7 +102,7 @@ export function SiteFooter() {
         {/* Контакты */}
         <address className="not-italic">
           <h2
-            className="m-0 mb-3 font-[family-name:var(--heading)]
+            className="m-0 mb-3 font-heading
                       text-lg font-normal leading-[1.3]
                       2xl:text-xl"
           >

@@ -1,4 +1,5 @@
 import { Lightbulb, FileText, Check, Ellipsis, Puzzle } from "lucide-react";
+import {DoubleSlash} from "@/components/icons";
 
 export function HowToStart() {
   return (
@@ -8,21 +9,17 @@ export function HowToStart() {
       aria-labelledby="how-to-start-title"
     >
       <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-2 text-base leading-[18px]
-                      text-[var(--muted)]
+        <p className="m-0 inline-flex items-center gap-1 text-base leading-[18px]
+                      text-primary/50
                       2xl:text-lg 2xl:leading-[19px]">
-          <Lightbulb
-            className="size-4 text-[var(--lavender)]"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <DoubleSlash className="size-4" aria-hidden="true" />
           Основа
         </p>
         <h2
           id="how-to-start-title"
-          className="m-0 mt-0.5 font-[family-name:var(--heading)]
+          className="m-0 mt-0.5 font-heading
                      text-[40px] font-medium leading-[1.05] tracking-[1px]
-                     text-[var(--ink)]
+                     text-primary
                      2xl:text-[60px] 2xl:tracking-[1.2px]"
         >
           Как начать?
@@ -33,7 +30,7 @@ export function HowToStart() {
         {/* ─────────── Левый блок ─────────── */}
         <div
           className="relative col-span-7 flex h-auto flex-col gap-6 rounded-2xl
-                    border border-[var(--grid)] overflow-hidden
+                    border overflow-hidden
                     w-[round(down,100%,var(--cell))]
                     bg-[linear-gradient(to_right,#cccccc4D_1px,transparent_1px),linear-gradient(to_bottom,#cccccc4D_1px,transparent_1px)]
                     bg-[size:var(--cell)_var(--cell)]
@@ -48,29 +45,29 @@ export function HowToStart() {
           <div className="relative z-10 flex flex-col gap-6 2xl:gap-10">
             {/* Карточка 1 — Заполни профиль */}
             <div className="flex h-32 flex-row items-center gap-4 rounded-2xl
-                            border border-[var(--grid)] bg-white px-4 py-4
+                            border bg-white px-4 py-4
                             w-[round(up,100%,var(--cell))]
                             2xl:h-40 2xl:gap-6">
               <div className="inline-flex h-full aspect-square rounded-lg
-                              bg-[var(--ink)]/10">
+                              bg-primary/10">
                 <FileText
-                  className="m-auto size-16 text-[var(--ink)] 2xl:size-22"
+                  className="m-auto size-16 text-primary 2xl:size-22"
                   strokeWidth={1}
                 />
               </div>
-              <div className="w-full font-medium text-black">
-                <p className="font-[family-name:var(--heading)] text-2xl
+              <div className="w-full text-black">
+                <p className="font-heading font-medium text-2xl
                               2xl:text-3xl">
                   Заполни профиль
                 </p>
-                <p className="font-[family-name:var(--body)] text-base
+                <p className="text-base
                               2xl:text-xl">
                   Так работодатели узнают о тебе больше
                 </p>
               </div>
               <div className="inline-flex h-1/2 aspect-square items-center
                               justify-center rounded-full
-                              bg-[var(--green-check)]">
+                              bg-positive-green">
                 <Check
                   className="m-auto size-8 text-white 2xl:size-12"
                   strokeWidth={2}
@@ -80,29 +77,29 @@ export function HowToStart() {
 
             {/* Карточка 2 — Опиши портфолио */}
             <div className="flex h-32 flex-row items-center gap-4 rounded-2xl
-                            border border-[var(--grid)] bg-white px-4 py-4
+                            border bg-white px-4 py-4
                             w-[round(up,100%,var(--cell))]
                             2xl:h-40 2xl:gap-6">
               <div className="inline-flex h-full aspect-square rounded-lg
-                              bg-[var(--lavender)]/10">
+                              bg-primary-pink/10">
                 <Lightbulb
-                  className="m-auto size-16 text-[var(--lavender)] 2xl:size-22"
+                  className="m-auto size-16 text-primary-pink 2xl:size-22"
                   strokeWidth={1}
                 />
               </div>
-              <div className="w-full font-medium text-black">
-                <p className="font-[family-name:var(--heading)] text-2xl
+              <div className="w-full text-black">
+                <p className="font-heading font-medium text-2xl
                               2xl:text-3xl">
                   Опиши свое портфолио
                 </p>
-                <p className="font-[family-name:var(--body)] text-base
+                <p className="text-base
                               2xl:text-xl">
                   Так работодатели узнают о тебе больше
                 </p>
               </div>
               <div className="inline-flex h-1/2 aspect-square items-center
                               justify-center rounded-full
-                              bg-[var(--green-check)]">
+                              bg-positive-green">
                 <Check
                   className="m-auto size-8 text-white 2xl:size-12"
                   strokeWidth={2}
@@ -112,29 +109,27 @@ export function HowToStart() {
 
             {/* Карточка 3 — Сделай тестовое */}
             <div className="flex h-32 flex-row items-center gap-4 rounded-2xl
-                            border border-[var(--grid)] bg-white px-4 py-4
+                            border bg-white px-4 py-4
                             w-[round(up,100%,var(--cell))]
                             2xl:h-40 2xl:gap-6">
-              <div className="inline-flex h-full aspect-square rounded-lg
-                              bg-[var(--light-green)]/10">
+              <div className="inline-flex h-full aspect-square rounded-lg bg-dark-green/10">
                 <Puzzle
-                  className="m-auto size-16 text-[var(--light-green)] 2xl:size-22"
+                  className="m-auto size-16 text-dark-green 2xl:size-22"
                   strokeWidth={1}
                 />
               </div>
-              <div className="w-full font-medium text-black">
-                <p className="font-[family-name:var(--heading)] text-2xl
+              <div className="w-full text-black">
+                <p className="font-heading font-medium text-2xl
                               2xl:text-3xl">
                   Сделай тестовое
                 </p>
-                <p className="font-[family-name:var(--body)] text-base
+                <p className=" text-base
                               2xl:text-xl">
                   Так работодатели узнают о тебе больше
                 </p>
               </div>
               <div className="inline-flex h-1/2 aspect-square items-center
-                              justify-center rounded-full
-                              bg-[var(--orange-dots)]">
+                              justify-center rounded-full bg-warning-orange">
                 <Ellipsis
                   className="m-auto size-8 text-white 2xl:size-12"
                   strokeWidth={2}
@@ -147,7 +142,7 @@ export function HowToStart() {
         {/* ─────────── Правый блок ─────────── */}
         <div
           className="relative col-span-3 flex items-center rounded-2xl
-                    border border-[var(--grid)] overflow-hidden
+                    border overflow-hidden
                     w-[round(down,100%,var(--cell))]
                     bg-[radial-gradient(circle,#cccccc4D_4px,transparent_1px)]
                     bg-[size:24px_24px]
@@ -160,14 +155,14 @@ export function HowToStart() {
             {/* Карточка — Перейти к задачам */}
             <div className="flex h-auto flex-col gap-6 rounded-2xl bg-white
                             px-4 py-4 2xl:gap-8">
-              <div className="w-fit rounded-lg bg-[var(--lavender)]/10">
+              <div className="w-fit rounded-lg bg-primary-pink/10">
                 <Lightbulb
-                  className="m-auto size-14 p-2 text-[var(--lavender)]
+                  className="m-auto size-14 p-2 text-primary-pink
                             2xl:size-18 2xl:p-3"
                   strokeWidth={1}
                 />
               </div>
-              <p className="w-1/2 font-[family-name:var(--heading)] text-2xl
+              <p className="w-fit font-heading text-2xl
                             font-medium text-black 2xl:text-3xl">
                 Перейти к задачам
               </p>
@@ -176,14 +171,14 @@ export function HowToStart() {
             {/* Карточка — Перейти к тестовым */}
             <div className="flex h-auto flex-col gap-6 rounded-2xl bg-white
                             px-4 py-4 2xl:gap-8">
-              <div className="w-fit rounded-lg bg-[var(--light-green)]/10">
+              <div className="w-fit rounded-lg bg-dark-green/10">
                 <Puzzle
-                  className="m-auto size-14 p-2 text-[var(--light-green)]
+                  className="m-auto size-14 p-2 text-dark-green
                             2xl:size-18 2xl:p-3"
                   strokeWidth={1}
                 />
               </div>
-              <p className="w-1/2 font-[family-name:var(--heading)] text-2xl
+              <p className="w-fit font-heading text-2xl
                             font-medium text-black 2xl:text-3xl">
                 Перейти к тестовым
               </p>

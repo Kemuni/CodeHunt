@@ -26,8 +26,8 @@ export function AnimatedArrow({ direction }: AnimatedArrowProps) {
     <svg
       className={
         isLeft
-          ? "pointer-events-none absolute left-[190px] top-[440px] z-[1] origin-top-left scale-100 text-[var(--ink)] 2xl:left-[292px] 2xl:top-[548px] 2xl:scale-[1.2]"
-          : "pointer-events-none absolute right-[170px] top-[440px] z-[1] origin-top-right scale-100 text-[var(--ink)] 2xl:right-[254px] 2xl:top-[545px] 2xl:scale-[1.2]"
+          ? "pointer-events-none absolute left-[190px] top-[440px] z-[1] origin-top-left scale-100 text-primary 2xl:left-[292px] 2xl:top-[548px] 2xl:scale-[1.2]"
+          : "pointer-events-none absolute right-[170px] top-[440px] z-[1] origin-top-right scale-100 text-primary 2xl:right-[254px] 2xl:top-[545px] 2xl:scale-[1.2]"
       }
       viewBox={`0 0 ${width} ${height}`}
       width={width}

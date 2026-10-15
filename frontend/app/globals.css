@@ -50,6 +50,9 @@
 
     /* Custom */
     --color-primary-pink: var(--primary-pink);
+    --color-positive-green: var(--positive-green);
+    --color-dark-green: var(--dark-green);
+    --color-warning-orange: var(--warning-orange);
 }
 
 :root {
@@ -92,6 +95,11 @@
 
     /* Custom */
     --primary-pink: oklch(0.747 0.074 302.915);
+    --grid: #ccc;
+    --cell: 3cqw;
+    --positive-green: #9ED570;
+    --dark-green: #4B8F8C;
+    --warning-orange: #FA824C;
 }
 
 .dark {
@@ -140,5 +148,19 @@
     }
   html {
     @apply font-sans;
+    }
+}
+
+
+/* Для анимаций */
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@keyframes marquee {
+    to {
+        transform: translateX(-25%);
     }
 }
