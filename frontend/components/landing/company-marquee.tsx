@@ -1,6 +1,5 @@
 import Image from "next/image";
 
-import { Lightbulb } from "lucide-react";
 import {DoubleSlash} from "@/components/icons";
 
 const companies = [
@@ -152,7 +151,7 @@ export function CompanyMarquee() {
           {/* ─── Контент ─── */}
           <p className="relative z-10 m-0 inline-flex items-center gap-2 text-lg
                         font-light leading-[19px] text-white font-[family-name:var(--body)]">
-            <Lightbulb className="size-6 text-primary-pink" strokeWidth={2} aria-hidden="true" />
+            <DoubleSlash className="size-6 text-primary-pink" aria-hidden="true" />
             Почему мы
           </p>
           <h2 className="relative z-10 m-0 mt-0.5 w-2/5 font-heading
