@@ -45,20 +45,20 @@ function CompanyHeroSection() {
   return (
     <div className="relative flex justify-center w-full h-[80dvh]">
       <Image src="/figma/Asterisk 2.svg" alt="asterisk"
-             className="absolute left-20 top-40 2xl:left-40 2xl:top-50 2xl:scale-125"
-             width={150} height={150} />
+             className="absolute w-37 h-auto left-20 top-40 2xl:left-40 2xl:top-50 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Butterfly.svg" alt="asterisk"
-             className="absolute right-50 top-10 2xl:right-80 2xl:top-20 2xl:scale-125"
-             width={120} height={120} />
+             className="absolute w-30 h-auto right-50 top-10 2xl:right-80 2xl:top-20 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Rhode Island.svg" alt="asterisk"
-             className="absolute right-20 top-60 2xl:right-30 2xl:top-80 2xl:scale-125"
-             width={150} height={200} />
+             className="absolute w-37 h-auto right-20 top-60 2xl:right-30 2xl:top-80 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Teewee.svg" alt="asterisk"
-             className="absolute right-40 bottom-5 2xl:right-70 2xl:bottom-10 2xl:scale-125"
-             width={200} height={150} />
+             className="absolute w-50 h-auto right-40 bottom-5 2xl:right-70 2xl:bottom-10 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Orange Ricky.svg" alt="asterisk"
-             className="absolute left-10 bottom-0 2xl:left-50 2xl:bottom-0 2xl:scale-125"
-             width={200} height={150} />
+             className="absolute w-50 h-auto left-10 bottom-0 2xl:left-50 2xl:bottom-0 2xl:scale-125"
+             width={0} height={0} />
 
       <div className="flex flex-col gap-26 m-auto">
             <span className="w-162 gap-5">
@@ -270,17 +270,17 @@ function HowDoesItWork() {
   return (
     <>
       <Image src="/figma/Asterisk 2.svg" alt="asterisk"
-             className="absolute right-20 top-40 2xl:right-60 2xl:top-30 2xl:scale-125"
-             width={150} height={150} />
+             className="absolute w-37 h-auto right-20 top-40 2xl:right-60 2xl:top-30 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Teewee.svg" alt="asterisk"
-             className="absolute right-30 bottom-50 -rotate-10 2xl:right-40 2xl:bottom-30 2xl:scale-125"
-             width={200} height={150} />
+             className="absolute w-50 h-auto right-30 bottom-50 -rotate-10 2xl:right-40 2xl:bottom-30 2xl:scale-125"
+             width={0} height={0} />
       <Image src="/figma/Orange Ricky.svg" alt="asterisk"
-             className="absolute right-90 top-50 2xl:right-150 2xl:top-45 2xl:scale-125 -rotate-150"
-             width={200} height={150} />
+             className="absolute w-50 h-auto right-90 top-50 2xl:right-150 2xl:top-45 2xl:scale-125 -rotate-150"
+             width={0} height={0} />
       <Image src="/figma/Rhode Island.svg" alt="asterisk"
-             className="absolute left-30 bottom-10 -rotate-20 2xl:left-70 2xl:bottom-10 2xl:scale-125"
-             width={150} height={200} />
+             className="absolute w-37 h-auto left-30 bottom-10 -rotate-20 2xl:left-70 2xl:bottom-10 2xl:scale-125"
+             width={0} height={0} />
       <div className="w-4/5 2xl:w-[70%] flex flex-col gap-8">
         <Step index={1} title="Зарегистрируйтесь"
               subtitle="Чтобы получить доступ к нашему сервису" />
