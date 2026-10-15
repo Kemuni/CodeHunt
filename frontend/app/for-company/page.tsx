@@ -1,14 +1,18 @@
+"use client"
+
 import { SiteHeader } from "@/components/landing/site-header";
 import {Button} from "@/components/ui/button";
 import Image from "next/image";
 import {Lightbulb, CodeXml, Database, FileText, Puzzle, FileChartPie} from "lucide-react";
 import {cn} from "cn";
 import React from "react";
-import {Input} from "@/components/ui/input";
-import {Field, FieldGroup, FieldLabel} from "@/components/ui/field";
-import {Textarea} from "@/components/ui/textarea";
-import {Checkbox} from "@/components/ui/checkbox";
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion";
+import Form from "@/components/ui/form/form";
+import FormInput from "@/components/ui/form/input";
+import FormField from "@/components/ui/form/form-field";
+import FormTextarea from "@/components/ui/form/textarea";
+import FormCheckbox from "@/components/ui/form/checkbox";
+import {companyContactMeSchema} from "@/schemas/company-contact";
 
 
 export default function Home() {
@@ -301,42 +305,51 @@ function ContactMeSection() {
         </h2>
         <h5 className="text-2xl text-black">и мы обязательно свяжемся!</h5>
       </span>
-      <div className="flex flex-col gap-6 justify-center">
-        <FieldGroup className="grid grid-cols-2 gap-x-5 gap-y-4">
-          <Field>
-            <FieldLabel htmlFor="name">Как к вам обращаться</FieldLabel>
-            <Input id="name" placeholder="ФИО" />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="company">Компания</FieldLabel>
-            <Input id="company" placeholder="Ваша компания" />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="email">Электронная почта</FieldLabel>
-            <Input id="email" placeholder="example@example.com" />
-          </Field>
-          <Field className="row-span-2">
-            <FieldLabel htmlFor="message">Сообщение или предложение</FieldLabel>
-            <Textarea id="message" placeholder="Идеи, концепты или любая информация" className="h-full"/>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="telegram">Телеграм</FieldLabel>
-            <Input id="telegram" placeholder="@username" />
-          </Field>
+      <Form
+        schema={companyContactMeSchema}
+        defaultValues={{
+          name: "",
+          company: "",
+          email: "",
+          content: undefined,
+          telegram: "",
+          agreeHRMails: false,
+          agreeToSubmit: false,
+        }}
+        onSubmit={(data) => console.log(data)}
+        className="grid grid-cols-2 gap-x-5 gap-y-4"
+      >
+        <FormField name="name" label="Как к вам обращаться">
+          <FormInput name="name" placeholder="ФИО" />
+        </FormField>
+        <FormField name="company" label="Компания">
+          <FormInput name="company" placeholder="Ваша компания" />
+        </FormField>
+        <FormField name="email" label="Электронная почта">
+          <FormInput name="email" placeholder="example@example.com" />
+        </FormField>
+        <FormField name="message" label="Сообщение или предложение" className="row-span-2">
+          <FormTextarea name="message" placeholder="Идеи, концепты или любая информация" className="h-full" />
+        </FormField>
+        <FormField name="telegram" label="Телеграм">
+          <FormInput name="telegram" placeholder="@username" />
+        </FormField>
 
-          <Field orientation="horizontal" className="col-span-2">
-            <Checkbox id="agreeHRMails" />
-            <FieldLabel htmlFor="agreeHRMails" className="font-normal">Я хочу получать HR-рассылку</FieldLabel>
-          </Field>
-          <Field orientation="horizontal" className="col-span-2">
-            <Checkbox id="agreeToSubmit" />
-            <FieldLabel htmlFor="agreeToSubmit" className="font-normal">
-              Нажимая кнопку «Отправить», я соглашаюсь с политикой обработки персональных данных
-            </FieldLabel>
-          </Field>
-        </FieldGroup>
-        <Button type="submit" size="lg" className="w-fit self-center">Отправить</Button>
-      </div>
+        <FormField
+          name="agreeHRMails" orientation="horizontal" className="col-span-2 *:font-normal"
+          label="Я хочу получать HR-рассылку"
+        >
+          <FormCheckbox name="agreeHRMails" />
+        </FormField>
+        <FormField
+          name="agreeToSubmit" orientation="horizontal" className="col-span-2 *:font-normal"
+          label="Нажимая кнопку «Отправить», я соглашаюсь с политикой обработки персональных данных"
+        >
+          <FormCheckbox name="agreeToSubmit" />
+        </FormField>
+
+        <Button type="submit" size="lg" className="w-fit col-span-2 m-auto mt-6">Отправить</Button>
+      </Form>
     </div>
   );
 }
