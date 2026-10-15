@@ -266,7 +266,7 @@ export function Hero() {
 
       {/* Кнопки */}
       <div
-        className="absolute left-1/2 top-[62%] z-[3] flex -translate-x-1/2
+        className="absolute left-1/2 top-[70%] z-[3] flex -translate-x-1/2
                    gap-5 2xl:top-[86%] 2xl:gap-7"
       >
         <a
