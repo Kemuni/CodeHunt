@@ -16,7 +16,6 @@ export default function FormCheckbox({
   const { control, formState: { errors } } = useFormContext()
   const error = errors?.[name]
 
-    // <Checkbox id={name} aria-invalid={!!error} {...props} {...register(name)}/>
   return (
     <Controller
       control={control}
