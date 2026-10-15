@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
-import { Tektur } from 'next/font/google'
+import { Tektur, Roboto } from 'next/font/google'
+import { cn } from "@/lib/utils";
+
+const roboto = Roboto({subsets:['latin', 'cyrillic'], variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "Код Ментор",
@@ -19,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className="scroll-smooth {tektur.variable}">
-      <body className="m-0 min-w-[1440px] bg-[var(--background)] font-[family-name:var(--body)] text-[var(--ink)]">
+    <html lang="ru" className={cn("scroll-smooth", "font-sans", tektur.variable, roboto.variable)}>
+      <body className="m-0 min-w-360 bg-background">
         {children}
       </body>
     </html>
