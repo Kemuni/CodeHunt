@@ -15,27 +15,92 @@ const prompts = [
   "Как подготовиться к собеседованию...",
 ];
 
+/* ─────────── Бейджи ───────────
+   top/left/right/bottom — ноут по умолчанию,
+   2xl: — значения из макета 1920
+*/
 const leftBadges = [
-  { className: "left-[28px] top-0", label: "Сделать портфолио" },
-  { className: "right-0 top-[96px]", label: "Проявить себя" },
-  { className: "left-0 top-[188px]", label: "Развить насмотренность" },
-  { className: "bottom-0 right-[8px]", label: "Найти работу" },
+  {
+    className: "left-5 top-0 2xl:left-7",
+    label: "Сделать портфолио",
+  },
+  {
+    className: "right-0 top-16 2xl:top-24",
+    label: "Проявить себя",
+  },
+  {
+    className: "left-0 top-32 2xl:top-47",
+    label: "Развить насмотренность",
+  },
+  {
+    className: "bottom-0 right-16 2xl:right-25",
+    label: "Найти работу",
+  },
 ];
 
 const rightBadges = [
-  { className: "left-0 top-0", label: "Найти сотрудника" },
-  { className: "left-[156px] top-[96px]", label: "Создать тестовое" },
-  { className: "left-[42px] top-[176px]", label: "Быстро оценить" },
-  { className: "bottom-0 left-[124px]", label: "Убедиться в навыках" },
+  {
+    className: "left-0 top-0",
+    label: "Найти сотрудника",
+  },
+  {
+    className: "left-28 top-16 2xl:left-39 2xl:top-24",
+    label: "Создать тестовое",
+  },
+  {
+    className: "left-8 top-28 2xl:left-10 2xl:top-44",
+    label: "Быстро оценить",
+  },
+  {
+    className: "bottom-0 left-24 2xl:left-31",
+    label: "Убедиться в навыках",
+  },
 ];
 
+/* ─────────── Декорации ─────────── */
 const decorations = [
-  { className: "left-[293px] top-[64px]", height: 80, src: "/figma/Asterisk 2.svg", width: 160 },
-  { className: "bottom-[166px] left-[54px]", height: 102, src: "/figma/Asterisk 2.svg", width: 143 },
-  { className: "bottom-[156px] right-[88px]", height: 120, src: "/figma/Rhode Island.svg", width: 120 },
-  { className: "bottom-[37px] right-[200px]", height: 80, src: "/figma/Teewee.svg", width: 180 },
-  { className: "right-[46px] top-[52px]", height: 84, src: "/figma/Butterfly.svg", width: 124 },
-  { className: "bottom-[35px] left-[289px]", height: 103, src: "/figma/Orange Ricky.svg", width: 193 },
+  {
+    className: "left-56 top-12 2xl:left-[393px] 2xl:top-16",
+    height: 80,
+    src: "/figma/Asterisk 2.svg",
+    width: 160,
+    hideOnMobile: false,
+  },
+  {
+    className: "bottom-32 left-12 2xl:bottom-[166px] 2xl:left-[54px]",
+    height: 102,
+    src: "/figma/Asterisk 2.svg",
+    width: 143,
+    hideOnMobile: true,
+  },
+  {
+    className: "bottom-32 right-16 2xl:bottom-[156px] 2xl:right-[88px]",
+    height: 120,
+    src: "/figma/Rhode Island.svg",
+    width: 120,
+    hideOnMobile: false,
+  },
+  {
+    className: "bottom-8 right-40 2xl:bottom-[37px] 2xl:right-[200px]",
+    height: 80,
+    src: "/figma/Teewee.svg",
+    width: 180,
+    hideOnMobile: true,
+  },
+  {
+    className: "right-10 top-12 2xl:right-[46px] 2xl:top-[52px]",
+    height: 84,
+    src: "/figma/Butterfly.svg",
+    width: 124,
+    hideOnMobile: false,
+  },
+  {
+    className: "bottom-8 left-56 2xl:bottom-[35px] 2xl:left-[289px]",
+    height: 103,
+    src: "/figma/Orange Ricky.svg",
+    width: 193,
+    hideOnMobile: true,
+  },
 ];
 
 type Badge = {
@@ -60,26 +125,36 @@ function Typewriter() {
     }
 
     const isComplete = length === phrase.length;
-    const timeout = window.setTimeout(() => {
-      if (isComplete) {
-        setIndex((currentIndex) => (currentIndex + 1) % prompts.length);
-        setLength(0);
-        return;
-      }
+    const timeout = window.setTimeout(
+      () => {
+        if (isComplete) {
+          setIndex((currentIndex) => (currentIndex + 1) % prompts.length);
+          setLength(0);
+          return;
+        }
 
-      setLength((currentLength) => currentLength + 1);
-    }, isComplete ? 1800 : 52);
+        setLength((currentLength) => currentLength + 1);
+      },
+      isComplete ? 1800 : 52,
+    );
 
     return () => window.clearTimeout(timeout);
   }, [length, phrase.length, reducedMotion]);
 
   return (
-    <div className="absolute left-1/2 top-[196px] z-[2] w-[600px] -translate-x-1/2 whitespace-nowrap text-center text-2xl leading-[37px] text-[var(--lavender)]">
+    <div
+      className="absolute left-1/2 top-[164px] z-[2] w-[520px] -translate-x-1/2
+                 whitespace-nowrap text-center text-xl leading-[32px]
+                 text-[var(--lavender)]
+                 2xl:top-[196px] 2xl:w-[600px] 2xl:text-2xl 2xl:leading-[37px]"
+    >
       <motion.span initial={{ opacity: 0.5 }} animate={{ opacity: 1 }}>
         {reducedMotion ? phrase : phrase.slice(0, length)}
       </motion.span>
       <i
-        className="ml-[8px] inline-block h-[37px] w-px align-middle bg-[var(--lavender)] motion-safe:[animation:blink_1s_steps(1)_infinite]"
+        className="ml-2 inline-block h-8 w-px align-middle bg-[var(--lavender)]
+                   motion-safe:[animation:blink_1s_steps(1)_infinite]
+                   2xl:h-[37px]"
         aria-hidden="true"
       />
     </div>
@@ -92,7 +167,12 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
       {badges.map((badge) => (
         <span
           key={badge.label}
-          className={`absolute whitespace-nowrap rounded-2xl border border-[rgb(38_6_134_/_50%)] bg-white px-5 py-3 text-2xl font-semibold leading-7 text-[var(--ink)] ${badge.className}`}
+          className={`absolute whitespace-nowrap rounded-2xl
+                      border border-[rgb(38_6_134_/_50%)] bg-white
+                      px-4 py-2 text-lg font-semibold leading-6
+                      text-[var(--ink)]
+                      2xl:px-5 2xl:py-3 2xl:text-2xl 2xl:leading-7
+                      ${badge.className}`}
         >
           {badge.label}
         </span>
@@ -103,36 +183,79 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
 
 export function Hero() {
   return (
-    <section className="relative mx-auto h-[calc(100dvh-94px)] min-h-[820px] w-[calc(100vw-64px)] min-w-[1376px] max-w-[1920px] isolate">
-      <p className="absolute left-1/2 top-[164px] m-0 w-[380px] -translate-x-1/2 text-center text-lg leading-[22px] text-[var(--muted)]">
+    <section
+      className="relative isolate px-auto
+                 h-[calc(100dvh-94px)] min-h-[680px]
+                 w-[calc(100vw-64px)] max-w-full
+                 min-w-[1024px]
+                 2xl:min-h-[820px]"
+    >
+      {/* «Решим все ваши» */}
+      <p
+        className="absolute left-1/2 top-[120px] m-0 w-[320px] -translate-x-1/2
+                   text-center text-base leading-5 text-[var(--muted)]
+                   2xl:top-[164px] 2xl:w-[380px] 2xl:text-lg 2xl:leading-[22px]"
+      >
         Решим все ваши
       </p>
+
       <Typewriter />
 
-      <div className="absolute left-1/2 top-[328px] z-[2] w-[790px] -translate-x-1/2 text-center">
-        <h1 className="m-0 font-[family-name:var(--heading)] text-[64px] font-medium leading-[1.22] tracking-[4.8px]">
+      {/* Заголовок и подзаголовок */}
+      <div
+        className="absolute left-1/2 top-[240px] z-[2] w-[640px] -translate-x-1/2
+                   text-center
+                   2xl:top-[328px] 2xl:w-[790px]"
+      >
+        <h1
+          className="m-0 font-[family-name:var(--heading)] font-medium
+                     text-[44px] leading-[1.22] tracking-[3px]
+                     2xl:text-[64px] 2xl:tracking-[4.8px]"
+        >
           ТАМ, ГДЕ{" "}
-          <span className="ml-[18px] inline-block rounded-full bg-[var(--ink)] px-8 py-1 tracking-[3px] text-white">
+          <span
+            className="ml-3 inline-block rounded-full bg-[var(--ink)]
+                       px-6 py-1 tracking-[2px] text-white
+                       2xl:ml-[18px] 2xl:px-8 2xl:tracking-[3px]"
+          >
             ИДЕИ
           </span>
           <br />
           НАХОДЯТ ЛЮДЕЙ
         </h1>
-        <p className="m-[24px_auto_0] w-[760px] text-[28px] leading-8 text-black">
+        <p
+          className="mx-auto mt-4 w-[600px] text-xl leading-7 text-black
+                     2xl:mt-6 2xl:w-[760px] 2xl:text-[28px] 2xl:leading-8"
+        >
           Объединяем соискателей и нанимателей в едином честном пространстве
         </p>
       </div>
 
-      <BadgeGroup badges={leftBadges} className="absolute -left-[103px] top-[170px] z-[2] h-[342px] w-[500px]" />
-      <BadgeGroup badges={rightBadges} className="absolute right-[18px] top-[170px] z-[2] h-[342px] w-[500px]" />
+      {/* Бейджи — только от lg */}
+      <BadgeGroup
+        badges={leftBadges}
+        className="absolute -left-2 top-[140px] z-[2] hidden
+                   h-[280px] w-[420px]
+                   2xl:top-[170px] 2xl:h-[342px] 2xl:w-[500px] lg:block"
+      />
+      <BadgeGroup
+        badges={rightBadges}
+        className="absolute right-4 top-[140px] z-[2] hidden
+                   h-[280px] w-[420px]
+                   2xl:top-[170px] 2xl:h-[342px] 2xl:w-[500px] lg:block"
+      />
 
       <AnimatedArrow direction="left" />
       <AnimatedArrow direction="right" />
 
+      {/* Декорации */}
       {decorations.map((decoration) => (
         <Image
           key={decoration.className}
-          className={`pointer-events-none absolute z-[1] ${decoration.className}`}
+          className={`pointer-events-none absolute z-[1]
+                      scale-75 2xl:scale-100
+                      ${decoration.hideOnMobile ? "hidden md:block" : ""}
+                      ${decoration.className}`}
           src={decoration.src}
           alt=""
           width={decoration.width}
@@ -141,16 +264,29 @@ export function Hero() {
         />
       ))}
 
-      <div className="absolute top-2/3 left-1/2 z-[3] flex -translate-x-1/2 gap-7">
+      {/* Кнопки */}
+      <div
+        className="absolute left-1/2 top-[70%] z-[3] flex -translate-x-1/2
+                   gap-5 2xl:top-[86%] 2xl:gap-7"
+      >
         <a
-          className="inline-flex min-h-14 min-w-[236px] items-center justify-center gap-3 rounded-full border border-[var(--ink)] bg-[var(--ink)] px-9 py-3 text-2xl font-medium leading-7 whitespace-nowrap text-white"
+          className="inline-flex min-h-12 min-w-[190px] items-center justify-center
+                     gap-2 rounded-full border border-[var(--ink)] bg-[var(--ink)]
+                     px-6 py-2 text-xl font-medium leading-6 whitespace-nowrap
+                     text-white
+                     2xl:min-h-14 2xl:min-w-[236px] 2xl:gap-3
+                     2xl:px-9 2xl:py-3 2xl:text-2xl 2xl:leading-7"
           href="#practice"
         >
           Каталог задач
           <ArrowRight aria-hidden="true" />
         </a>
         <a
-          className="inline-flex min-h-14 min-w-[236px] items-center justify-center rounded-full border border-[var(--ink)] bg-transparent px-9 py-3 text-2xl font-semibold leading-7 whitespace-nowrap"
+          className="inline-flex min-h-12 min-w-[190px] items-center justify-center
+                     rounded-full border border-[var(--ink)] bg-transparent
+                     px-6 py-2 text-xl font-semibold leading-6 whitespace-nowrap
+                     2xl:min-h-14 2xl:min-w-[236px]
+                     2xl:px-9 2xl:py-3 2xl:text-2xl 2xl:leading-7"
           href="#contact"
         >
           Для компаний
