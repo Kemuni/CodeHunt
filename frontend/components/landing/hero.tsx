@@ -15,25 +15,21 @@ const prompts = [
   "Как подготовиться к собеседованию...",
 ];
 
-/* ─────────── Бейджи ───────────
-   top/left/right/bottom — ноут по умолчанию,
-   2xl: — значения из макета 1920
-*/
 const leftBadges = [
   {
     className: "left-5 top-0 2xl:left-7",
     label: "Сделать портфолио",
   },
   {
-    className: "right-0 top-16 2xl:top-24",
+    className: "right-0 top-16 2xl:top-20",
     label: "Проявить себя",
   },
   {
-    className: "left-0 top-32 2xl:top-47",
+    className: "left-0 top-32 2xl:top-40",
     label: "Развить насмотренность",
   },
   {
-    className: "bottom-0 right-16 2xl:right-25",
+    className: "bottom-0 right-16 2xl:right-22",
     label: "Найти работу",
   },
 ];
@@ -44,58 +40,57 @@ const rightBadges = [
     label: "Найти сотрудника",
   },
   {
-    className: "left-28 top-16 2xl:left-39 2xl:top-24",
+    className: "left-28 top-16 2xl:left-34 2xl:top-20",
     label: "Создать тестовое",
   },
   {
-    className: "left-8 top-28 2xl:left-10 2xl:top-44",
+    className: "left-8 top-28 2xl:left-9 2xl:top-37",
     label: "Быстро оценить",
   },
   {
-    className: "bottom-0 left-24 2xl:left-31",
+    className: "bottom-0 left-24 2xl:left-27",
     label: "Убедиться в навыках",
   },
 ];
 
-/* ─────────── Декорации ─────────── */
 const decorations = [
   {
-    className: "left-56 top-12 2xl:left-[393px] 2xl:top-16",
+    className: "left-56 top-12 2xl:left-[340px] 2xl:top-14",
     height: 80,
     src: "/figma/Asterisk 2.svg",
     width: 160,
     hideOnMobile: false,
   },
   {
-    className: "bottom-32 left-12 2xl:bottom-[166px] 2xl:left-[54px]",
+    className: "bottom-32 left-12 2xl:bottom-[140px] 2xl:left-[46px]",
     height: 102,
     src: "/figma/Asterisk 2.svg",
     width: 143,
     hideOnMobile: true,
   },
   {
-    className: "bottom-32 right-16 2xl:bottom-[156px] 2xl:right-[88px]",
+    className: "bottom-32 right-16 2xl:bottom-[132px] 2xl:right-[74px]",
     height: 120,
     src: "/figma/Rhode Island.svg",
     width: 120,
     hideOnMobile: false,
   },
   {
-    className: "bottom-8 right-40 2xl:bottom-[37px] 2xl:right-[200px]",
+    className: "bottom-8 right-40 2xl:bottom-[32px] 2xl:right-[170px]",
     height: 80,
     src: "/figma/Teewee.svg",
     width: 180,
     hideOnMobile: true,
   },
   {
-    className: "right-10 top-12 2xl:right-[46px] 2xl:top-[52px]",
+    className: "right-10 top-12 2xl:right-[40px] 2xl:top-[44px]",
     height: 84,
     src: "/figma/Butterfly.svg",
     width: 124,
     hideOnMobile: false,
   },
   {
-    className: "bottom-8 left-56 2xl:bottom-[35px] 2xl:left-[289px]",
+    className: "bottom-8 left-56 2xl:bottom-[30px] 2xl:left-[245px]",
     height: 103,
     src: "/figma/Orange Ricky.svg",
     width: 193,
@@ -146,7 +141,7 @@ function Typewriter() {
       className="absolute left-1/2 top-[164px] z-[2] w-[520px] -translate-x-1/2
                  whitespace-nowrap text-center text-xl leading-[32px]
                  text-primary-pink
-                 2xl:top-[196px] 2xl:w-[600px] 2xl:text-2xl 2xl:leading-[37px]"
+                 2xl:top-[176px] 2xl:w-[540px] 2xl:text-xl 2xl:leading-[33px]"
     >
       <motion.span initial={{ opacity: 0.5 }} animate={{ opacity: 1 }}>
         {reducedMotion ? phrase : phrase.slice(0, length)}
@@ -154,7 +149,7 @@ function Typewriter() {
       <i
         className="ml-2 inline-block h-8 w-px align-middle bg-primary-pink
                    motion-safe:animate-[blink_1s_steps(1)_infinite]
-                   2xl:h-[37px]"
+                   2xl:h-8"
         aria-hidden="true"
       />
     </div>
@@ -171,7 +166,7 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
                       border border-[rgb(38_6_134_/_50%)] bg-white
                       px-4 py-2 text-lg font-semibold leading-6
                       text-primary
-                      2xl:px-5 2xl:py-3 2xl:text-2xl 2xl:leading-7
+                      2xl:px-4 2xl:py-2.5 2xl:text-xl 2xl:leading-6
                       ${badge.className}`}
         >
           {badge.label}
@@ -190,33 +185,31 @@ export function Hero() {
                  min-w-[1024px]
                  2xl:min-h-[820px]"
     >
-      {/* «Решим все ваши» */}
       <p
         className="absolute left-1/2 top-[120px] m-0 w-[320px] -translate-x-1/2
                    text-center text-base leading-5 text-muted-foreground
-                   2xl:top-[164px] 2xl:w-[380px] 2xl:text-lg 2xl:leading-[22px]"
+                   2xl:top-[148px] 2xl:w-[340px] 2xl:text-base 2xl:leading-[20px]"
       >
         Решим все ваши
       </p>
 
       <Typewriter />
 
-      {/* Заголовок и подзаголовок */}
       <div
         className="absolute left-1/2 top-[240px] z-[2] w-[640px] -translate-x-1/2
                    text-center
-                   2xl:top-[328px] 2xl:w-[790px]"
+                   2xl:top-[300px] 2xl:w-[700px]"
       >
         <h1
           className="m-0 font-heading font-medium
                      text-[44px] leading-[1.22] tracking-[3px]
-                     2xl:text-[64px] 2xl:tracking-[4.8px]"
+                     2xl:text-[54px] 2xl:tracking-[4px]"
         >
           ТАМ, ГДЕ{" "}
           <span
             className="ml-3 inline-block rounded-full bg-primary
                        px-6 py-1 tracking-[2px] text-white
-                       2xl:ml-[18px] 2xl:px-8 2xl:tracking-[3px]"
+                       2xl:ml-[16px] 2xl:px-7 2xl:tracking-[2.5px]"
           >
             ИДЕИ
           </span>
@@ -225,35 +218,35 @@ export function Hero() {
         </h1>
         <p
           className="mx-auto mt-4 w-[600px] text-xl leading-7 text-black
-                     2xl:mt-6 2xl:w-[760px] 2xl:text-[28px] 2xl:leading-8"
+                     2xl:mt-5 2xl:w-[660px] 2xl:text-2xl 2xl:leading-7"
         >
           Объединяем соискателей и нанимателей в едином честном пространстве
         </p>
       </div>
 
-      {/* Бейджи — только от lg */}
       <BadgeGroup
         badges={leftBadges}
         className="absolute -left-2 top-[140px] z-[2] hidden
                    h-[280px] w-[420px]
-                   2xl:top-[170px] 2xl:h-[342px] 2xl:w-[500px] lg:block"
+                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] lg:block"
       />
       <BadgeGroup
         badges={rightBadges}
         className="absolute right-4 top-[140px] z-[2] hidden
                    h-[280px] w-[420px]
-                   2xl:top-[170px] 2xl:h-[342px] 2xl:w-[500px] lg:block"
+                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] lg:block"
       />
 
-      <AnimatedArrow direction="left" />
-      <AnimatedArrow direction="right" />
+      <div className="absolute inset-x-0 top-0 z-[1] h-full 2xl:-translate-y-16">
+        <AnimatedArrow direction="left" />
+        <AnimatedArrow direction="right" />
+      </div>
 
-      {/* Декорации */}
       {decorations.map((decoration) => (
         <Image
           key={decoration.className}
           className={`pointer-events-none absolute z-[1]
-                      scale-75 2xl:scale-100
+                      scale-75 2xl:scale-90
                       ${decoration.hideOnMobile ? "hidden md:block" : ""}
                       ${decoration.className}`}
           src={decoration.src}
@@ -264,18 +257,17 @@ export function Hero() {
         />
       ))}
 
-      {/* Кнопки */}
       <div
         className="absolute left-1/2 top-[70%] z-[3] flex -translate-x-1/2
-                   gap-5 2xl:top-[86%] 2xl:gap-7"
+                   gap-5 2xl:top-[79%] 2xl:gap-6"
       >
         <a
           className="inline-flex min-h-12 min-w-[190px] items-center justify-center
                      gap-2 rounded-full border border-primary bg-primary
                      px-6 py-2 text-xl font-medium leading-6 whitespace-nowrap
                      text-white
-                     2xl:min-h-14 2xl:min-w-[236px] 2xl:gap-3
-                     2xl:px-9 2xl:py-3 2xl:text-2xl 2xl:leading-7"
+                     2xl:min-h-12 2xl:min-w-[210px] 2xl:gap-3
+                     2xl:px-8 2xl:py-2.5 2xl:text-xl 2xl:leading-6"
           href="#practice"
         >
           Каталог задач
@@ -285,8 +277,8 @@ export function Hero() {
           className="inline-flex min-h-12 min-w-[190px] items-center justify-center
                      rounded-full border border-primary bg-transparent
                      px-6 py-2 text-xl font-semibold leading-6 whitespace-nowrap
-                     2xl:min-h-14 2xl:min-w-[236px]
-                     2xl:px-9 2xl:py-3 2xl:text-2xl 2xl:leading-7"
+                     2xl:min-h-12 2xl:min-w-[210px]
+                     2xl:px-8 2xl:py-2.5 2xl:text-xl 2xl:leading-6"
           href="#contact"
         >
           Для компаний
