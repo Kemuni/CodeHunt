@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, String, Text, Boolean
+from sqlalchemy import Boolean, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -14,7 +14,7 @@ class RequestUserRole(enum.StrEnum):
 
 
 class ContactRequest(Base):
-    """ Обращение пользователя """
+    """Обращение пользователя"""
 
     __tablename__ = "contact_requests"
 
@@ -32,7 +32,9 @@ class ContactRequest(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Согласен ли получать рекламу
-    is_agree_with_mails: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_agree_with_mails: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     telegram: Mapped[str | None] = mapped_column(String(255), nullable=True)
     company: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_date: Mapped[datetime] = mapped_column(

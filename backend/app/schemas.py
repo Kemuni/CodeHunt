@@ -1,7 +1,6 @@
-import datetime
-from typing import Literal, Annotated
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, AfterValidator, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models import RequestUserRole
 
@@ -20,14 +19,14 @@ class APIResponse[T](BaseModel):  # noqa: UP046
 
 
 class SuccessResponse[T](APIResponse[T]):  # noqa
-    success: Literal[True] = True
-    errors: None = None
+    success: Literal[True] = True  # type: ignore
+    errors: None = None  # type: ignore
 
 
 class ErrorResponse(APIResponse[None]):  # noqa
-    success: Literal[False] = False
+    success: Literal[False] = False  # type: ignore
     data: None = None
-    errors: ErrorDetail
+    errors: ErrorDetail  # type: ignore
 
 
 class CandidateContactRequestIn(BaseModel):
@@ -42,17 +41,17 @@ class EmployerContactRequestIn(CandidateContactRequestIn):
     telegram: str = Field(max_length=255)
     company: str = Field(max_length=255)
 
-    @field_validator('telegram', mode='after')
+    @field_validator("telegram", mode="after")
     @classmethod
-    def is_even(cls, value: str | None) -> str | None:
+    def is_telegram_correct(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        if not value.startswith('@'):
-            raise ValueError(f'{value} must start with @')
+        if not value.startswith("@"):
+            raise ValueError(f"{value} must start with @")
         return value.strip()
 
 
-class ContactRequestPublic(EmployerContactRequestIn):
+class ContactRequestPublic(CandidateContactRequestIn):
     id: int
     telegram: str | None = Field(max_length=255, default=None)
     company: str | None = Field(max_length=255, default=None)
