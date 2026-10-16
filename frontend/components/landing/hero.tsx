@@ -6,6 +6,8 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
 import { AnimatedArrow } from "@/components/landing/animated-arrow";
+import {Button} from "@/components/ui/button";
+import Link from "next/link";
 
 const prompts = [
   "Не знаю с чего начать...",
@@ -29,7 +31,7 @@ const leftBadges = [
     label: "Развить насмотренность",
   },
   {
-    className: "bottom-0 right-16 2xl:right-22",
+    className: "bottom-0 right-30 2xl:right-22",
     label: "Найти работу",
   },
 ];
@@ -44,7 +46,7 @@ const rightBadges = [
     label: "Создать тестовое",
   },
   {
-    className: "left-8 top-28 2xl:left-9 2xl:top-37",
+    className: "left-8 top-34 2xl:left-9 2xl:top-37",
     label: "Быстро оценить",
   },
   {
@@ -69,7 +71,7 @@ const decorations = [
     hideOnMobile: true,
   },
   {
-    className: "bottom-32 right-16 2xl:bottom-[132px] 2xl:right-[74px]",
+    className: "bottom-32 right-10 2xl:bottom-[132px] 2xl:right-[74px]",
     height: 120,
     src: "/figma/Rhode Island.svg",
     width: 120,
@@ -90,7 +92,7 @@ const decorations = [
     hideOnMobile: false,
   },
   {
-    className: "bottom-8 left-56 2xl:bottom-[30px] 2xl:left-[245px]",
+    className: "bottom-3 left-56 2xl:bottom-[30px] 2xl:left-[245px]",
     height: 103,
     src: "/figma/Orange Ricky.svg",
     width: 193,
@@ -228,16 +230,16 @@ export function Hero() {
         badges={leftBadges}
         className="absolute -left-2 top-[140px] z-[2] hidden
                    h-[280px] w-[420px]
-                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] lg:block"
+                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] xl:block"
       />
       <BadgeGroup
         badges={rightBadges}
         className="absolute right-4 top-[140px] z-[2] hidden
                    h-[280px] w-[420px]
-                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] lg:block"
+                   2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] xl:block"
       />
 
-      <div className="absolute inset-x-0 top-0 z-[1] h-full 2xl:-translate-y-16">
+      <div className="absolute hidden xl:block inset-x-0 top-0 z-[1] h-full 2xl:-translate-y-16">
         <AnimatedArrow direction="left" />
         <AnimatedArrow direction="right" />
       </div>
@@ -258,31 +260,20 @@ export function Hero() {
       ))}
 
       <div
-        className="absolute left-1/2 top-[70%] z-[3] flex -translate-x-1/2
+        className="absolute left-1/2 bottom-[10%] z-[3] flex -translate-x-1/2
                    gap-5 2xl:top-[79%] 2xl:gap-6"
       >
-        <a
-          className="inline-flex min-h-12 min-w-[190px] items-center justify-center
-                     gap-2 rounded-full border border-primary bg-primary
-                     px-6 py-2 text-xl font-medium leading-6 whitespace-nowrap
-                     text-white
-                     2xl:min-h-12 2xl:min-w-[210px] 2xl:gap-3
-                     2xl:px-8 2xl:py-2.5 2xl:text-xl 2xl:leading-6"
-          href="#practice"
-        >
-          Каталог задач
-          <ArrowRight aria-hidden="true" />
-        </a>
-        <a
-          className="inline-flex min-h-12 min-w-[190px] items-center justify-center
-                     rounded-full border border-primary bg-transparent
-                     px-6 py-2 text-xl font-semibold leading-6 whitespace-nowrap
-                     2xl:min-h-12 2xl:min-w-[210px]
-                     2xl:px-8 2xl:py-2.5 2xl:text-xl 2xl:leading-6"
-          href="#contact"
-        >
-          Для компаний
-        </a>
+        <Link href="/ideas">
+          <Button variant='default' size='xl'>
+            Каталог задач
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Button>
+        </Link>
+        <Link href="/for-company">
+          <Button variant='outline' size='xl'>
+            Для компаний
+          </Button>
+        </Link>
       </div>
     </section>
   );
