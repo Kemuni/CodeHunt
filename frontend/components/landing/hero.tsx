@@ -263,7 +263,7 @@ export function Hero() {
         className="absolute left-1/2 bottom-[10%] z-[3] flex -translate-x-1/2
                    gap-5 2xl:top-[79%] 2xl:gap-6"
       >
-        <Link href="/ideas">
+        <Link href="/tasks">
           <Button variant='default' size='xl'>
             Каталог задач
             <ArrowRight data-icon="inline-end" aria-hidden="true" />
