@@ -78,7 +78,7 @@ const decorations = [
     hideOnMobile: false,
   },
   {
-    className: "bottom-8 right-40 2xl:bottom-[32px] 2xl:right-[170px]",
+    className: "bottom-5 right-40 2xl:bottom-[32px] 2xl:right-[170px]",
     height: 80,
     src: "/figma/Teewee.svg",
     width: 180,
@@ -92,7 +92,7 @@ const decorations = [
     hideOnMobile: false,
   },
   {
-    className: "bottom-3 left-56 2xl:bottom-[30px] 2xl:left-[245px]",
+    className: "bottom-0 left-50 2xl:bottom-[30px] 2xl:left-[245px]",
     height: 103,
     src: "/figma/Orange Ricky.svg",
     width: 193,
