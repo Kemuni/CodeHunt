@@ -10,8 +10,8 @@ const navigationLinks = [
 
 export function SiteHeader() {
   return (
-    <header className="relative z-999 flex h-23.5 w-screen items-center px-21.25 xl:px-42">
-      <Link href={""} className="block shrink-0">
+    <header className="relative z-999 flex h-23.5 w-full items-center px-21.25 xl:px-42">
+      <Link href={"/"} className="block shrink-0">
         <Image
           src="/figma/our-logo.svg"
           alt="Track dev"

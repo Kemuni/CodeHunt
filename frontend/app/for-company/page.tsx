@@ -20,7 +20,6 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="w-full overflow-hidden">
-      <SiteHeader />
       <main className="[&>div:not(:first-child)]:mt-14 [&>div:last-child]:mb-28">
         <CompanyHeroSection />
         <LandingSection subtitle="Варианты поиска" title="Выбирайте удобное">
@@ -37,7 +36,6 @@ export default function Home() {
           <CompanyFAQ />
         </LandingSection>
       </main>
-      <footer className="w-full h-45 bg-black"/>
     </div>
   );
 }
@@ -147,10 +145,13 @@ function TariffVariants() {
 
 function HowWeAreHelping() {
   return (
-    <div
-      className="flex flex-col gap-6 w-4/5 xl:w-3/5 2xl:w-1/2 px-12 py-12 border border-gray-200 rounded-4xl bg-[radial-gradient(transparent,#FFFFFF),radial-gradient(#B6A2D450,#FFFFFF20),url('/figma/DotGrid.svg')] bg-center"
-    >
-      <div className="flex w-full bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
+      <div
+        className="flex relative flex-col gap-6 w-4/5 xl:w-3/5 2xl:w-1/2 px-12 py-12 border border-gray-200 rounded-4xl bg-[linear-gradient(to_right,#cccccc4D_1px,transparent_1px),linear-gradient(to_bottom,#cccccc4D_1px,transparent_1px)]
+                  bg-[size:var(--cell)_var(--cell)]"
+      >
+        <div className="pointer-events-none absolute inset-0 rounded-4xl
+                        bg-[linear-gradient(to_left,#FFFFFF0D,#B6A2D44D)]"></div>
+      <div className="flex w-full z-10 bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
         <div className="p-3 w-fit bg-[#260686]/10 text-[#260686] rounded-xl">
           <FileText className="size-12" strokeWidth="1" />
         </div>
@@ -165,7 +166,7 @@ function HowWeAreHelping() {
                 </p>
               </span>
       </div>
-      <div className="flex w-full bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
+      <div className="flex w-full z-10 bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
         <div className="p-3 w-fit bg-[#B287A3]/10 text-[#B287A3] rounded-xl">
           <Lightbulb className="size-12" strokeWidth="1" />
         </div>
@@ -180,7 +181,7 @@ function HowWeAreHelping() {
                 </p>
               </span>
       </div>
-      <div className="flex w-full bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
+      <div className="flex w-full z-10 bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
         <div className="p-3 w-fit bg-[#4B8F8C]/10 text-[#4B8F8C] rounded-xl">
           <Puzzle className="size-12" strokeWidth="1" />
         </div>
@@ -195,7 +196,7 @@ function HowWeAreHelping() {
                 </p>
               </span>
       </div>
-      <div className="flex w-full bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
+      <div className="flex w-full z-10 bg-white border border-gray-200 shadow-xs px-4 py-3 gap-6 rounded-2xl">
         <div className="p-3 w-fit bg-[#FF715B]/10 text-[#FF715B] rounded-xl">
           <FileChartPie className="size-12" strokeWidth="1" />
         </div>

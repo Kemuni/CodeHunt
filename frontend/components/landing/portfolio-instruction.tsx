@@ -76,38 +76,38 @@ export function PortfolioInstruction() {
         </div>
          <div className="flex w-1/2 flex-col gap-8 relative">
             <Image
-              className="absolute right-[15%] bottom-[5%] hidden w-53 md:block 2xl:w-57 rotate-15"
+              className="absolute h-auto right-[15%] bottom-[5%] hidden w-53 md:block 2xl:w-57 rotate-15"
               src="/figma/Teewee.svg"
               alt=""
-              width={132}
-              height={131}
+              width={0}
+              height={0}
               aria-hidden="true"
             />
 
             <Image
-              className="absolute left-[15%] top-[5%] hidden w-43 md:block 2xl:w-47 rotate-55"
+              className="absolute h-auto left-[15%] top-[5%] hidden w-43 md:block 2xl:w-47 rotate-55"
               src="/figma/Asterisk 2.svg"
               alt=""
-              width={132}
-              height={131}
+              width={0}
+              height={0}
               aria-hidden="true"
             />
 
             <Image
-              className="absolute right-[20%] top-[15%] hidden w-43 md:block 2xl:w-47"
+              className="absolute h-auto right-[20%] top-[15%] hidden w-43 md:block 2xl:w-47"
               src="/figma/Butterfly.svg"
               alt=""
-              width={132}
-              height={131}
+              width={0}
+              height={0}
               aria-hidden="true"
             />
 
             <Image
-              className="absolute left-[15%] bottom-[25%] hidden w-53 md:block 2xl:w-57 -rotate-25"
+              className="absolute h-auto left-[15%] bottom-[25%] hidden w-53 md:block 2xl:w-57 -rotate-25"
               src="/figma/Orange Ricky.svg"
               alt=""
-              width={132}
-              height={131}
+              width={0}
+              height={0}
               aria-hidden="true"
             />
           </div>

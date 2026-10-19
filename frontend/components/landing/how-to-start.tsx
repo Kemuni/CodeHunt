@@ -29,7 +29,7 @@ export function HowToStart() {
       <div className="grid grid-cols-10 gap-2 px-10 2xl:px-40">
   {/* ─────────── Левый блок ─────────── */}
       <div
-        className="relative col-span-7 flex h-auto flex-col gap-4 rounded-2xl
+        className="relative col-span-7 flex h-auto flex-col gap-4 rounded-4xl
                   border overflow-hidden
                   w-[round(down,100%,var(--cell))]
                   bg-[linear-gradient(to_right,#cccccc4D_1px,transparent_1px),linear-gradient(to_bottom,#cccccc4D_1px,transparent_1px)]
@@ -131,15 +131,12 @@ export function HowToStart() {
 
       {/* ─────────── Правый блок ─────────── */}
       <div
-        className="relative col-span-3 flex items-center rounded-2xl
+        className="relative col-span-3 flex items-center rounded-4xl
                   border overflow-hidden
                   w-[round(down,100%,var(--cell))]
-                  bg-[radial-gradient(circle,#cccccc4D_4px,transparent_1px)]
-                  bg-[size:20px_20px]
-                  2xl:bg-[size:24px_24px]"
+                  bg-[radial-gradient(transparent,#FFFFFFA4),radial-gradient(#B6A2D450,#FFFFFF20),url('/figma/DotGrid.svg')] bg-center
+                  "
       >
-        <div className="pointer-events-none absolute inset-0
-                        bg-[linear-gradient(to_left,#FFFFFF0D,#B6A2D44D)]"></div>
         <div className="relative z-10 flex flex-col gap-4 px-4 py-4
                         2xl:gap-6 2xl:px-12 2xl:py-6">
           {/* Карточка — Перейти к задачам */}

@@ -13,41 +13,41 @@ export function SiteFooter() {
       {/* Декорации */}
       <div className="pointer-events-none absolute left-[27.4%] top-16 z-0 w-full">
         <Image
-          className="absolute left-0 top-0 hidden w-33 -translate-x-1/2 -translate-y-1/2
+          className="absolute left-0 top-0 h-auto hidden w-33 -translate-x-1/2 -translate-y-1/2
                     md:block 2xl:w-37"
           src="/figma/footer/footer-asterisk-small.svg"
           alt=""
-          width={132}
-          height={131}
+          width={0}
+          height={0}
           aria-hidden="true"
         />
         <Image
-          className="absolute left-0 top-0 hidden w-54 -translate-x-1/2 -translate-y-1/2
+          className="absolute left-0 top-0 hidden h-auto w-54 -translate-x-1/2 -translate-y-1/2
                     lg:block 2xl:w-[245px]"
           src="/figma/footer/footer-asterisk-large.svg"
           alt=""
-          width={217}
-          height={216}
+          width={0}
+          height={0}
           aria-hidden="true"
         />
       </div>
       
       <Image
-        className="pointer-events-none absolute right-8 top-12 z-0 hidden
+        className="pointer-events-none absolute h-auto right-8 top-12 z-0 hidden
                   w-50 lg:block 2xl:w-62"
         src="/figma/footer/footer-orange-ricky.svg"
         alt=""
-        width={250}
-        height={159}
+        width={0}
+        height={0}
         aria-hidden="true"
       />
       <Image
-        className="pointer-events-none absolute -top-3 left-[52.6%] z-0 hidden
+        className="pointer-events-none absolute h-auto -top-3 left-[52.6%] z-0 hidden
                   w-32 lg:block 2xl:w-42"
         src="/figma/footer/footer-lightbulb.svg"
         alt=""
-        width={168}
-        height={168}
+        width={0}
+        height={0}
         aria-hidden="true"
       />
 

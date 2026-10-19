@@ -8,14 +8,14 @@ import { PortfolioInstruction } from "@/components/landing/portfolio-instruction
 export default function Home() {
   return (
     <div id="top" className="w-full overflow-hidden">
-      <SiteHeader />
+      
       <main className="flex flex-col items-center">
         <Hero />
         <CompanyMarquee />
         <HowToStart/>
         <PortfolioInstruction/>
       </main>
-      <SiteFooter />
+      
     </div>
   );
 }
