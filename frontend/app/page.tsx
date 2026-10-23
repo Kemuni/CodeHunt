@@ -4,16 +4,27 @@ import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { HowToStart } from "@/components/landing/how-to-start";
 import { PortfolioInstruction } from "@/components/landing/portfolio-instruction";
+import FAQ from "@/components/landing/faq";
+import { LandingSection } from "@/components/landing/landing-section";
 
 export default function Home() {
   return (
     <div id="top" className="w-full overflow-hidden">
       
-      <main className="flex flex-col items-center">
+      <main className="flex flex-col items-center [&>div:not(:first-child)]:mt-14 [&>div:last-child]:mb-28">
         <Hero />
-        <CompanyMarquee />
-        <HowToStart/>
-        <PortfolioInstruction/>
+        <LandingSection subtitle="Совершенствуеся решая" title="Задачи Big Tech компаний">
+          <CompanyMarquee />
+        </LandingSection>
+        <LandingSection subtitle="Основа" title="Как начать?">
+          <HowToStart/> 
+        </LandingSection>
+        <LandingSection subtitle="Что делать если" title="Нет своего портфолио">
+          <PortfolioInstruction/>
+        </LandingSection>
+        <LandingSection subtitle="Если что-то не нашли" title="Часто задаваемые вопросы">
+          <FAQ type="candidate"/>
+        </LandingSection>
       </main>
       
     </div>

@@ -1,11 +1,6 @@
-import {SiteHeader} from "@/components/landing/site-header";
-import {SiteFooter} from "@/components/landing/site-footer";
-
-
 export default function Home() {
   return (
     <div className="w-full overflow-hidden">
-      <SiteHeader />
       <main className="flex flex-col my-12 mx-4 sm:mx-21 2xl:mx-42">
         <div className="w-full inline-flex">
           <div className="w-100 h-16 bg-gray-300"/>
@@ -37,7 +32,6 @@ export default function Home() {
           <div className="bg-gray-300 rounded-2xl"/>
         </div>
       </main>
-      <SiteFooter />
     </div>
   );
 }

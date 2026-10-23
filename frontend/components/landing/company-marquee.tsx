@@ -58,8 +58,8 @@ function CompanyLogos({ isDuplicate = false }: CompanyLogosProps) {
 
 export function CompanyMarquee() {
   return (
-    <section className="flex flex-col overflow-hidden pb-20 pt-8 gap-20 w-full" aria-labelledby="company-marquee-title" >
-      <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
+    <section className="flex flex-col overflow-hidden pt-8 gap-20 w-full" aria-labelledby="company-marquee-title" >
+      {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
         <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-primary/50">
           <DoubleSlash className="size-4" aria-hidden="true" />
           Совершенствуемся решая
@@ -70,7 +70,7 @@ export function CompanyMarquee() {
         >
           Задачи Big Tech компаний
         </h2>
-      </div>
+      </div> */}
 
       <div className="w-full overflow-hidden" aria-label="Компании, задачи которых представлены на платформе">
         <div className="flex w-max motion-safe:animate-[marquee_24s_linear_infinite_reverse] motion-reduce:animate-none">

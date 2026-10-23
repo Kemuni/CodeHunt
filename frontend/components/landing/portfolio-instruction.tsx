@@ -4,10 +4,10 @@ import {DoubleSlash} from "@/components/icons";
 export function PortfolioInstruction() {
   return (
     <section
-      className="flex flex-col gap-6 overflow-hidden pb-16 pt-6 2xl:gap-8 2xl:pb-20 2xl:pt-8 w-full"
+      className="flex flex-col gap-6 2xl:gap-8 overflow-hidden  w-full"
       aria-labelledby="how-to-start-title"
     >
-      <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
+      {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
         <p className="m-0 inline-flex items-center gap-2 text-base leading-[18px]
                       text-primary/50
                       2xl:text-lg 2xl:leading-[19px]">
@@ -23,7 +23,8 @@ export function PortfolioInstruction() {
         >
           Нет своего портфолио?
         </h2>
-      </div>
+      </div> */}
+
       <div className="flex flex-row px-10 2xl:px-40">
         <div className="flex flex-col w-1/2 gap-8">
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">
