@@ -6,6 +6,7 @@ import { HowToStart } from "@/components/landing/how-to-start";
 import { PortfolioInstruction } from "@/components/landing/portfolio-instruction";
 import FAQ from "@/components/landing/faq";
 import { LandingSection } from "@/components/landing/landing-section";
+import ContactMeSection from "@/components/landing/contact-me";
 
 export default function Home() {
   return (
@@ -19,6 +20,7 @@ export default function Home() {
         <LandingSection subtitle="Основа" title="Как начать?">
           <HowToStart/> 
         </LandingSection>
+        <ContactMeSection type="candidate" />
         <LandingSection subtitle="Что делать если" title="Нет своего портфолио">
           <PortfolioInstruction/>
         </LandingSection>

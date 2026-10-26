@@ -12,12 +12,12 @@ import FormInput from "@/components/ui/form/input";
 import FormField from "@/components/ui/form/form-field";
 import FormTextarea from "@/components/ui/form/textarea";
 import FormCheckbox from "@/components/ui/form/checkbox";
-import {companyContactMeSchema} from "@/schemas/company-contact";
+import {companyContactMeSchema} from "@/schemas/contact-schemas";
 import {LandingSection} from "@/components/landing/landing-section";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { sendContactForm } from "@/lib/api/contact";
+import { sendEmployerContactForm } from "@/lib/api/contact";
 import FAQ from "@/components/landing/faq";
 import ContactMeSection from "@/components/landing/contact-me";
 
@@ -35,7 +35,7 @@ export default function Home() {
         <LandingSection subtitle="Глубже в процесс" title="Как всё происходит?">
           <HowDoesItWork />
         </LandingSection>
-        <ContactMeSection type="candidate" />
+        <ContactMeSection type="employer" />
         <LandingSection subtitle="Если что-то не нашли" title="Часто задаваемые вопросы">
           <FAQ type="employer"/>
         </LandingSection>

@@ -74,15 +74,18 @@ export default function FAQ({ type }: {type: UserType}) {
   let final_faqs;
   switch (type) {
 
-      default:
+    default:
     case 'candidate':
       final_faqs = faqs_candidate;
+      break;
     
     case 'employer':
       final_faqs = faqs_employer;
+      break;
     
     case 'mentor':
       final_faqs = faqs_mentor;
+      break;
       
   }
 
