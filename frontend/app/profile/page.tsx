@@ -14,12 +14,10 @@ export default function ProfilePage() {
     <main className="min-h-[calc(100dvh-94px)] bg-[#fbfaff] px-4 pb-20 text-[#08080c] sm:px-8 lg:px-16 xl:px-[6vw]">
       <div className="mx-auto max-w-[1040px]">
         <div className="relative mb-8 flex items-end gap-7 pt-3 sm:mb-10 sm:gap-10">
-          <h1 className="relative font-heading text-[36px] font-semibold leading-[1.05] tracking-[-0.055em] sm:text-[48px] lg:text-[52px]">
+          <h1 className="font-heading text-[36px] font-semibold leading-[1.05] tracking-[-0.055em] underline decoration-[#260686] decoration-2 decoration-wavy underline-offset-[8px] sm:text-[48px] lg:text-[52px]">
             Личный кабинет
-            <span className="absolute -bottom-2 left-0 h-[4px] w-[355px] max-w-full bg-[#2c5ee8]" />
-            <span className="absolute -bottom-[5px] left-1 h-[9px] w-[165px] bg-[url('/figma/DotGrid.svg')] bg-[length:10px_10px] opacity-90" />
           </h1>
-          <div className="mb-1 hidden size-16 rotate-[-12deg] rounded-[25px] border-2 border-dashed border-[#bba6e5] sm:block" aria-hidden="true" />
+          <Image src="/figma/Asterisk 1.svg" alt="" width={66} height={67} className="mb-1 hidden sm:block" aria-hidden="true" />
         </div>
 
         <div className="grid gap-5 md:grid-cols-[185px_minmax(0,1fr)] md:gap-6">
@@ -53,7 +51,7 @@ export default function ProfilePage() {
                 <InfoCard title="Мои умения">Тут будут отображаться ваши умения. Самое<br className="hidden sm:block" /> время выбрать их!</InfoCard>
               </div>
               <section className="mt-3 min-h-[108px] rounded-lg border border-[#e2e0e5] bg-white px-4 py-4"><h2 className="font-heading text-[19px] font-semibold">Мои решения</h2><div className="flex flex-col items-center justify-center pt-3 text-[12px] text-[#777]">Тут будут отображаться ваши решения задач...<Link href="/tasks" className="mt-2 rounded-full bg-[#260686] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#3b12b1]">Перейти к задачам</Link></div></section>
-            </> : <EmptyTab title={activeTab} />}
+            </> : activeTab === "Безопасность" ? <SecurityTab /> : <EmptyTab title={activeTab} />}
           </section>
         </div>
       </div>
@@ -67,4 +65,28 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
 
 function EmptyTab({ title }: { title: string }) {
   return <section className="grid min-h-[220px] place-items-center rounded-lg border border-[#e2e0e5] bg-white text-center"><div><div className="mx-auto mb-3 grid size-9 place-items-center rounded-full bg-[#f2efff] text-[#260686]">✓</div><h2 className="font-heading text-[20px] font-semibold">{title}</h2><p className="mt-1 text-sm text-[#777]">Раздел пока пуст.</p></div></section>;
+}
+
+function SecurityTab() {
+  return <div className="space-y-3">
+    <section className="rounded-lg border border-[#e2e0e5] bg-white px-4 py-3">
+      <h2 className="font-heading text-[19px] font-semibold">Сменить пароль</h2>
+      <div className="mt-3 max-w-[350px] space-y-2 text-[12px]">
+        <label className="block">Введите старый пароль:<input type="password" placeholder="Старый пароль" className="mt-1 h-6 w-full rounded-full border border-[#999] px-3 text-[11px] outline-none focus:border-[#260686]" /></label>
+        <label className="block">Введите новый пароль:<input type="password" placeholder="Новый пароль" className="mt-1 h-6 w-full rounded-full border border-[#999] px-3 text-[11px] outline-none focus:border-[#260686]" /></label>
+        <label className="block">Введите новый пароль ещё раз:<input type="password" placeholder="Повторите новый пароль" className="mt-1 h-6 w-full rounded-full border border-[#999] px-3 text-[11px] outline-none focus:border-[#260686]" /></label>
+        <button className="rounded-full bg-[#260686] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#3b12b1]">Сменить</button>
+      </div>
+    </section>
+    <section className="rounded-lg border border-[#e2e0e5] bg-white px-4 py-3">
+      <h2 className="font-heading text-[19px] font-semibold">Отвязать ключ GitHub</h2>
+      <p className="mt-3 max-w-[560px] text-[12px] leading-[1.25] text-[#333]">Данная кнопка отвязывает авторизационный ключ GitHub от CodeMentor. При следующем входе в CodeMentor вам придется снова авторизоваться через GitHub.</p>
+      <button className="mt-3 rounded-full bg-[#260686] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#3b12b1]">Отвязать ключ GitHub ◉</button>
+    </section>
+    <section className="rounded-lg border border-[#ffb5b5] bg-[#ffe3e3] px-4 py-3 text-[#d71919]">
+      <h2 className="font-heading text-[19px] font-semibold">Удалить аккаунт</h2>
+      <p className="mt-3 max-w-[560px] text-[12px] leading-[1.25]">Нажав кнопку ниже вы НАВСЕГДА удалите свой аккаунт. Также вы удалите ВСЕ свои решения и всю информацию о себе.<br /><b>Удалив аккаунт, вы больше никогда не вернете его!</b><br />а ещё мы будем грустить :(</p>
+      <button className="mt-3 rounded-full bg-[#d71919] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#b41414]">Удалить аккаунт НАВСЕГДА</button>
+    </section>
+  </div>;
 }
