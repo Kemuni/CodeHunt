@@ -14,8 +14,8 @@ export default function ProfilePage() {
     <main className="min-h-[calc(100dvh-94px)] bg-[#fbfaff] px-4 pb-20 text-[#08080c] sm:px-8 lg:px-16 xl:px-[6vw]">
       <div className="mx-auto max-w-[1040px]">
         <div className="relative mb-8 flex items-end gap-7 pt-3 sm:mb-10 sm:gap-10">
-          <h1 className="font-heading text-[36px] font-semibold leading-[1.05] tracking-[-0.055em] underline decoration-[#260686] decoration-2 decoration-wavy underline-offset-[8px] sm:text-[48px] lg:text-[52px]">
-            Личный кабинет
+          <h1 className="font-heading text-[36px] font-semibold leading-[1.05] tracking-[-0.055em] sm:text-[48px] lg:text-[52px]">
+            <span className="underline decoration-[#260686] decoration-2 decoration-wavy underline-offset-[8px]">Личный</span> кабинет
           </h1>
           <Image src="/figma/Asterisk 1.svg" alt="" width={66} height={67} className="mb-1 hidden sm:block" aria-hidden="true" />
         </div>
@@ -51,7 +51,7 @@ export default function ProfilePage() {
                 <InfoCard title="Мои умения">Тут будут отображаться ваши умения. Самое<br className="hidden sm:block" /> время выбрать их!</InfoCard>
               </div>
               <section className="mt-3 min-h-[108px] rounded-lg border border-[#e2e0e5] bg-white px-4 py-4"><h2 className="font-heading text-[19px] font-semibold">Мои решения</h2><div className="flex flex-col items-center justify-center pt-3 text-[12px] text-[#777]">Тут будут отображаться ваши решения задач...<Link href="/tasks" className="mt-2 rounded-full bg-[#260686] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#3b12b1]">Перейти к задачам</Link></div></section>
-            </> : activeTab === "Безопасность" ? <SecurityTab /> : <EmptyTab title={activeTab} />}
+            </> : activeTab === "Безопасность" ? <SecurityTab /> : <TasksTab />}
           </section>
         </div>
       </div>
@@ -87,6 +87,25 @@ function SecurityTab() {
       <h2 className="font-heading text-[19px] font-semibold">Удалить аккаунт</h2>
       <p className="mt-3 max-w-[560px] text-[12px] leading-[1.25]">Нажав кнопку ниже вы НАВСЕГДА удалите свой аккаунт. Также вы удалите ВСЕ свои решения и всю информацию о себе.<br /><b>Удалив аккаунт, вы больше никогда не вернете его!</b><br />а ещё мы будем грустить :(</p>
       <button className="mt-3 rounded-full bg-[#d71919] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#b41414]">Удалить аккаунт НАВСЕГДА</button>
+    </section>
+  </div>;
+}
+
+function TasksTab() {
+  return <div className="space-y-3">
+    <section className="rounded-lg border border-[#e2e0e5] bg-white px-4 py-3">
+      <h2 className="font-heading text-[19px] font-semibold">В процессе</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="h-64 rounded-2xl bg-gray-300" />
+        <div className="h-64 rounded-2xl bg-gray-300" />
+      </div>
+    </section>
+    <section className="rounded-lg border border-[#e2e0e5] bg-white px-4 py-3">
+      <h2 className="font-heading text-[19px] font-semibold">Завершенные</h2>
+      <div className="flex min-h-[160px] flex-col items-center justify-center text-center text-[12px] text-[#777]">
+        <p>Завершите задачу и прикрепите решение. Оно отобразится тут</p>
+        <button className="mt-2 rounded-full bg-[#260686] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#3b12b1]">Добавить решение</button>
+      </div>
     </section>
   </div>;
 }
