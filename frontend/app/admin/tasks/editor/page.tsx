@@ -49,14 +49,14 @@ export default function AdminTasksPage() {
       <PageLayoutContent>
         <SectionLayout>
           <SectionLayoutHeader>Основная информация</SectionLayoutHeader>
-          <SectionLayoutDescription>Тут вы заполните основные части задачи</SectionLayoutDescription>
+          <SectionLayoutDescription>То, что пользователь видит в первой карточке товара</SectionLayoutDescription>
           <SectionLayoutContent>
             <Form
               schema={schema}
               defaultValues={{
                 title: "",
                 developerType: undefined,
-                difficulty: [1, 6],
+                difficulty: [2, 6],
               }}
               onSubmit={(v) => console.log(v)}
               className="grid grid-cols-1 gap-y-8 sm:grid-cols-2 sm:gap-x-12 sm:gap-y-4 2xl:gap-x-24"
@@ -72,12 +72,14 @@ export default function AdminTasksPage() {
                   <FormInput name="designerLink" placeholder="Введите ссылку" />
                 </FormField>
                 <FormField name="shortDescription" label="Краткое описание задачи" className="col-span-2">
-                  <FormInput name="shortDescription" placeholder="Кратко опишите" />
+                  <FormTextarea name="shortDescription" placeholder="Кратко опишите" />
                 </FormField>
                 <FormField name="fullDescription" label="Общее описание" className="col-span-2">
-                  <FormTextarea name="fullDescription" placeholder="Опишите задачу целиком" />
+                  <FormTextarea name="fullDescription" placeholder="Опишите задачу целиком" className="h-24" />
                 </FormField>
-                <FormField name="developerType" label="Направление разработки" className="col-span-2 sm:col-span-1">
+                <FormField name="developerType" label="Направление разработки"
+                           className="col-span-2 sm:col-span-1 justify-around"
+                >
                   <FormSelect
                     name="developerType"
                     items={developerTypes}
@@ -85,7 +87,7 @@ export default function AdminTasksPage() {
                   />
                 </FormField>
                 <FormField name="difficulty" label="Сложность" className="col-span-2 sm:col-span-1">
-                  <FormSlider name="difficulty" range min={1} max={10} className="m-auto" />
+                  <FormSlider name="difficulty" range min={1} max={10} />
                 </FormField>
                 <FormField name="isFree" label="Задача бесплатная"
                            orientation="horizontal" className="*:font-normal col-span-2 sm:col-span-1">
