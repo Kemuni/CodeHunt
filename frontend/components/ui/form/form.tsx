@@ -1,5 +1,5 @@
 "use client"
-import {FormProvider, useForm} from "react-hook-form"
+import {FormProvider, useForm, type DefaultValues} from "react-hook-form"
 import { z } from 'zod'
 import {zodResolver} from "@hookform/resolvers/zod";
 import type {ReactNode} from "react";
@@ -8,7 +8,7 @@ import type {ReactNode} from "react";
 interface FormProps<TSchema extends z.ZodType<any, any, any>> {
   schema: TSchema,
   onSubmit: (data: z.output<TSchema>) => void | Promise<void>,
-  defaultValues?: z.input<TSchema>,
+  defaultValues: DefaultValues<z.input<TSchema>>,
   className?: string,
   children: ReactNode
 }
@@ -18,7 +18,8 @@ export default function Form<TSchema extends z.ZodType<any, any, any>>({
 }: FormProps<TSchema>) {
   const methods = useForm<z.input<TSchema>, unknown, z.output<TSchema>>({
     resolver: zodResolver(schema),
-    mode: "onChange",
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: defaultValues,
   });
 
