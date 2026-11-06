@@ -3,13 +3,13 @@ from io import BytesIO
 
 import pytest
 from PIL import Image
-from sqlalchemy import event, insert, update
+from sqlalchemy import event, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
 from app.main import app
-from app.models import TaskComplicationLink, TaskPhoto
-from app.services import composition, library
+from app.models import Task, TaskComplicationLink, TaskPhoto
+from app.services import catalog, composition, library
 from app.services.storage import get_storage
 from tests.conftest import make_project, task_data
 from tests.test_resources import MemoryStorage
@@ -354,6 +354,91 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
         await client.patch(f"/api/editor/tasks/{tid}", json={"is_hidden": False})
     ).status_code == 200
     assert (await client.get(f"/api/tasks/{tid}")).status_code == 200
+
+
+async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch):
+    from app.services import photos
+
+    store = MemoryStorage()
+    app.dependency_overrides[get_storage] = lambda: store
+    monkeypatch.setattr(photos, "get_storage", lambda: store)
+    task, _, _ = await make_project(client)
+    empty, _, _ = await make_project(client, slug="without-photos")
+    assert task["cover_photo"] is None and empty["cover_photo"] is None
+    base = f"/api/editor/tasks/{task['id']}"
+    reply = await client.post(
+        base + "/photos",
+        files=[("files", (f"{i}.png", image_bytes(), "image/png")) for i in range(2)],
+    )
+    assert reply.status_code == 201, reply.text
+    gallery = reply.json()["data"]
+    for url in ("/api/tasks", "/api/editor/tasks", "/api/editor/tasks/all"):
+        result = (await client.get(url)).json()["data"]
+        assert result["total"] == 2
+        assert result["items"][0]["cover_photo"] == gallery[0]
+        assert result["items"][1]["cover_photo"] is None
+        assert "photos" not in result["items"][0]
+        second_page = (await client.get(url + "?limit=1&offset=1")).json()["data"]
+        assert second_page["total"] == 2 and len(second_page["items"]) == 1
+        assert second_page["items"][0]["id"] == empty["id"]
+        assert second_page["items"][0]["cover_photo"] is None
+    for url in (base, f"/api/tasks/{task['id']}", f"/api/tasks/by-slug/{task['slug']}"):
+        result = (await client.get(url)).json()["data"]
+        assert result["cover_photo"] == gallery[0]
+        assert result["photos"] == gallery
+    empty_detail = (await client.get(f"/api/tasks/{empty['id']}")).json()["data"]
+    assert empty_detail["cover_photo"] is None and empty_detail["photos"] == []
+    assert (await client.get("/api/tasks?q=несуществующее")).json()["data"][
+        "items"
+    ] == []
+
+    # Число запросов не растёт с количеством карточек и фотографий.
+    async with db() as session:
+        queries = []
+
+        def record(_conn, _cursor, statement, _params, _context, _many):
+            queries.append(statement)
+
+        engine = session.bind
+        assert engine is not None
+        event.listen(engine.sync_engine, "before_cursor_execute", record)
+        try:
+            result = await catalog.task_page(
+                session, select(Task).order_by(Task.id), 20, 0
+            )
+            assert len(queries) == 3 and len(result.items) == 2
+        finally:
+            event.remove(engine.sync_engine, "before_cursor_execute", record)
+
+    reordered = (
+        await client.put(
+            base + "/photos",
+            json={"photo_ids": [photo["id"] for photo in reversed(gallery)]},
+        )
+    ).json()["data"]
+    updated = (await client.patch(base, json={"title": "Новый заголовок"})).json()[
+        "data"
+    ]
+    assert updated["cover_photo"] == reordered[0]
+    assert (await client.get("/api/tasks")).json()["data"]["items"][0][
+        "cover_photo"
+    ] == reordered[0]
+    assert (await client.get(base)).json()["data"]["cover_photo"] == reordered[0]
+
+    await client.patch(base, json={"is_hidden": True})
+    public = (await client.get("/api/tasks")).json()["data"]
+    assert [item["id"] for item in public["items"]] == [empty["id"]]
+    assert (await client.get(f"/api/tasks/{task['id']}")).status_code == 404
+    assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 404
+    assert (await client.get("/api/editor/tasks/all")).json()["data"]["items"][0][
+        "cover_photo"
+    ] == reordered[0]
+
+    await client.put(base + "/photos", json={"photo_ids": []})
+    assert (await client.get(base)).json()["data"]["cover_photo"] is None
+    assert (await client.get("/api/editor/tasks")).json()["data"]["items"][0][
+        "cover_photo"
+    ] is None
 
 
 async def test_photo_gallery_limits_cover_and_atomic_reordering(

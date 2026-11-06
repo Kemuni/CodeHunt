@@ -67,29 +67,49 @@ async def read(
     if not photos:
         return []
     store = storage or get_storage()
-    result = []
-    for photo in photos:
-        try:
-            url = await run_in_threadpool(store.get_download_url, photo.object_key)
-        except STORAGE_EXCEPTIONS as exc:
-            raise storage_error(exc) from exc
-        result.append(
-            PhotoRead(
-                id=photo.id,
-                task_id=photo.task_id,
-                draft_id=photo.draft_id,
-                position=photo.position,
-                is_cover=photo.is_cover,
-                original_filename=photo.original_filename,
-                content_type=photo.content_type,
-                size_bytes=photo.size_bytes,
-                created_at=photo.created_at,
-                updated_at=photo.updated_at,
-                url=url,
-                expires_in=settings.S3_URL_TTL,
+    return [await photo_response(photo, store) for photo in photos]
+
+
+async def covers(session: AsyncSession, task_ids: list[int]) -> dict[int, PhotoRead]:
+    if not task_ids:
+        return {}
+    # Загружаем только титульные фото всей страницы одним запросом.
+    photos = (
+        await session.scalars(
+            select(TaskPhoto).where(
+                TaskPhoto.task_id.in_(task_ids), TaskPhoto.position == 1
             )
         )
-    return result
+    ).all()
+    if not photos:
+        return {}
+    store = get_storage()
+    return {
+        photo.task_id: await photo_response(photo, store)
+        for photo in photos
+        if photo.task_id is not None
+    }
+
+
+async def photo_response(photo: TaskPhoto, storage: Storage) -> PhotoRead:
+    try:
+        url = await run_in_threadpool(storage.get_download_url, photo.object_key)
+    except STORAGE_EXCEPTIONS as exc:
+        raise storage_error(exc) from exc
+    return PhotoRead(
+        id=photo.id,
+        task_id=photo.task_id,
+        draft_id=photo.draft_id,
+        position=photo.position,
+        is_cover=photo.is_cover,
+        original_filename=photo.original_filename,
+        content_type=photo.content_type,
+        size_bytes=photo.size_bytes,
+        created_at=photo.created_at,
+        updated_at=photo.updated_at,
+        url=url,
+        expires_in=settings.S3_URL_TTL,
+    )
 
 
 async def upload(

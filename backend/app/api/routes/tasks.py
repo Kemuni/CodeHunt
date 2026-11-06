@@ -26,7 +26,7 @@ from app.schemas.domain import (
     TaskUpdate,
 )
 from app.services import catalog, composition
-from app.services.common import commit, get, page
+from app.services.common import commit, get
 
 router = APIResponseRouter(tags=["tasks"])
 
@@ -82,7 +82,7 @@ async def tasks(
         query = query.where(Task.difficulty_from <= difficulty_max)
     if parent_task_id is not None:
         query = query.where(Task.parent_task_id == parent_task_id)
-    return SuccessResponse(data=await page(db, query, limit, offset))
+    return SuccessResponse(data=await catalog.task_page(db, query, limit, offset))
 
 
 @router.get(
@@ -167,7 +167,7 @@ async def editor_tasks(
         query = query.where(Task.status == status)
     if is_hidden is not None:
         query = query.where(Task.is_hidden == is_hidden)
-    return SuccessResponse(data=await page(db, query, limit, offset))
+    return SuccessResponse(data=await catalog.task_page(db, query, limit, offset))
 
 
 @router.post(
@@ -177,9 +177,8 @@ async def editor_tasks(
     summary="Создать готовое опубликованное задание с требованиями и пресетами.",
 )
 async def create_task(data: TaskPublication, db: SessionDep, _admin: CurrentAdmin):
-    return SuccessResponse(
-        data=await catalog.create_task(db, data.model_dump(mode="json"))
-    )
+    obj = await catalog.create_task(db, data.model_dump(mode="json"))
+    return SuccessResponse(data=(await catalog.read_tasks(db, [obj]))[0])
 
 
 @router.get(
@@ -201,11 +200,10 @@ async def editor_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin)
 async def update_task(
     task_id: PositiveID, data: TaskUpdate, db: SessionDep, _admin: CurrentAdmin
 ):
-    return SuccessResponse(
-        data=await catalog.update_task(
-            db, task_id, data.model_dump(exclude_unset=True, mode="json")
-        )
+    obj = await catalog.update_task(
+        db, task_id, data.model_dump(exclude_unset=True, mode="json")
     )
+    return SuccessResponse(data=(await catalog.read_tasks(db, [obj]))[0])
 
 
 @router.delete(

@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +20,14 @@ from app.models import (
     TaskResource,
 )
 from app.models.enums import TaskStatus
-from app.schemas.domain import LinkCreate, TaskCreate, TaskDetail, TaskPublication
+from app.schemas.common import Page
+from app.schemas.domain import (
+    LinkCreate,
+    TaskCreate,
+    TaskDetail,
+    TaskPublication,
+    TaskRead,
+)
 from app.services import composition, photos, publication, resources
 from app.services.common import (
     Hierarchy,
@@ -27,6 +36,7 @@ from app.services.common import (
     commit,
     get,
     lock_hierarchy,
+    page,
 )
 from app.services.composition import configuration as configuration
 from app.services.composition import confirm_template
@@ -163,6 +173,24 @@ async def reorder(
         obj.order_number = positions[obj.id]
 
 
+async def read_tasks(session: AsyncSession, objects: Sequence[Task]) -> list[TaskRead]:
+    covers = await photos.covers(session, [obj.id for obj in objects])
+    return [
+        TaskRead.model_validate(obj).model_copy(
+            update={"cover_photo": covers.get(obj.id)}
+        )
+        for obj in objects
+    ]
+
+
+async def task_page(
+    session: AsyncSession, statement, limit: int, offset: int
+) -> Page[TaskRead]:
+    result = await page(session, statement, limit, offset)
+    result["items"] = await read_tasks(session, result["items"])
+    return Page[TaskRead](**result)
+
+
 async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
     presets = (
         await session.scalars(
@@ -171,6 +199,7 @@ async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
             .order_by(TaskLevelPreset.id)
         )
     ).all()
+    gallery = await photos.read(session, MediaOwner(task_id=obj.id))
     return TaskDetail(
         **{key: getattr(obj, key) for key in TaskCreate.model_fields},
         id=obj.id,
@@ -179,6 +208,7 @@ async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
         updated_at=obj.updated_at,
         complications=await composition.read(session, obj.id),
         presets=presets,
-        photos=await photos.read(session, MediaOwner(task_id=obj.id)),
+        cover_photo=next((photo for photo in gallery if photo.is_cover), None),
+        photos=gallery,
         resources=await resources.read(session, MediaOwner(task_id=obj.id)),
     )

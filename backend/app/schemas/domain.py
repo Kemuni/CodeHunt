@@ -214,8 +214,24 @@ class TemplateRead(Read, Dates, TemplateCreate):
     pass
 
 
+class PhotoRead(Read, Dates):
+    task_id: int | None
+    draft_id: int | None
+    position: int
+    is_cover: bool
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    url: str
+    expires_in: int
+
+
 class TaskRead(Read, Dates, TaskCreate):
     status: TaskStatus
+    cover_photo: PhotoRead | None = Field(
+        default=None,
+        description="Титульное фото с временной ссылкой, null при отсутствии",
+    )
 
 
 class LinkRead(Read, Dates, LinkCreate):
@@ -350,18 +366,6 @@ class TaskPublication(TaskCreate):
             if not levels.intersection(LEVELS[: LEVELS.index(preset.level) + 1]):
                 raise ValueError(f"Пресет {preset.level} не содержит требований")
         return self
-
-
-class PhotoRead(Read, Dates):
-    task_id: int | None
-    draft_id: int | None
-    position: int
-    is_cover: bool
-    original_filename: str
-    content_type: str
-    size_bytes: int
-    url: str
-    expires_in: int
 
 
 class GalleryUpdate(Input):

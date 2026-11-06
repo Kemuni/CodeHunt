@@ -101,6 +101,7 @@ async def test_empty_form_files_live_validation_and_atomic_publication(
         task["complications"][0]["items"][0]["items"][0]["title"] == "Требование easy"
     )
     assert task["photos"][0]["id"] == photo["id"] and task["photos"][0]["is_cover"]
+    assert task["cover_photo"] == task["photos"][0]
     assert task["resources"][0]["id"] == resource["id"]
     assert (
         task["photos"][0]["draft_id"] is None

@@ -175,6 +175,12 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
     assert downloaded_photo.status_code == 200 and downloaded_photo.content == content
     detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
     assert detail["photos"][0]["id"] == photo["id"]
+    assert detail["cover_photo"] == detail["photos"][0]
+    listed = (await client.get("/api/tasks")).json()["data"]["items"][0]
+    assert listed["cover_photo"]["id"] == photo["id"]
+    async with httpx.AsyncClient() as http:
+        cover = await http.get(listed["cover_photo"]["url"])
+    assert cover.status_code == 200 and cover.content == content
     # Это отдельный бакет тестового контейнера; рабочее хранилище не затрагивается.
     for obj in store.client.list_objects_v2(Bucket=settings.S3_BUCKET).get(
         "Contents", []
