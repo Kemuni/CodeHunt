@@ -83,7 +83,7 @@ const defaultItems: TaskItem[] = [
 export default function AdminTasksPage() {
   const developerTypes = [
     { label: "Фронтенд", value: "frontend" },
-    { label: "Бэкенд", value: "backend" },
+    { label: "Фуллстак", value: "fullstack" },
   ]
 
 
