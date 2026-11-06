@@ -3,7 +3,7 @@ import {z} from "zod";
 export const taskDifficultyLevels = [
   { value: "base", label: "Базовый" },
   { value: "medium", label: "Продвинутый" },
-  { value: "maximum", label: "Максимум" },
+  { value: "maximum", label: "Максимальный" },
 ] as const;
 
 export type TaskDifficultyLevel = typeof taskDifficultyLevels[number]["value"];
@@ -34,7 +34,7 @@ export interface TaskItemsState {
   draftsByDifficultyLevel: Record<TaskDifficultyLevel, TaskItemDraft | null>;
 }
 
-// Each operation declares exactly which fields it needs.
+// Каждая операция требует конкретных полей которые ей нужны
 export interface TaskItemsActionPayloads {
   selectDifficultyLevel: { difficultyLevel: TaskDifficultyLevel };
   startCreating: { difficultyLevel: TaskDifficultyLevel; itemId: string };
