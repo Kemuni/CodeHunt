@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 const navigationLinks = [
-  { href: "#practice", label: "Каталог задач" },
+  { href: "/tasks", label: "Каталог задач" },
   { href: "#portfolio", label: "Топ решений" },
   { href: "#why", label: "Направления" },
 ]

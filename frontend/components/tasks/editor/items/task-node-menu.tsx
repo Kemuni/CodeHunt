@@ -12,9 +12,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { taskDifficultyLevels, type TaskDifficultyLevel } from "./task-items-state"
-import { canRelocate, categoryDestinations, isCategory, nodePath, type TaskNode } from "./task-tree"
-import type { TaskItemsActions } from "./use-task-items"
+import { taskDifficultyLevels, type TaskDifficultyLevel } from "@/lib/tasks/task-items-state"
+import {
+  canRelocate,
+  categoryDestinations,
+  isCategory,
+  nodePath,
+  nodeKey,
+  type TaskNode,
+} from "@/lib/tasks/task-tree"
+import type { TaskItemsActions } from "@/hooks/tasks/use-task-items"
 
 interface TaskNodeMenuProps {
   node: TaskNode
@@ -42,7 +49,7 @@ export default function TaskNodeMenu({
 }: TaskNodeMenuProps) {
   const category = isCategory(node)
   const destinations = categoryDestinations(roots).filter((target) =>
-    canRelocate(roots, node.id, target.id),
+    canRelocate(roots, nodeKey(node), target.id),
   )
   const upperParentId = parentId ? (nodePath(roots, parentId)?.at(-2) ?? null) : null
   return (
@@ -58,15 +65,17 @@ export default function TaskNodeMenu({
         <DropdownMenuItem
           onClick={() =>
             category
-              ? onRename(node.id, node.title)
-              : actions.startEditing({ difficultyLevel, itemId: node.id })
+              ? onRename(nodeKey(node), node.title)
+              : actions.startEditing({ difficultyLevel, itemId: nodeKey(node) })
           }
         >
           {category ? "Переименовать категорию" : "Изменить пункт"}
         </DropdownMenuItem>
         {category && (
           <DropdownMenuItem
-            onClick={() => actions.startCreating({ difficultyLevel, parentCategoryId: node.id })}
+            onClick={() =>
+              actions.startCreating({ difficultyLevel, parentCategoryId: nodeKey(node) })
+            }
           >
             Добавить пункт в категорию
           </DropdownMenuItem>
@@ -74,7 +83,7 @@ export default function TaskNodeMenu({
         <DropdownMenuItem
           disabled={index === 0}
           onClick={() =>
-            actions.movePosition({ difficultyLevel, nodeId: node.id, direction: "up" })
+            actions.movePosition({ difficultyLevel, nodeId: nodeKey(node), direction: "up" })
           }
         >
           <ArrowUpIcon />
@@ -83,7 +92,7 @@ export default function TaskNodeMenu({
         <DropdownMenuItem
           disabled={index === total - 1}
           onClick={() =>
-            actions.movePosition({ difficultyLevel, nodeId: node.id, direction: "down" })
+            actions.movePosition({ difficultyLevel, nodeId: nodeKey(node), direction: "down" })
           }
         >
           <ArrowDownIcon />
@@ -94,7 +103,7 @@ export default function TaskNodeMenu({
             onClick={() =>
               actions.relocateNode({
                 difficultyLevel,
-                nodeId: node.id,
+                nodeId: nodeKey(node),
                 parentCategoryId: upperParentId,
               })
             }
@@ -111,7 +120,7 @@ export default function TaskNodeMenu({
                   onClick={() =>
                     actions.relocateNode({
                       difficultyLevel,
-                      nodeId: node.id,
+                      nodeId: nodeKey(node),
                       parentCategoryId: null,
                     })
                   }
@@ -126,7 +135,7 @@ export default function TaskNodeMenu({
                   onClick={() =>
                     actions.relocateNode({
                       difficultyLevel,
-                      nodeId: node.id,
+                      nodeId: nodeKey(node),
                       parentCategoryId: target.id,
                     })
                   }
@@ -149,7 +158,7 @@ export default function TaskNodeMenu({
                     actions.moveNode({
                       difficultyLevel,
                       targetDifficultyLevel: level.value,
-                      nodeId: node.id,
+                      nodeId: nodeKey(node),
                     })
                   }
                 >
@@ -161,14 +170,14 @@ export default function TaskNodeMenu({
         <DropdownMenuSeparator />
         {category ? (
           <DropdownMenuItem
-            onClick={() => actions.ungroup({ difficultyLevel, categoryId: node.id })}
+            onClick={() => actions.ungroup({ difficultyLevel, categoryId: nodeKey(node) })}
           >
             Разгруппировать
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
             variant="destructive"
-            onClick={() => actions.deleteItem({ difficultyLevel, itemId: node.id })}
+            onClick={() => actions.deleteItem({ difficultyLevel, itemId: nodeKey(node) })}
           >
             <Trash2Icon />
             Удалить пункт

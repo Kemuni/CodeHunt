@@ -1,71 +1,87 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import Image from "next/image"
-import {
-  formatBytes,
-  useFileUpload,
-  type FileMetadata,
-  type FileWithPreview,
-} from "@/lib/hooks/use-file-upload"
+import { formatBytes } from "@/lib/hooks/use-file-upload"
 import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
-import { cn } from "cn"
-
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
-import { CircleAlertIcon, ImageIcon, UploadIcon, XIcon, ZoomInIcon } from "lucide-react"
+import { CircleAlertIcon, ImageIcon, StarIcon, UploadIcon, XIcon, ZoomInIcon } from "lucide-react"
+import { cn } from "cn"
 
-interface GalleryUploadProps {
-  maxFiles?: number
-  maxSize?: number
-  accept?: string
-  multiple?: boolean
-  className?: string
-  onFilesChange?: (files: FileWithPreview[]) => void
+export interface GalleryImage {
+  id: number
+  name: string
+  size: number
+  url: string
+  isCover: boolean
 }
 
-/** Локальный выбор и предпросмотр изображений. Передаёт список через onFilesChange; не регистрируется в Form и не отправляет файлы на сервер. */
+interface GalleryUploadProps {
+  files: GalleryImage[]
+  busy?: boolean
+  maxFiles?: number
+  maxSize?: number
+  className?: string
+  onUpload: (files: File[]) => Promise<void>
+  onRemove: (id: number) => Promise<void>
+  onClear: () => Promise<void>
+  onCover: (id: number) => Promise<void>
+}
+
+const imageTypes = ["image/jpeg", "image/png", "image/webp"]
+
+/** Галерея с выбором, перетаскиванием и предпросмотром. Владелец сохраняет изменения и передаёт подтверждённые изображения через files. */
 export function GalleryUpload({
-  maxFiles = 10,
-  maxSize = 5 * 1024 * 1024, // 5MB
-  accept = "image/*",
-  multiple = true,
+  files,
+  busy = false,
+  maxFiles = 4,
+  maxSize = 5 * 1024 * 1024,
   className,
-  onFilesChange,
+  onUpload,
+  onRemove,
+  onClear,
+  onCover,
 }: GalleryUploadProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({})
+  const input = useRef<HTMLInputElement>(null)
+  const inFlight = useRef(false)
+  const [pending, setPending] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [errors, setErrors] = useState<string[]>([])
+  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
+  const disabled = busy || pending
 
-  const [
-    { files, isDragging, errors },
-    {
-      removeFile,
-      clearFiles,
-      handleDragEnter,
-      handleDragLeave,
-      handleDragOver,
-      handleDrop,
-      openFileDialog,
-      getInputProps,
-    },
-  ] = useFileUpload({
-    maxFiles,
-    maxSize,
-    accept,
-    multiple,
-    onFilesChange,
-  })
-
-  const isImage = (file: File | FileMetadata) => {
-    const type = file instanceof File ? file.type : file.type
-    return type.startsWith("image/")
+  const runOperation = async (operation: () => Promise<void>) => {
+    if (disabled || inFlight.current) return
+    inFlight.current = true
+    setPending(true)
+    setErrors([])
+    try {
+      await operation()
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "Не удалось сохранить фотографии"])
+    } finally {
+      inFlight.current = false
+      setPending(false)
+    }
+  }
+  const upload = (selected: File[]) => {
+    if (disabled || !selected.length) return
+    const problems: string[] = []
+    if (selected.length + files.length > maxFiles)
+      problems.push(`Можно добавить не более ${maxFiles} фотографий`)
+    if (selected.some((file) => file.size > maxSize))
+      problems.push(`Размер фотографии не должен превышать ${formatBytes(maxSize)}`)
+    if (selected.some((file) => !imageTypes.includes(file.type)))
+      problems.push("Выберите фотографии JPEG, PNG, WebP или GIF")
+    setErrors(problems)
+    if (!problems.length) void runOperation(() => onUpload(selected))
   }
 
   return (
-    <div className={cn("w-full max-w-4xl", className)}>
-      {/* Upload Area */}
+    <div className={cn("w-full max-w-4xl", className)} aria-busy={disabled}>
       <div
         className={cn(
           "relative rounded-lg border border-dashed p-8 text-center transition-colors",
@@ -73,13 +89,33 @@ export function GalleryUpload({
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50",
         )}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onDragEnter={(event) => {
+          event.preventDefault()
+          if (!disabled) setIsDragging(true)
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsDragging(false)
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault()
+          setIsDragging(false)
+          upload(Array.from(event.dataTransfer.files))
+        }}
       >
-        <input {...getInputProps()} className="sr-only" />
-
+        <input
+          ref={input}
+          type="file"
+          multiple
+          accept={imageTypes.join(",")}
+          disabled={disabled}
+          className="sr-only"
+          aria-label="Загрузить фотографии"
+          onChange={(event) => {
+            upload(Array.from(event.target.files ?? []))
+            event.target.value = ""
+          }}
+        />
         <div className="flex flex-col items-center gap-4">
           <div
             className={cn(
@@ -87,159 +123,143 @@ export function GalleryUpload({
               isDragging ? "bg-primary/10" : "bg-muted",
             )}
           >
-            <ImageIcon
-              className={cn("h-5 w-5", isDragging ? "text-primary" : "text-muted-foreground")}
-            />
+            <ImageIcon className="size-5 text-muted-foreground" />
           </div>
-
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">Загрузите изображения</h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Перетащите изображения сюда или нажмите на кнопку
             </p>
-            <p className="text-muted-foreground text-xs">
-              PNG, JPG, GIF не более {formatBytes(maxSize)} каждый (максимум {maxFiles} файлов)
+            <p className="text-xs text-muted-foreground">
+              PNG, JPG, WebP не более {formatBytes(maxSize)} каждый (максимум {maxFiles}{" "}
+              файлов)
             </p>
           </div>
-
-          <Button onClick={openFileDialog}>
-            <UploadIcon className="h-4 w-4" />
-            Выбрать изображения
+          <Button
+            type="button"
+            disabled={disabled || files.length >= maxFiles}
+            onClick={() => input.current?.click()}
+          >
+            {disabled ? <Spinner /> : <UploadIcon />}{" "}
+            {disabled ? "Сохраняем…" : "Выбрать изображения"}
           </Button>
         </div>
       </div>
-
-      {/* Gallery Stats */}
-      {files.length > 0 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h4 className="text-sm font-medium">
-              Галерея ({files.length}/{maxFiles})
-            </h4>
-            <div className="text-muted-foreground text-xs">
-              Всего: {formatBytes(files.reduce((acc, file) => acc + file.file.size, 0))}
+      {!!files.length && (
+        <>
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-medium">
+                Галерея ({files.length}/{maxFiles})
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Всего: {formatBytes(files.reduce((sum, file) => sum + file.size, 0))}
+              </p>
             </div>
+            <Button
+              type="button"
+              disabled={disabled}
+              onClick={() => void runOperation(onClear)}
+              variant="outline"
+              size="sm"
+            >
+              Очистить все
+            </Button>
           </div>
-          <Button onClick={clearFiles} variant="outline" size="sm">
-            Очистить все
-          </Button>
-        </div>
-      )}
-
-      {/* Image Grid */}
-      {files.length > 0 && (
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {files.map((fileItem) => (
-            <div key={fileItem.id} className="group/item relative aspect-square">
-              {isImage(fileItem.file) && fileItem.preview ? (
-                <>
-                  {loadingImages[fileItem.id] && (
-                    <div className="bg-muted/50 absolute inset-0 flex items-center justify-center rounded-lg border">
-                      <Spinner className="text-muted-foreground size-6" />
-                    </div>
-                  )}
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            {files.map((file) => (
+              <div key={file.id} className="group/item min-w-0">
+                <div className="relative aspect-square overflow-hidden rounded-lg border">
                   <Image
-                    src={fileItem.preview}
-                    alt={fileItem.file.name}
+                    src={file.url}
+                    alt={file.name}
                     fill
                     unoptimized
-                    sizes="(min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
-                    onLoad={() =>
-                      setLoadingImages((prev) => ({
-                        ...prev,
-                        [fileItem.id]: false,
-                      }))
-                    }
-                    className={cn(
-                      "h-full w-full rounded-lg border object-cover transition-all group-hover/item:scale-105",
-                      loadingImages[fileItem.id] ? "opacity-0" : "opacity-100",
-                    )}
+                    sizes="(min-width: 768px) 25vw, 50vw"
+                    className="object-cover"
                   />
-                </>
-              ) : (
-                <div className="bg-muted flex h-full w-full items-center justify-center rounded-lg border">
-                  <ImageIcon className="text-muted-foreground h-8 w-8" />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/item:opacity-100">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon-sm"
+                      aria-label={`Посмотреть ${file.name}`}
+                      onClick={() => {
+                        setSelectedImage(file)
+                        setIsPreviewLoading(true)
+                      }}
+                    >
+                      <ZoomInIcon />
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={disabled}
+                      variant="secondary"
+                      size="icon-sm"
+                      aria-label={`Удалить ${file.name}`}
+                      onClick={() => void runOperation(() => onRemove(file.id))}
+                    >
+                      <XIcon />
+                    </Button>
+                  </div>
                 </div>
-              )}
-
-              {/* Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover/item:opacity-100">
-                {/* View Button */}
-                {fileItem.preview && (
-                  <Button
-                    onClick={() => {
-                      setSelectedImage(fileItem.preview!)
-                      setIsPreviewLoading(true)
-                    }}
-                    variant="secondary"
-                    size="icon"
-                    className="size-7"
-                  >
-                    <ZoomInIcon />
-                  </Button>
-                )}
-
-                {/* Remove Button */}
+                <p className="mt-1 truncate text-xs" title={file.name}>
+                  {file.name}
+                </p>
                 <Button
-                  onClick={() => removeFile(fileItem.id)}
-                  variant="secondary"
-                  size="icon"
-                  className="size-7"
+                  type="button"
+                  disabled={disabled || file.isCover}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full px-1"
+                  onClick={() => void runOperation(() => onCover(file.id))}
                 >
-                  <XIcon />
+                  <StarIcon fill={file.isCover ? "#000" : "transparent"} />
+                  {file.isCover ? "Титульное" : "На обложку"}
                 </Button>
               </div>
-
-              {/* File Info */}
-              <div className="absolute right-0 bottom-0 left-0 rounded-b-lg bg-black/70 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <p className="truncate text-xs font-medium">{fileItem.file.name}</p>
-                <p className="text-xs text-gray-300">{formatBytes(fileItem.file.size)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
-
-      {/* Error Messages */}
-      {errors.length > 0 && (
+      {!!errors.length && (
         <Alert variant="destructive" className="mt-5">
           <CircleAlertIcon />
-          <AlertTitle>Ошибка при загрузке файла(ов)</AlertTitle>
+          <AlertTitle>Ошибка загрузки</AlertTitle>
           <AlertDescription>
-            {errors.map((error, index) => (
-              <p key={index} className="last:mb-0">
-                {error}
-              </p>
+            {errors.map((error) => (
+              <p key={error}>{error}</p>
             ))}
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Image Preview Dialog */}
-      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="[&_[data-slot=dialog-close]]:text-muted-foreground [&_[data-slot=dialog-close]]:hover:text-foreground [&_[data-slot=dialog-close]]:bg-background w-full border-none bg-transparent p-0 shadow-none sm:max-w-xl [&_[data-slot=dialog-close]]:-end-7 [&_[data-slot=dialog-close]]:-top-7 [&_[data-slot=dialog-close]]:size-7 [&_[data-slot=dialog-close]]:rounded-full">
-          <DialogHeader className="sr-only">
+      <Dialog
+        open={!!selectedImage}
+        onOpenChange={(open) => {
+          if (!open) setSelectedImage(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
             <DialogTitle>Предпросмотр изображения</DialogTitle>
           </DialogHeader>
-          <div className="relative flex h-[min(80dvh,40rem)] w-full items-center justify-center">
+          <div className="relative h-[min(70dvh,35rem)]">
             {selectedImage && (
               <>
                 {isPreviewLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Spinner className="size-8 text-white" />
+                    <Spinner className="size-8" />
                   </div>
                 )}
                 <Image
-                  src={selectedImage}
-                  alt="Предпросмотр"
+                  src={selectedImage.url}
+                  alt={selectedImage.name}
                   fill
                   unoptimized
                   sizes="(min-width: 640px) 36rem, 100vw"
                   onLoad={() => setIsPreviewLoading(false)}
-                  className={cn(
-                    "rounded-lg object-contain transition-opacity duration-300",
-                    isPreviewLoading ? "opacity-0" : "opacity-100",
-                  )}
+                  onError={() => setIsPreviewLoading(false)}
+                  className="rounded-lg object-contain"
                 />
               </>
             )}

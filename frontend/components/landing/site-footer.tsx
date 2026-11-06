@@ -2,7 +2,7 @@ import Image from "next/image"
 
 const links = [
   { href: "#top", label: "Главная" },
-  { href: "#practice", label: "Каталог задач" },
+  { href: "/tasks", label: "Каталог задач" },
   { href: "#portfolio", label: "Топ решений" },
   { href: "#how-to-start", label: "Как получить портфолио" },
 ]

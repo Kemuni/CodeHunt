@@ -1,12 +1,12 @@
 "use client"
 
-import type { TaskNode } from "./task-tree"
+import type { TaskNode } from "@/lib/tasks/task-tree"
 import { useMemo, useReducer } from "react"
 import {
   createTaskItemsState,
   taskItemsReducer,
   type TaskItemsActionPayloads,
-} from "./task-items-state"
+} from "@/lib/tasks/task-items-state"
 
 /** Локальное состояние редактора и типизированные операции над пунктами. Ввод и ошибки хранятся в Form; сетевых запросов здесь нет. */
 export function useTaskItems(initialItems: TaskNode[]) {

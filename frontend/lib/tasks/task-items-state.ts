@@ -3,6 +3,7 @@ import {
   type TaskNode,
   MAX_CATEGORY_DEPTH,
   isCategory,
+  nodeKey,
   findNode,
   nodePath,
   childrenOf,
@@ -32,7 +33,9 @@ export const taskItemFieldsSchema = z.object({
 export type TaskItemFields = z.infer<typeof taskItemFieldsSchema>
 
 export interface TaskItem extends TaskItemFields {
-  id: string
+  complicationId?: number | null
+  /** Серверный номер либо временный UUID до первого сохранения. */
+  id: string | number
   difficultyLevel: TaskDifficultyLevel
 }
 
@@ -180,7 +183,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       return setDraft({
         item: { ...item },
         isNew: false,
-        parentCategoryId: nodePath(items, item.id)?.at(-2) ?? null,
+        parentCategoryId: nodePath(items, nodeKey(item))?.at(-2) ?? null,
       })
     }
     case "cancelDraft":
@@ -197,7 +200,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
           [difficultyLevel]: updateChildren(items, draft.parentCategoryId, (children) =>
             draft.isNew
               ? [...children, item]
-              : children.map((current) => (current.id === item.id ? item : current)),
+              : children.map((current) => (nodeKey(current) === nodeKey(item) ? item : current)),
           ),
         },
       }
@@ -209,7 +212,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
         ...replaceNodes(removeNodes(items, new Set([action.itemId]))),
         draftsByDifficultyLevel: {
           ...state.draftsByDifficultyLevel,
-          [difficultyLevel]: draft?.item.id === action.itemId ? null : draft,
+          [difficultyLevel]: draft && nodeKey(draft.item) === action.itemId ? null : draft,
         },
       }
     }
@@ -217,14 +220,18 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       if (draft || difficultyLevel === action.targetDifficultyLevel) return state
       const node = findNode(items, action.nodeId)
       if (!node) return state
-      const next = replaceNodes(removeNodes(items, new Set([node.id])))
+      const next = replaceNodes(removeNodes(items, new Set([nodeKey(node)])))
       return {
         ...next,
         nodesByDifficultyLevel: {
           ...next.nodesByDifficultyLevel,
           [action.targetDifficultyLevel]: [
             ...state.nodesByDifficultyLevel[action.targetDifficultyLevel],
-            ...changeDifficulty([node], action.targetDifficultyLevel),
+            ...changeDifficulty(
+              [node],
+              action.targetDifficultyLevel,
+              state.nodesByDifficultyLevel[action.targetDifficultyLevel],
+            ),
           ],
         },
       }
@@ -233,17 +240,17 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       if (draft) return state
       const parentId = action.parentCategoryId ?? null
       const children = childrenOf(items, parentId)
-      const ids = action.items.map((node) => node.id)
+      const ids = action.items.map((node) => nodeKey(node))
       if (
         !children ||
         ids.length !== children.length ||
         new Set(ids).size !== children.length ||
-        ids.some((id) => !children.some((node) => node.id === id))
+        ids.some((id) => !children.some((node) => nodeKey(node) === id))
       )
         return state
       return replaceNodes(
         updateChildren(items, parentId, (children) =>
-          ids.map((id) => children.find((node) => node.id === id)!),
+          ids.map((id) => children.find((node) => nodeKey(node) === id)!),
         ),
       )
     }
@@ -283,11 +290,11 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
     case "renameCategory": {
       const node = findNode(items, action.categoryId)
       if (draft || !node || !isCategory(node) || !action.title.trim()) return state
-      const parentId = nodePath(items, node.id)?.at(-2) ?? null
+      const parentId = nodePath(items, nodeKey(node))?.at(-2) ?? null
       return replaceNodes(
         updateChildren(items, parentId, (children) =>
           children.map((child) =>
-            child.id === node.id ? { ...node, title: action.title.trim() } : child,
+            nodeKey(child) === nodeKey(node) ? { ...node, title: action.title.trim() } : child,
           ),
         ),
       )
@@ -295,10 +302,10 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
     case "ungroup": {
       const node = findNode(items, action.categoryId)
       if (draft || !node || !isCategory(node)) return state
-      const parentId = nodePath(items, node.id)?.at(-2) ?? null
+      const parentId = nodePath(items, nodeKey(node))?.at(-2) ?? null
       return replaceNodes(
         updateChildren(items, parentId, (children) =>
-          children.flatMap((child) => (child.id === node.id ? node.children : [child])),
+          children.flatMap((child) => (nodeKey(child) === nodeKey(node) ? node.children : [child])),
         ),
       )
     }
@@ -310,7 +317,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       return replaceNodes(
         updateChildren(items, parentId, (children) => {
           const next = [...children]
-          const index = next.findIndex((node) => node.id === action.nodeId)
+          const index = next.findIndex((node) => nodeKey(node) === action.nodeId)
           const target = index + (action.direction === "up" ? -1 : 1)
           if (target < 0 || target >= next.length) return children
           const movedNode = next[index]
@@ -325,7 +332,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       const node = findNode(items, action.nodeId)!
       return replaceNodes(
         updateChildren(
-          removeNodes(items, new Set([node.id])),
+          removeNodes(items, new Set([nodeKey(node)])),
           action.parentCategoryId,
           (children) => [...children, node],
         ),
@@ -337,8 +344,8 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
       const ids = new Set<string>()
       const valid = (nodes: TaskNode[]): boolean =>
         nodes.every((node) => {
-          if (ids.has(node.id) || findNode(items, node.id)) return false
-          ids.add(node.id)
+          if (ids.has(nodeKey(node)) || findNode(items, nodeKey(node))) return false
+          ids.add(nodeKey(node))
           return isCategory(node)
             ? !!node.title.trim() && valid(node.children)
             : taskItemFieldsSchema.safeParse(node).success

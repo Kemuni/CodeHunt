@@ -7,16 +7,20 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { taskDifficultyLevels, formatItemCount, type TaskDifficultyLevel } from "./task-items-state"
-import type { TaskNode } from "./task-tree"
+import {
+  taskDifficultyLevels,
+  formatItemCount,
+  type TaskDifficultyLevel,
+} from "@/lib/tasks/task-items-state"
+import type { TaskNode } from "@/lib/tasks/task-tree"
 import {
   taskItemLibrary,
   isLibraryCategory,
   libraryItemIds,
   importLibrarySelection,
   type LibraryNode,
-} from "./task-item-library-data"
-import ExpandableText from "./expandable-text"
+} from "@/lib/tasks/task-item-library-data"
+import ExpandableText from "@/components/tasks/expandable-text"
 import { cn } from "cn"
 
 function LibraryTree({

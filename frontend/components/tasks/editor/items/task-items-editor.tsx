@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { ChevronDownIcon, FolderIcon, GripVerticalIcon, GroupIcon, PlusIcon } from "lucide-react"
 import { Sortable, SortableItem, SortableItemHandle } from "@/components/reui/sortable"
 import { Button } from "@/components/ui/button"
@@ -20,21 +20,22 @@ import {
   taskDifficultyLevels,
   type TaskDifficultyLevel,
   type TaskItemDraft,
-} from "./task-items-state"
+} from "@/lib/tasks/task-items-state"
 import {
   countTaskItems,
   taskItemNumbers,
   groupNodes,
   isCategory,
+  nodeKey,
   selectedRoots,
   updateChildren,
   type TaskNode,
-} from "./task-tree"
-import { useTaskItems, type TaskItemsActions } from "./use-task-items"
+} from "@/lib/tasks/task-tree"
+import { useTaskItems, type TaskItemsActions } from "@/hooks/tasks/use-task-items"
 import TaskItemCard from "./task-item-card"
 import TaskNodeMenu from "./task-node-menu"
-import TaskItemLibrary from "./task-item-library"
-import ExpandableText from "./expandable-text"
+import TaskItemLibrary from "@/components/tasks/editor/library/task-item-library"
+import ExpandableText from "@/components/tasks/expandable-text"
 import TaskCategoryForm from "./task-category-form"
 import { shiftSelectionProps } from "./shift-selection"
 import { cn } from "cn"
@@ -68,7 +69,7 @@ function TaskTree({
   return (
     <Sortable
       value={nodes}
-      getItemValue={(node) => node.id}
+      getItemValue={nodeKey}
       onValueChange={(items) =>
         actions.reorderItems({ difficultyLevel, parentCategoryId: parentId, items })
       }
@@ -76,8 +77,8 @@ function TaskTree({
       className="space-y-2"
     >
       {nodes.map((node, index) => {
-        const editing = draft?.item.id === node.id
-        const checked = ancestorSelected || selected.includes(node.id)
+        const editing = draft && nodeKey(draft.item) === nodeKey(node)
+        const checked = ancestorSelected || selected.includes(nodeKey(node))
         const menu = (
           <TaskNodeMenu
             node={node}
@@ -93,13 +94,20 @@ function TaskTree({
         )
         return (
           <SortableItem
-            key={node.id}
-            value={node.id}
+            key={nodeKey(node)}
+            value={nodeKey(node)}
+            role="group"
+            aria-disabled={false}
+            tabIndex={-1}
             disabled={!!draft}
             className="data-disabled:opacity-100"
             {...shiftSelectionProps(
               () =>
-                actions.toggleSelection({ difficultyLevel, nodeId: node.id, selected: !checked }),
+                actions.toggleSelection({
+                  difficultyLevel,
+                  nodeId: nodeKey(node),
+                  selected: !checked,
+                }),
               !!draft || ancestorSelected,
             )}
           >
@@ -143,7 +151,7 @@ function TaskTree({
                       roots={roots}
                       numbers={numbers}
                       difficultyLevel={difficultyLevel}
-                      parentId={node.id}
+                      parentId={nodeKey(node)}
                       selected={selected}
                       ancestorSelected={checked}
                       draft={draft}
@@ -161,9 +169,9 @@ function TaskTree({
             ) : (
               <TaskItemCard
                 item={editing ? draft.item : node}
-                number={numbers.get(node.id)!}
+                number={numbers.get(nodeKey(node))!}
                 difficultyLevel={difficultyLevel}
-                editing={editing}
+                editing={!!editing}
                 busy={!!draft}
                 actions={actions}
                 selected={checked}
@@ -178,8 +186,24 @@ function TaskTree({
 }
 
 /** Управляет деревьями трёх сложностей; формы остаются смонтированными при смене вкладок и сворачивании категорий. */
-export default function TaskItemsEditor({ initialItems }: { initialItems: TaskNode[] }) {
+export default function TaskItemsEditor({
+  initialItems,
+  onChange,
+  onEditingChange,
+  renderLevelFields,
+}: {
+  initialItems: TaskNode[]
+  onChange?: (nodes: TaskNode[]) => void
+  onEditingChange?: (editing: boolean) => void
+  renderLevelFields?: (level: TaskDifficultyLevel) => ReactNode
+}) {
   const { state, actions } = useTaskItems(initialItems)
+  useEffect(() => {
+    onChange?.(taskDifficultyLevels.flatMap((level) => state.nodesByDifficultyLevel[level.value]))
+  }, [state.nodesByDifficultyLevel, onChange])
+  useEffect(() => {
+    onEditingChange?.(Object.values(state.draftsByDifficultyLevel).some(Boolean))
+  }, [state.draftsByDifficultyLevel, onEditingChange])
   const [naming, setNaming] = useState<{
     categoryId?: string
     title: string
@@ -276,27 +300,25 @@ export default function TaskItemsEditor({ initialItems }: { initialItems: TaskNo
                 ])
               : nodes
             return (
-              <TabsContent
-                key={level.value}
-                value={level.value}
-                keepMounted
-                className="max-h-[min(65vh,48rem)] overflow-y-auto overscroll-contain p-1 py-4 scrollbar-gutter-stable border-b"
-              >
-                {!visibleNodes.length && (
-                  <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">
-                    Пока нет пунктов. Добавьте новый пункт или импортируйте из библиотеки.
-                  </p>
-                )}
-                <TaskTree
-                  nodes={visibleNodes}
-                  roots={nodes}
-                  numbers={taskItemNumbers(visibleNodes)}
-                  difficultyLevel={level.value}
-                  selected={state.selectedByDifficultyLevel[level.value]}
-                  draft={draft}
-                  actions={actions}
-                  onRename={onRename}
-                />
+              <TabsContent key={level.value} value={level.value} keepMounted className="py-4">
+                {renderLevelFields?.(level.value)}
+                <div className="max-h-[min(65vh,48rem)] overflow-y-auto overscroll-contain p-1 scrollbar-gutter-stable border-b">
+                  {!visibleNodes.length && (
+                    <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">
+                      Пока нет пунктов. Добавьте новый пункт или импортируйте из библиотеки.
+                    </p>
+                  )}
+                  <TaskTree
+                    nodes={visibleNodes}
+                    roots={nodes}
+                    numbers={taskItemNumbers(visibleNodes)}
+                    difficultyLevel={level.value}
+                    selected={state.selectedByDifficultyLevel[level.value]}
+                    draft={draft}
+                    actions={actions}
+                    onRename={onRename}
+                  />
+                </div>
               </TabsContent>
             )
           })}

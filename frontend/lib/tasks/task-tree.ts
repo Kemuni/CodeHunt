@@ -4,7 +4,7 @@ export const MAX_CATEGORY_DEPTH = 3
 
 export interface TaskCategory {
   kind: "category"
-  id: string
+  id: string | number
   title: string
   difficultyLevel: TaskDifficultyLevel
   children: TaskNode[]
@@ -14,6 +14,11 @@ export type TaskNode = TaskItem | TaskCategory
 
 export function isCategory(node: TaskNode): node is TaskCategory {
   return "children" in node
+}
+
+/** Числовые ID пунктов и категорий могут совпадать; ключ UI вычисляется без второго поля в данных. */
+export function nodeKey(node: TaskNode): string {
+  return typeof node.id === "number" ? `${isCategory(node) ? "group" : "item"}:${node.id}` : node.id
 }
 
 export function countTaskItems(nodes: TaskNode[]): number {
@@ -29,7 +34,7 @@ export function taskItemNumbers(nodes: TaskNode[]): Map<string, number> {
   const visit = (children: TaskNode[]) =>
     children.forEach((node) => {
       if (isCategory(node)) visit(node.children)
-      else numbers.set(node.id, numbers.size + 1)
+      else numbers.set(nodeKey(node), numbers.size + 1)
     })
   visit(nodes)
   return numbers
@@ -37,7 +42,7 @@ export function taskItemNumbers(nodes: TaskNode[]): Map<string, number> {
 
 export function findNode(nodes: TaskNode[], id: string): TaskNode | undefined {
   for (const node of nodes) {
-    if (node.id === id) return node
+    if (nodeKey(node) === id) return node
     if (isCategory(node)) {
       const found = findNode(node.children, id)
       if (found) return found
@@ -51,9 +56,9 @@ export function nodePath(
   parents: string[] = [],
 ): string[] | undefined {
   for (const node of nodes) {
-    if (node.id === id) return [...parents, id]
+    if (nodeKey(node) === id) return [...parents, id]
     if (isCategory(node)) {
-      const path = nodePath(node.children, id, [...parents, node.id])
+      const path = nodePath(node.children, id, [...parents, nodeKey(node)])
       if (path) return path
     }
   }
@@ -70,7 +75,7 @@ export function updateChildren(
       ? {
           ...node,
           children:
-            node.id === parentId
+            nodeKey(node) === parentId
               ? update(node.children)
               : updateChildren(node.children, parentId, update),
         }
@@ -86,7 +91,7 @@ export function childrenOf(nodes: TaskNode[], parentId: string | null): TaskNode
 
 export function removeNodes(nodes: TaskNode[], ids: Set<string>): TaskNode[] {
   return nodes
-    .filter((node) => !ids.has(node.id))
+    .filter((node) => !ids.has(nodeKey(node)))
     .map((node) =>
       isCategory(node) ? { ...node, children: removeNodes(node.children, ids) } : node,
     )
@@ -99,18 +104,35 @@ export function categoryHeight(node: TaskNode): number {
 export function changeDifficulty(
   nodes: TaskNode[],
   difficultyLevel: TaskDifficultyLevel,
+  destination: TaskNode[] = [],
 ): TaskNode[] {
-  return nodes.map((node) =>
-    isCategory(node)
-      ? { ...node, difficultyLevel, children: changeDifficulty(node.children, difficultyLevel) }
-      : { ...node, difficultyLevel },
-  )
+  return nodes.map((node) => {
+    if (!isCategory(node)) return { ...node, difficultyLevel }
+    let id = node.id
+    // Перенос одной проекции общей группы создаёт отдельную группу, если другая уже есть в этой вкладке.
+    if (findNode(destination, nodeKey(node))) {
+      let suffix = 0
+      do {
+        id = `local-group-${difficultyLevel}-${node.id}-${suffix++}`
+      } while (findNode(destination, id))
+    }
+    return {
+      ...node,
+      id,
+      difficultyLevel,
+      children: changeDifficulty(node.children, difficultyLevel, destination),
+    }
+  })
 }
 
 export function selectedRoots(nodes: TaskNode[], ids: string[]): TaskNode[] {
   const selected = new Set(ids)
   return nodes.flatMap((node) =>
-    selected.has(node.id) ? [node] : isCategory(node) ? selectedRoots(node.children, ids) : [],
+    selected.has(nodeKey(node))
+      ? [node]
+      : isCategory(node)
+        ? selectedRoots(node.children, ids)
+        : [],
   )
 }
 
@@ -124,7 +146,7 @@ export function groupNodes(
 ): TaskNode[] | null {
   const selected = selectedRoots(nodes, ids)
   if (!selected.length || !title.trim() || findNode(nodes, categoryId)) return null
-  const paths = selected.map((node) => nodePath(nodes, node.id)!)
+  const paths = selected.map((node) => nodePath(nodes, nodeKey(node))!)
   const commonParents = paths[0].slice(0, -1)
   while (!paths.every((path) => commonParents.every((id, index) => path[index] === id)))
     commonParents.pop()
@@ -133,13 +155,13 @@ export function groupNodes(
   const parentId = commonParents.at(-1) ?? null
   const siblings = childrenOf(nodes, parentId)!
   const firstBranchId = paths[0][commonParents.length]
-  const selectedIds = new Set(selected.map((node) => node.id))
+  const selectedIds = new Set(selected.map((node) => nodeKey(node)))
   const index = siblings
     .slice(
       0,
-      siblings.findIndex((node) => node.id === firstBranchId),
+      siblings.findIndex((node) => nodeKey(node) === firstBranchId),
     )
-    .filter((node) => !selectedIds.has(node.id)).length
+    .filter((node) => !selectedIds.has(nodeKey(node))).length
   const stripped = removeNodes(nodes, selectedIds)
   return updateChildren(stripped, parentId, (children) => {
     const next = [...children]
@@ -174,6 +196,6 @@ export function categoryDestinations(
   return nodes.flatMap((node) => {
     if (!isCategory(node)) return []
     const label = prefix ? `${prefix} / ${node.title}` : node.title
-    return [{ id: node.id, label }, ...categoryDestinations(node.children, label)]
+    return [{ id: nodeKey(node), label }, ...categoryDestinations(node.children, label)]
   })
 }

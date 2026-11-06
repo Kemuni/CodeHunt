@@ -5,10 +5,14 @@ import { ChevronDownIcon, GripVerticalIcon } from "lucide-react"
 import { SortableItemHandle } from "@/components/reui/sortable"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { taskDifficultyLevels, type TaskDifficultyLevel, type TaskItem } from "./task-items-state"
-import type { TaskItemsActions } from "./use-task-items"
+import {
+  taskDifficultyLevels,
+  type TaskDifficultyLevel,
+  type TaskItem,
+} from "@/lib/tasks/task-items-state"
+import type { TaskItemsActions } from "@/hooks/tasks/use-task-items"
 import TaskItemForm from "./task-item-form"
-import ExpandableText from "./expandable-text"
+import ExpandableText from "@/components/tasks/expandable-text"
 import { cn } from "cn"
 
 interface TaskItemCardProps {

@@ -11,7 +11,7 @@ import {
   taskItemFieldsSchema,
   type TaskItem,
   type TaskItemFields,
-} from "./task-items-state"
+} from "@/lib/tasks/task-items-state"
 
 interface TaskItemFormProps {
   item: TaskItem

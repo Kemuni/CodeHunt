@@ -11,3 +11,6 @@ package-lock.json
 .env*
 public/
 AGENTS.md
+
+/playwright-report/
+/test-results/

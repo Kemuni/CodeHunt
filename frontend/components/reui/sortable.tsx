@@ -118,10 +118,13 @@ const STRATEGY_MAP = {
 } as const
 
 // Multipurpose Sortable Component
-export interface SortableCommitMeta<T> {
+export interface SortableMoveEvent {
   event: DragEndEvent
   activeIndex: number
   overIndex: number
+}
+
+export interface SortableCommitMeta<T> extends SortableMoveEvent {
   previousValue: T[]
 }
 
@@ -133,11 +136,7 @@ export interface SortableRootProps<T> extends Omit<
   onValueChange: (value: T[]) => void
   getItemValue: (item: T) => string
   children: ReactNode
-  onMove?: (event: {
-    event: DragEndEvent
-    activeIndex: number
-    overIndex: number
-  }) => void
+  onMove?: (event: SortableMoveEvent) => void
   onValueCommit?: (value: T[], meta: SortableCommitMeta<T>) => void
   strategy?: "horizontal" | "vertical" | "grid"
   onDragStart?: (event: DragStartEvent) => void
