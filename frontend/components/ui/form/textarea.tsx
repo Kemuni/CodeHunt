@@ -12,7 +12,7 @@ interface FormTextareaProps extends ComponentProps<typeof Textarea> {
 
 
 export default function FormTextarea({
-  name, id, "aria-describedby": describedBy, ...props
+  name, id, ...props
 }: FormTextareaProps) {
   const { register, getFieldState, formState } = useFormContext()
   const { error } = getFieldState(name, formState)
@@ -24,7 +24,6 @@ export default function FormTextarea({
       {...register(name)}
       id={controlId}
       aria-invalid={!!error}
-      aria-describedby={[describedBy, error && `${controlId}-error`].filter(Boolean).join(" ") || undefined}
     />
   );
 }

@@ -12,7 +12,7 @@ interface FormCheckboxProps extends ComponentProps<typeof Checkbox> {
 
 
 export default function FormCheckbox({
-  name, id, disabled, onBlur, "aria-describedby": describedBy, ...props
+  name, id, disabled, onBlur, ...props
 }: FormCheckboxProps) {
   const { control } = useFormContext()
   const controlId = useFormFieldId(name, id)

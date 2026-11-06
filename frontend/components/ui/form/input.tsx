@@ -12,7 +12,7 @@ interface FormInputProps extends ComponentProps<typeof Input> {
 
 
 export default function FormInput({
-  name, id, "aria-describedby": describedBy, ...props
+  name, id, ...props
 }: FormInputProps) {
   const { register, getFieldState, formState } = useFormContext()
   const { error } = getFieldState(name, formState)
@@ -24,7 +24,6 @@ export default function FormInput({
       {...register(name)}
       id={controlId}
       aria-invalid={!!error}
-      aria-describedby={[describedBy, error && `${controlId}-error`].filter(Boolean).join(" ") || undefined}
     />
   );
 }
