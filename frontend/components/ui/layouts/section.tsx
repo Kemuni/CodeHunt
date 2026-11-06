@@ -27,7 +27,7 @@ export const SectionLayoutHeaderRow: React.FC<HTMLAttributes<HTMLDivElement>> = 
 export const SectionLayoutActions: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => (
-  <div className={cn("ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2", className)} {...props}>
+  <div className={cn("ml-auto w-full sm:w-fit flex shrink-0 flex-wrap items-center justify-end gap-2", className)} {...props}>
     {children}
   </div>
 );
