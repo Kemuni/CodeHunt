@@ -7,11 +7,7 @@ import {
   type FileMetadata,
   type FileWithPreview,
 } from "@/lib/hooks/use-file-upload"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/reui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
 import { Badge } from "@/components/reui/badge"
 import { cn } from "cn"
 
@@ -24,7 +20,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ImageIcon, VideoIcon, HeadphonesIcon, FileTextIcon, FileSpreadsheetIcon, FileArchiveIcon, UploadIcon, CloudUploadIcon, Trash2Icon, DownloadIcon, RefreshCwIcon, CircleAlertIcon } from "lucide-react"
+import {
+  ImageIcon,
+  VideoIcon,
+  HeadphonesIcon,
+  FileTextIcon,
+  FileSpreadsheetIcon,
+  FileArchiveIcon,
+  UploadIcon,
+  CloudUploadIcon,
+  Trash2Icon,
+  DownloadIcon,
+  RefreshCwIcon,
+  CircleAlertIcon,
+} from "lucide-react"
 
 interface FileUploadItem extends FileWithPreview {
   progress: number
@@ -74,12 +83,14 @@ export function FileUpload({
     multiple,
     onFilesChange: (newFiles) => {
       // При изменении списка сохраняем прогресс уже выбранных файлов.
-      setUploadFiles((previous) => newFiles.map((file) => {
-        const existingFile = previous.find((existing) => existing.id === file.id)
-        return existingFile
-          ? { ...existingFile, ...file }
-          : { ...file, progress: 0, status: simulateUpload ? "uploading" : "ready" }
-      }))
+      setUploadFiles((previous) =>
+        newFiles.map((file) => {
+          const existingFile = previous.find((existing) => existing.id === file.id)
+          return existingFile
+            ? { ...existingFile, ...file }
+            : { ...file, progress: 0, status: simulateUpload ? "uploading" : "ready" }
+        }),
+      )
       onFilesChange?.(newFiles)
     },
   })
@@ -103,14 +114,12 @@ export function FileUpload({
               ...file,
               progress: 100,
               status: shouldFail ? ("error" as const) : ("completed" as const),
-              error: shouldFail
-                ? "Не удалось загрузить файл. Попробуйте ещё раз."
-                : undefined,
+              error: shouldFail ? "Не удалось загрузить файл. Попробуйте ещё раз." : undefined,
             }
           }
 
           return { ...file, progress: newProgress }
-        })
+        }),
       )
     }, 500)
 
@@ -132,44 +141,22 @@ export function FileUpload({
               status: "uploading" as const,
               error: undefined,
             }
-          : file
-      )
+          : file,
+      ),
     )
   }
 
   const getFileIcon = (file: File | FileMetadata) => {
     const type = file.type
-    if (type.startsWith("image/"))
-      return (
-        <ImageIcon className="size-4" />
-      )
-    if (type.startsWith("video/"))
-      return (
-        <VideoIcon className="size-4" />
-      )
-    if (type.startsWith("audio/"))
-      return (
-        <HeadphonesIcon className="size-4" />
-      )
-    if (type.includes("pdf"))
-      return (
-        <FileTextIcon className="size-4" />
-      )
-    if (type.includes("word") || type.includes("doc"))
-      return (
-        <FileTextIcon className="size-4" />
-      )
+    if (type.startsWith("image/")) return <ImageIcon className="size-4" />
+    if (type.startsWith("video/")) return <VideoIcon className="size-4" />
+    if (type.startsWith("audio/")) return <HeadphonesIcon className="size-4" />
+    if (type.includes("pdf")) return <FileTextIcon className="size-4" />
+    if (type.includes("word") || type.includes("doc")) return <FileTextIcon className="size-4" />
     if (type.includes("excel") || type.includes("sheet"))
-      return (
-        <FileSpreadsheetIcon className="size-4" />
-      )
-    if (type.includes("zip") || type.includes("rar"))
-      return (
-        <FileArchiveIcon className="size-4" />
-      )
-    return (
-      <FileTextIcon className="size-4" />
-    )
+      return <FileSpreadsheetIcon className="size-4" />
+    if (type.includes("zip") || type.includes("rar")) return <FileArchiveIcon className="size-4" />
+    return <FileTextIcon className="size-4" />
   }
 
   const getFileTypeLabel = (file: File | FileMetadata) => {
@@ -194,7 +181,7 @@ export function FileUpload({
           "relative rounded-lg border border-dashed p-6 text-center transition-colors",
           isDragging
             ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+            : "border-muted-foreground/25 hover:border-muted-foreground/50",
         )}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -207,9 +194,7 @@ export function FileUpload({
           <div
             className={cn(
               "bg-muted flex h-12 w-12 items-center justify-center rounded-full transition-colors",
-              isDragging
-                ? "border-primary bg-primary/10"
-                : "border-muted-foreground/25"
+              isDragging ? "border-primary bg-primary/10" : "border-muted-foreground/25",
             )}
           >
             <UploadIcon className="text-muted-foreground h-5 w-5" />
@@ -227,8 +212,7 @@ export function FileUpload({
               </button>
             </p>
             <p className="text-muted-foreground text-xs">
-              Максимальный размер файла: {formatBytes(maxSize)} • Максимум файлов:{" "}
-              {maxFiles}
+              Максимальный размер файла: {formatBytes(maxSize)} • Максимум файлов: {maxFiles}
             </p>
           </div>
         </div>
@@ -238,9 +222,7 @@ export function FileUpload({
       {uploadFiles.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">
-              Файлы ({uploadFiles.length})
-            </h3>
+            <h3 className="text-sm font-medium">Файлы ({uploadFiles.length})</h3>
             <div className="flex gap-2">
               <Button type="button" onClick={openFileDialog} variant="outline" size="sm">
                 <CloudUploadIcon className="h-4 w-4" />
@@ -270,16 +252,13 @@ export function FileUpload({
                       <div className="flex items-center gap-1">
                         <div
                           className={cn(
-                            "text-muted-foreground/80 relative flex size-8 shrink-0 items-center justify-center"
+                            "text-muted-foreground/80 relative flex size-8 shrink-0 items-center justify-center",
                           )}
                         >
                           {fileItem.status === "uploading" ? (
                             <div className="relative">
                               {/* Фон кругового индикатора */}
-                              <svg
-                                className="size-8 -rotate-90"
-                                viewBox="0 0 32 32"
-                              >
+                              <svg className="size-8 -rotate-90" viewBox="0 0 32 32">
                                 <circle
                                   cx="16"
                                   cy="16"
@@ -323,7 +302,11 @@ export function FileUpload({
                           )}
                         </p>
                       </div>
-                      {fileItem.error && <p role="alert" className="px-2 text-xs text-destructive">{fileItem.error}</p>}
+                      {fileItem.error && (
+                        <p role="alert" className="px-2 text-xs text-destructive">
+                          {fileItem.error}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="py-2">
                       <Badge variant="secondary" className="text-xs">
@@ -383,8 +366,7 @@ export function FileUpload({
       {/* Ошибки выбора файлов */}
       {errors.length > 0 && (
         <Alert variant="destructive" className="mt-5">
-          <CircleAlertIcon
-          />
+          <CircleAlertIcon />
           <AlertTitle>Ошибка загрузки файлов</AlertTitle>
           <AlertDescription>
             {errors.map((error, index) => (

@@ -1,222 +1,327 @@
 "use client"
 
-import {ChevronDownIcon, EllipsisIcon, GripVerticalIcon, GroupIcon, ImportIcon, PlusIcon, Trash2Icon} from "lucide-react";
-import {Sortable, SortableItem, SortableItemHandle} from "@/components/reui/sortable";
-import {Button} from "@/components/ui/button";
-import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible";
+import { useState } from "react"
+import { ChevronDownIcon, FolderIcon, GripVerticalIcon, GroupIcon, PlusIcon } from "lucide-react"
+import { Sortable, SortableItem, SortableItemHandle } from "@/components/reui/sortable"
+import { Button } from "@/components/ui/button"
+import { Kbd } from "@/components/ui/kbd"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub,
-  DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger, DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  SectionLayout,
+  SectionLayoutActions,
+  SectionLayoutContent,
+  SectionLayoutDescription,
+  SectionLayoutHeader,
+  SectionLayoutHeaderRow,
+} from "@/components/ui/layouts/section"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  SectionLayout, SectionLayoutActions, SectionLayoutContent, SectionLayoutDescription,
-  SectionLayoutHeader, SectionLayoutHeaderRow,
-} from "@/components/ui/layouts/section";
-import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+  formatItemCount,
+  taskDifficultyLevels,
+  type TaskDifficultyLevel,
+  type TaskItemDraft,
+} from "./task-items-state"
 import {
-  formatItemCount, taskDifficultyLevels,
-  type TaskDifficultyLevel, type TaskItem,
-} from "./task-items-state";
-import {useTaskItems, type TaskItemsActions} from "./use-task-items";
-import TaskItemForm from "./task-item-form";
-import ExpandableText from "./expandable-text";
-import {cn} from "cn";
+  countTaskItems,
+  taskItemNumbers,
+  groupNodes,
+  isCategory,
+  selectedRoots,
+  updateChildren,
+  type TaskNode,
+} from "./task-tree"
+import { useTaskItems, type TaskItemsActions } from "./use-task-items"
+import TaskItemCard from "./task-item-card"
+import TaskNodeMenu from "./task-node-menu"
+import TaskItemLibrary from "./task-item-library"
+import ExpandableText from "./expandable-text"
+import TaskCategoryForm from "./task-category-form"
+import { shiftSelectionProps } from "./shift-selection"
+import { cn } from "cn"
 
-interface TaskItemCardProps {
-  item: TaskItem;
-  index: number;
-  difficultyLevel: TaskDifficultyLevel;
-  editing: boolean;
-  busy: boolean;
-  actions: TaskItemsActions;
+interface TaskTreeProps {
+  nodes: TaskNode[]
+  roots: TaskNode[]
+  numbers: Map<string, number>
+  difficultyLevel: TaskDifficultyLevel
+  parentId?: string | null
+  selected: string[]
+  ancestorSelected?: boolean
+  draft: TaskItemDraft | null
+  actions: TaskItemsActions
+  onRename: (id: string, title: string) => void
 }
 
-/** Карточка пункта: переключает просмотр и форму редактирования, показывает меню и ручку сортировки. Изменения списка делегирует actions. */
-function TaskItemCard({item, index, difficultyLevel, editing, busy, actions}: TaskItemCardProps) {
-  const difficultyLevelLabel = taskDifficultyLevels.find((entry) => entry.value === difficultyLevel)?.label;
-
+/** Рекурсивное дерево: отдельная сортировка у каждого родителя, категории перемещаются вместе с потомками. */
+function TaskTree({
+  nodes,
+  roots,
+  numbers,
+  difficultyLevel,
+  parentId = null,
+  selected,
+  ancestorSelected = false,
+  draft,
+  actions,
+  onRename,
+}: TaskTreeProps) {
   return (
-    <div className="flex items-start gap-2 rounded-md border p-3 transition-colors hover:bg-background sm:gap-3">
-      <SortableItemHandle
-        render={<Button type="button" variant="ghost" size="icon-sm" disabled={busy} />}
-        aria-label={`Переместить пункт ${index + 1}`}
-        className="self-center text-muted-foreground hover:text-foreground"
-      >
-        <GripVerticalIcon className="size-4" />
-      </SortableItemHandle>
-      <div className="grid size-9 shrink-0 select-none place-items-center rounded-xl bg-primary/10 text-xl font-semibold text-primary sm:size-16 sm:text-3xl">
-        {index + 1}
-      </div>
-      {editing ? (
-        <TaskItemForm
-          key={item.id}
-          item={item}
-          onSave={(values) => actions.saveDraft({difficultyLevel, values})}
-          onCancel={() => actions.cancelDraft({difficultyLevel})}
-        />
-      ) : (
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 flex-1 text-xl font-semibold">
-              <ExpandableText as="span" text={item.title} maxLength={160} maxLines={2} />
-              {!item.required && <span className="ml-2 text-sm font-normal text-muted-foreground">(необязательно)</span>}
-            </h3>
-            <span
-              className={cn(
-                "ml-auto shrink-0 rounded-full  px-2 py-0.5 text-sm font-light ",
-                difficultyLevel === "base" && "bg-dark-green/15 text-dark-green",
-                difficultyLevel === "medium" && "bg-warning-orange/15 text-warning-orange",
-                difficultyLevel === "maximum" && "bg-primary/15 text-primary",
-              )}
-            >
-              {difficultyLevelLabel}
-            </span>
-          </div>
-          <ExpandableText text={item.description} className="text-base" />
-          <Collapsible>
-            <CollapsibleTrigger
-              render={<Button type="button" variant="ghost" className="hover:bg-primary/5 aria-expanded:bg-primary/5 text-primary!" />}
-              className="group w-fit justify-start"
-            >
-              Критерии проверки
-              <ChevronDownIcon aria-hidden="true" className="transition-transform group-aria-expanded:rotate-180" />
-            </CollapsibleTrigger>
-            <CollapsibleContent keepMounted>
-              <ExpandableText
-                text={item.criteria}
-                maxLines={5}
-                maxLength={500}
-                className="mt-1 border-l border-primary bg-primary/5 px-3 py-2 text-sm text-primary"
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      )}
-      {editing ? <div className="size-8 shrink-0" /> : (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button type="button" variant="ghost" size="icon-sm" />}
-            aria-label={`Действия с пунктом «${item.title}»`}
-            disabled={busy}
+    <Sortable
+      value={nodes}
+      getItemValue={(node) => node.id}
+      onValueChange={(items) =>
+        actions.reorderItems({ difficultyLevel, parentCategoryId: parentId, items })
+      }
+      strategy="vertical"
+      className="space-y-2"
+    >
+      {nodes.map((node, index) => {
+        const editing = draft?.item.id === node.id
+        const checked = ancestorSelected || selected.includes(node.id)
+        const menu = (
+          <TaskNodeMenu
+            node={node}
+            roots={roots}
+            difficultyLevel={difficultyLevel}
+            index={index}
+            total={nodes.length}
+            parentId={parentId}
+            disabled={!!draft}
+            actions={actions}
+            onRename={onRename}
+          />
+        )
+        return (
+          <SortableItem
+            key={node.id}
+            value={node.id}
+            disabled={!!draft}
+            className="data-disabled:opacity-100"
+            {...shiftSelectionProps(
+              () =>
+                actions.toggleSelection({ difficultyLevel, nodeId: node.id, selected: !checked }),
+              !!draft || ancestorSelected,
+            )}
           >
-            <EllipsisIcon className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => actions.startEditing({difficultyLevel, itemId: item.id})}>
-              Изменить пункт
-            </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Перенести в…</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {taskDifficultyLevels.filter((target) => target.value !== difficultyLevel).map((target) => (
-                  <DropdownMenuItem
-                    key={target.value}
-                    onClick={() => actions.moveItem({difficultyLevel, targetDifficultyLevel: target.value, itemId: item.id})}
+            {isCategory(node) ? (
+              <Collapsible
+                defaultOpen
+                className={cn(
+                  "rounded-xl border p-2 sm:p-3",
+                  checked ? "border-primary bg-primary/5" : "bg-muted/20",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <SortableItemHandle
+                    render={
+                      <Button type="button" variant="ghost" size="icon-sm" disabled={!!draft} />
+                    }
+                    aria-label={`Переместить категорию "${node.title}"`}
                   >
-                    {target.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => actions.deleteItem({difficultyLevel, itemId: item.id})}
-            >
-              <Trash2Icon aria-hidden="true" />
-              Удалить пункт
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  );
+                    <GripVerticalIcon />
+                  </SortableItemHandle>
+                  <FolderIcon className="size-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <ExpandableText text={node.title} maxLength={100} className="font-semibold" />
+                    <span className="text-xs text-muted-foreground">
+                      {formatItemCount(countTaskItems(node.children))}
+                    </span>
+                  </div>
+                  <CollapsibleTrigger
+                    render={<Button type="button" variant="ghost" size="icon-sm" />}
+                    className="group"
+                    aria-label={`Свернуть или раскрыть категорию «${node.title}»`}
+                  >
+                    <ChevronDownIcon className="transition-transform group-aria-expanded:rotate-180" />
+                  </CollapsibleTrigger>
+                  {menu}
+                </div>
+                <CollapsibleContent keepMounted>
+                  <div className="mt-3 border-l pl-2 sm:pl-4">
+                    <TaskTree
+                      nodes={node.children}
+                      roots={roots}
+                      numbers={numbers}
+                      difficultyLevel={difficultyLevel}
+                      parentId={node.id}
+                      selected={selected}
+                      ancestorSelected={checked}
+                      draft={draft}
+                      actions={actions}
+                      onRename={onRename}
+                    />
+                    {!node.children.length && (
+                      <p className="p-3 text-sm text-muted-foreground">
+                        В категории пока нет пунктов.
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <TaskItemCard
+                item={editing ? draft.item : node}
+                number={numbers.get(node.id)!}
+                difficultyLevel={difficultyLevel}
+                editing={editing}
+                busy={!!draft}
+                actions={actions}
+                selected={checked}
+                menu={menu}
+              />
+            )}
+          </SortableItem>
+        )
+      })}
+    </Sortable>
+  )
 }
 
-/** Управляет тремя уровнями сложности и списками пунктов. Вкладки сохраняют формы смонтированными, чтобы не терять незавершённый ввод. */
-export default function TaskItemsEditor({initialItems}: {initialItems: TaskItem[]}) {
-  const {state, actions} = useTaskItems(initialItems);
+/** Управляет деревьями трёх сложностей; формы остаются смонтированными при смене вкладок и сворачивании категорий. */
+export default function TaskItemsEditor({ initialItems }: { initialItems: TaskNode[] }) {
+  const { state, actions } = useTaskItems(initialItems)
+  const [naming, setNaming] = useState<{
+    categoryId?: string
+    title: string
+  } | null>(null)
+  const difficultyLevel = state.activeDifficultyLevel
+  const roots = state.nodesByDifficultyLevel[difficultyLevel]
+  const selected = state.selectedByDifficultyLevel[difficultyLevel]
+
+  // При добавлении нового пункта ограничиваем действия
+  const busy = !!state.draftsByDifficultyLevel[difficultyLevel]
+
+  const selectionCount = selectedRoots(roots, selected).length
+  const canGroup =
+    selectionCount > 0 &&
+    groupNodes(roots, selected, "__group-preview__", "Категория", difficultyLevel) !== null
+
+  const onRename = (categoryId: string, title: string) => setNaming({ categoryId, title })
 
   return (
     <SectionLayout>
       <SectionLayoutHeaderRow>
         <SectionLayoutHeader>Пункты задачи</SectionLayoutHeader>
         <SectionLayoutActions>
-          <Button type="button" variant="outline" size="lg">Сгруппировать <GroupIcon /></Button>
-          <Button type="button" variant="outline" size="lg">Импортировать пункты <ImportIcon /></Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={busy || !canGroup}
+            onClick={() => setNaming({ title: "Новая категория" })}
+          >
+            Сгруппировать <GroupIcon />
+          </Button>
+          <TaskItemLibrary
+            difficultyLevel={difficultyLevel}
+            disabled={busy}
+            onImport={(nodes) => actions.importNodes({ difficultyLevel, nodes })}
+          />
           <Button
             type="button"
             size="lg"
-            disabled={!!state.draftsByDifficultyLevel[state.activeDifficultyLevel]}
-            onClick={() => actions.startCreating({difficultyLevel: state.activeDifficultyLevel})}
+            disabled={busy}
+            onClick={() => actions.startCreating({ difficultyLevel })}
           >
             Добавить пункт <PlusIcon />
           </Button>
         </SectionLayoutActions>
       </SectionLayoutHeaderRow>
-      <SectionLayoutDescription>Что конкретно должен выполнить пользователь по списку</SectionLayoutDescription>
+      <SectionLayoutDescription>
+        Что конкретно должен выполнить пользователь по списку
+      </SectionLayoutDescription>
+      {selectionCount > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span>Выбрано: {selectionCount}</span>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => actions.clearSelection({ difficultyLevel })}
+          >
+            Снять выделение
+          </Button>
+          {!canGroup && (
+            <span role="status" className="text-destructive">
+              Группировка превысит три уровня категорий.
+            </span>
+          )}
+        </div>
+      )}
       <SectionLayoutContent>
         <Tabs
-          value={state.activeDifficultyLevel}
+          value={difficultyLevel}
           onValueChange={(value) => {
-            const difficultyLevel = taskDifficultyLevels.find((entry) => entry.value === value);
-            if (difficultyLevel) actions.selectDifficultyLevel({difficultyLevel: difficultyLevel.value});
+            const level = taskDifficultyLevels.find((entry) => entry.value === value)
+            if (level) actions.selectDifficultyLevel({ difficultyLevel: level.value })
           }}
         >
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList variant="line" aria-label="Сложность пунктов задачи">
-              {taskDifficultyLevels.map((difficultyLevel) => (
-                <TabsTrigger key={difficultyLevel.value} value={difficultyLevel.value}>
-                  {difficultyLevel.label} ({formatItemCount(state.itemsByDifficultyLevel[difficultyLevel.value].length)})
+              {taskDifficultyLevels.map((level) => (
+                <TabsTrigger key={level.value} value={level.value}>
+                  {level.label} (
+                  {formatItemCount(countTaskItems(state.nodesByDifficultyLevel[level.value]))})
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
-          {taskDifficultyLevels.map((difficultyLevel) => {
-            const items = state.itemsByDifficultyLevel[difficultyLevel.value];
-            const draft = state.draftsByDifficultyLevel[difficultyLevel.value];
-            const visibleItems = draft?.isNew ? [...items, draft.item] : items;
-
+          {taskDifficultyLevels.map((level) => {
+            const nodes = state.nodesByDifficultyLevel[level.value]
+            const draft = state.draftsByDifficultyLevel[level.value]
+            const visibleNodes = draft?.isNew
+              ? updateChildren(nodes, draft.parentCategoryId, (children) => [
+                  ...children,
+                  draft.item,
+                ])
+              : nodes
             return (
               <TabsContent
-                key={difficultyLevel.value}
-                value={difficultyLevel.value}
+                key={level.value}
+                value={level.value}
                 keepMounted
                 className="max-h-[min(65vh,48rem)] overflow-y-auto overscroll-contain p-1 py-4 scrollbar-gutter-stable border-b"
               >
-                {!visibleItems.length && (
+                {!visibleNodes.length && (
                   <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">
-                    Пока нет пунктов. Добавьте новый пункт или перенесите его из другой сложности.
+                    Пока нет пунктов. Добавьте новый пункт или импортируйте из библиотеки.
                   </p>
                 )}
-                <Sortable
-                  value={visibleItems}
-                  onValueChange={(items) => actions.reorderItems({difficultyLevel: difficultyLevel.value, items})}
-                  getItemValue={(item) => item.id}
-                  strategy="vertical"
-                  className="space-y-2"
-                >
-                  {visibleItems.map((item, index) => {
-                    const editing = draft?.item.id === item.id;
-                    return (
-                      <SortableItem key={item.id} value={item.id} disabled={!!draft} className="data-disabled:opacity-100">
-                        <TaskItemCard
-                          item={editing ? draft.item : item}
-                          index={index}
-                          difficultyLevel={difficultyLevel.value}
-                          editing={editing}
-                          busy={!!draft}
-                          actions={actions}
-                        />
-                      </SortableItem>
-                    );
-                  })}
-                </Sortable>
+                <TaskTree
+                  nodes={visibleNodes}
+                  roots={nodes}
+                  numbers={taskItemNumbers(visibleNodes)}
+                  difficultyLevel={level.value}
+                  selected={state.selectedByDifficultyLevel[level.value]}
+                  draft={draft}
+                  actions={actions}
+                  onRename={onRename}
+                />
               </TabsContent>
-            );
+            )
           })}
         </Tabs>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Удерживайте <Kbd>Shift</Kbd> и кликайте по пунктам или категориям, чтобы выделить их.
+          Повторный <Kbd>Shift</Kbd> + клик снимает выделение.
+        </p>
       </SectionLayoutContent>
+      {naming && (
+        <TaskCategoryForm
+          title={naming.title}
+          editing={!!naming.categoryId}
+          disabled={busy || (!naming.categoryId && !canGroup)}
+          onCancel={() => setNaming(null)}
+          onSave={({ title }) => {
+            if (busy) return
+            if (naming.categoryId)
+              actions.renameCategory({ difficultyLevel, categoryId: naming.categoryId, title })
+            else if (canGroup) actions.groupSelection({ difficultyLevel, title })
+            else return
+            setNaming(null)
+          }}
+        />
+      )}
     </SectionLayout>
-  );
+  )
 }

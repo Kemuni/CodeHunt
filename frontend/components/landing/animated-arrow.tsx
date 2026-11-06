@@ -1,26 +1,27 @@
-"use client";
+"use client"
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react"
 
 type AnimatedArrowProps = {
-  direction: "left" | "right";
-};
+  direction: "left" | "right"
+}
 
 const arrowPaths = {
   left: "M 3 3 C 8 35, 25 70, 58 88 C 88 105, 120 102, 160 84 C 180 74, 177 51, 161 51 C 142 50, 120 73, 110 96 C 101 117, 116 139, 145 151 C 180 165, 218 176, 246 179",
-  right: "M 296 3 C 304 22, 310 48, 295 75 C 269 106, 232 110, 199 100 C 176 92, 158 82, 134 100 C 116 116, 99 150, 87 164 C 68 183, 53 186, 35 186",
-};
+  right:
+    "M 296 3 C 304 22, 310 48, 295 75 C 269 106, 232 110, 199 100 C 176 92, 158 82, 134 100 C 116 116, 99 150, 87 164 C 68 183, 53 186, 35 186",
+}
 
 const arrowHeads = {
   left: "M 258 164 L 276 181 L 258 199",
   right: "M 21 169 L 3 185 L 19 201",
-};
+}
 
 export function AnimatedArrow({ direction }: AnimatedArrowProps) {
-  const reducedMotion = useReducedMotion();
-  const isLeft = direction === "left";
-  const width = isLeft ? 279 : 309;
-  const height = isLeft ? 200 : 205;
+  const reducedMotion = useReducedMotion()
+  const isLeft = direction === "left"
+  const width = isLeft ? 279 : 309
+  const height = isLeft ? 200 : 205
 
   return (
     <svg
@@ -60,5 +61,5 @@ export function AnimatedArrow({ direction }: AnimatedArrowProps) {
         strokeLinejoin="miter"
       />
     </svg>
-  );
+  )
 }

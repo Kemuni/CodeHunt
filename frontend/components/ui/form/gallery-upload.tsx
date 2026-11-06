@@ -1,28 +1,20 @@
 "use client"
 
-import {useState} from "react"
+import { useState } from "react"
+import Image from "next/image"
 import {
   formatBytes,
   useFileUpload,
   type FileMetadata,
   type FileWithPreview,
 } from "@/lib/hooks/use-file-upload"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/reui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
 import { cn } from "cn"
 
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
-import { CircleAlertIcon, ImageIcon, UploadIcon, XIcon, ZoomInIcon } from 'lucide-react'
+import { CircleAlertIcon, ImageIcon, UploadIcon, XIcon, ZoomInIcon } from "lucide-react"
 
 interface GalleryUploadProps {
   maxFiles?: number
@@ -35,17 +27,15 @@ interface GalleryUploadProps {
 
 /** Локальный выбор и предпросмотр изображений. Передаёт список через onFilesChange; не регистрируется в Form и не отправляет файлы на сервер. */
 export function GalleryUpload({
-                                maxFiles = 10,
-                                maxSize = 5 * 1024 * 1024, // 5MB
-                                accept = "image/*",
-                                multiple = true,
-                                className,
-                                onFilesChange,
-                              }: GalleryUploadProps) {
+  maxFiles = 10,
+  maxSize = 5 * 1024 * 1024, // 5MB
+  accept = "image/*",
+  multiple = true,
+  className,
+  onFilesChange,
+}: GalleryUploadProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>(
-    {}
-  )
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({})
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
   const [
@@ -81,7 +71,7 @@ export function GalleryUpload({
           "relative rounded-lg border border-dashed p-8 text-center transition-colors",
           isDragging
             ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+            : "border-muted-foreground/25 hover:border-muted-foreground/50",
         )}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -94,14 +84,11 @@ export function GalleryUpload({
           <div
             className={cn(
               "flex h-16 w-16 items-center justify-center rounded-full",
-              isDragging ? "bg-primary/10" : "bg-muted"
+              isDragging ? "bg-primary/10" : "bg-muted",
             )}
           >
             <ImageIcon
-              className={cn(
-                "h-5 w-5",
-                isDragging ? "text-primary" : "text-muted-foreground"
-              )}
+              className={cn("h-5 w-5", isDragging ? "text-primary" : "text-muted-foreground")}
             />
           </div>
 
@@ -111,13 +98,12 @@ export function GalleryUpload({
               Перетащите изображения сюда или нажмите на кнопку
             </p>
             <p className="text-muted-foreground text-xs">
-              PNG, JPG, GIF не более {formatBytes(maxSize)} каждый (максимум {maxFiles}{" "}
-              файлов)
+              PNG, JPG, GIF не более {formatBytes(maxSize)} каждый (максимум {maxFiles} файлов)
             </p>
           </div>
 
           <Button onClick={openFileDialog}>
-            <UploadIcon  className="h-4 w-4" />
+            <UploadIcon className="h-4 w-4" />
             Выбрать изображения
           </Button>
         </div>
@@ -131,10 +117,7 @@ export function GalleryUpload({
               Галерея ({files.length}/{maxFiles})
             </h4>
             <div className="text-muted-foreground text-xs">
-              Всего:{" "}
-              {formatBytes(
-                files.reduce((acc, file) => acc + file.file.size, 0)
-              )}
+              Всего: {formatBytes(files.reduce((acc, file) => acc + file.file.size, 0))}
             </div>
           </div>
           <Button onClick={clearFiles} variant="outline" size="sm">
@@ -147,10 +130,7 @@ export function GalleryUpload({
       {files.length > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {files.map((fileItem) => (
-            <div
-              key={fileItem.id}
-              className="group/item relative aspect-square"
-            >
+            <div key={fileItem.id} className="group/item relative aspect-square">
               {isImage(fileItem.file) && fileItem.preview ? (
                 <>
                   {loadingImages[fileItem.id] && (
@@ -158,9 +138,12 @@ export function GalleryUpload({
                       <Spinner className="text-muted-foreground size-6" />
                     </div>
                   )}
-                  <img
+                  <Image
                     src={fileItem.preview}
                     alt={fileItem.file.name}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
                     onLoad={() =>
                       setLoadingImages((prev) => ({
                         ...prev,
@@ -169,15 +152,13 @@ export function GalleryUpload({
                     }
                     className={cn(
                       "h-full w-full rounded-lg border object-cover transition-all group-hover/item:scale-105",
-                      loadingImages[fileItem.id]
-                        ? "opacity-0"
-                        : "opacity-100"
+                      loadingImages[fileItem.id] ? "opacity-0" : "opacity-100",
                     )}
                   />
                 </>
               ) : (
                 <div className="bg-muted flex h-full w-full items-center justify-center rounded-lg border">
-                  <ImageIcon  className="text-muted-foreground h-8 w-8" />
+                  <ImageIcon className="text-muted-foreground h-8 w-8" />
                 </div>
               )}
 
@@ -211,12 +192,8 @@ export function GalleryUpload({
 
               {/* File Info */}
               <div className="absolute right-0 bottom-0 left-0 rounded-b-lg bg-black/70 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <p className="truncate text-xs font-medium">
-                  {fileItem.file.name}
-                </p>
-                <p className="text-xs text-gray-300">
-                  {formatBytes(fileItem.file.size)}
-                </p>
+                <p className="truncate text-xs font-medium">{fileItem.file.name}</p>
+                <p className="text-xs text-gray-300">{formatBytes(fileItem.file.size)}</p>
               </div>
             </div>
           ))}
@@ -239,15 +216,12 @@ export function GalleryUpload({
       )}
 
       {/* Image Preview Dialog */}
-      <Dialog
-        open={!!selectedImage}
-        onOpenChange={(open) => !open && setSelectedImage(null)}
-      >
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
         <DialogContent className="[&_[data-slot=dialog-close]]:text-muted-foreground [&_[data-slot=dialog-close]]:hover:text-foreground [&_[data-slot=dialog-close]]:bg-background w-full border-none bg-transparent p-0 shadow-none sm:max-w-xl [&_[data-slot=dialog-close]]:-end-7 [&_[data-slot=dialog-close]]:-top-7 [&_[data-slot=dialog-close]]:size-7 [&_[data-slot=dialog-close]]:rounded-full">
           <DialogHeader className="sr-only">
             <DialogTitle>Предпросмотр изображения</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center">
+          <div className="relative flex h-[min(80dvh,40rem)] w-full items-center justify-center">
             {selectedImage && (
               <>
                 {isPreviewLoading && (
@@ -255,13 +229,16 @@ export function GalleryUpload({
                     <Spinner className="size-8 text-white" />
                   </div>
                 )}
-                <img
+                <Image
                   src={selectedImage}
                   alt="Предпросмотр"
+                  fill
+                  unoptimized
+                  sizes="(min-width: 640px) 36rem, 100vw"
                   onLoad={() => setIsPreviewLoading(false)}
                   className={cn(
-                    "h-full w-auto rounded-lg object-contain transition-opacity duration-300",
-                    isPreviewLoading ? "opacity-0" : "opacity-100"
+                    "rounded-lg object-contain transition-opacity duration-300",
+                    isPreviewLoading ? "opacity-0" : "opacity-100",
                   )}
                 />
               </>

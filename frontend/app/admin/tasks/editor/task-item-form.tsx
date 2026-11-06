@@ -1,22 +1,29 @@
 "use client"
 
-import Form from "@/components/ui/form/form";
-import FormField from "@/components/ui/form/form-field";
-import FormInput from "@/components/ui/form/input";
-import FormTextarea from "@/components/ui/form/textarea";
-import FormCheckbox from "@/components/ui/form/checkbox";
-import {Button} from "@/components/ui/button";
-import {taskDifficultyLevels, taskItemFieldsSchema, type TaskItem, type TaskItemFields} from "./task-items-state";
+import Form from "@/components/ui/form/form"
+import FormField from "@/components/ui/form/form-field"
+import FormInput from "@/components/ui/form/input"
+import FormTextarea from "@/components/ui/form/textarea"
+import FormCheckbox from "@/components/ui/form/checkbox"
+import { Button } from "@/components/ui/button"
+import {
+  taskDifficultyLevels,
+  taskItemFieldsSchema,
+  type TaskItem,
+  type TaskItemFields,
+} from "./task-items-state"
 
 interface TaskItemFormProps {
-  item: TaskItem;
-  onSave: (values: TaskItemFields) => void;
-  onCancel: () => void;
+  item: TaskItem
+  onSave: (values: TaskItemFields) => void
+  onCancel: () => void
 }
 
 /** Редактирует один пункт через Form и Zod. Хранит ввод и ошибки до сохранения; onSave получает проверенные значения без изменения исходного пункта. */
-export default function TaskItemForm({item, onSave, onCancel}: TaskItemFormProps) {
-  const difficultyLevelLabel = taskDifficultyLevels.find((level) => level.value === item.difficultyLevel)?.label;
+export default function TaskItemForm({ item, onSave, onCancel }: TaskItemFormProps) {
+  const difficultyLevelLabel = taskDifficultyLevels.find(
+    (level) => level.value === item.difficultyLevel,
+  )?.label
 
   return (
     <Form
@@ -33,7 +40,13 @@ export default function TaskItemForm({item, onSave, onCancel}: TaskItemFormProps
           labelClassName="sr-only"
           className="min-w-0 flex-1 basis-40"
         >
-          <FormInput name="title" placeholder="Название пункта" className="text-xl font-semibold" required autoFocus />
+          <FormInput
+            name="title"
+            placeholder="Название пункта"
+            className="text-xl font-semibold"
+            required
+            autoFocus
+          />
         </FormField>
         <FormField
           name="required"
@@ -55,9 +68,11 @@ export default function TaskItemForm({item, onSave, onCancel}: TaskItemFormProps
         <FormTextarea name="criteria" placeholder="Как проверить выполнение пункта" required />
       </FormField>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>Отменить</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Отменить
+        </Button>
         <Button type="submit">Сохранить</Button>
       </div>
     </Form>
-  );
+  )
 }

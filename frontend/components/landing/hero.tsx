@@ -1,13 +1,13 @@
-﻿"use client";
+﻿"use client"
 
-import Image from "next/image";
-import { ArrowRight } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import Image from "next/image"
+import { ArrowRight } from "lucide-react"
+import { motion, useReducedMotion } from "motion/react"
+import { useEffect, useState } from "react"
 
-import { AnimatedArrow } from "@/components/landing/animated-arrow";
-import {Button} from "@/components/ui/button";
-import Link from "next/link";
+import { AnimatedArrow } from "@/components/landing/animated-arrow"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 const prompts = [
   "Не знаю с чего начать...",
@@ -15,7 +15,7 @@ const prompts = [
   "Как устроиться на работу...",
   "Как собрать сильное портфолио...",
   "Как подготовиться к собеседованию...",
-];
+]
 
 const leftBadges = [
   {
@@ -34,7 +34,7 @@ const leftBadges = [
     className: "bottom-0 right-30 2xl:right-22",
     label: "Найти работу",
   },
-];
+]
 
 const rightBadges = [
   {
@@ -53,7 +53,7 @@ const rightBadges = [
     className: "bottom-0 left-24 2xl:left-27",
     label: "Убедиться в навыках",
   },
-];
+]
 
 const decorations = [
   {
@@ -98,45 +98,45 @@ const decorations = [
     width: 0,
     hideOnMobile: true,
   },
-];
+]
 
 type Badge = {
-  className: string;
-  label: string;
-};
+  className: string
+  label: string
+}
 
 type BadgeGroupProps = {
-  badges: Badge[];
-  className: string;
-};
+  badges: Badge[]
+  className: string
+}
 
 function Typewriter() {
-  const reducedMotion = useReducedMotion();
-  const [index, setIndex] = useState(0);
-  const [length, setLength] = useState(0);
-  const phrase = prompts[index];
+  const reducedMotion = useReducedMotion()
+  const [index, setIndex] = useState(0)
+  const [length, setLength] = useState(0)
+  const phrase = prompts[index]
 
   useEffect(() => {
     if (reducedMotion) {
-      return;
+      return
     }
 
-    const isComplete = length === phrase.length;
+    const isComplete = length === phrase.length
     const timeout = window.setTimeout(
       () => {
         if (isComplete) {
-          setIndex((currentIndex) => (currentIndex + 1) % prompts.length);
-          setLength(0);
-          return;
+          setIndex((currentIndex) => (currentIndex + 1) % prompts.length)
+          setLength(0)
+          return
         }
 
-        setLength((currentLength) => currentLength + 1);
+        setLength((currentLength) => currentLength + 1)
       },
       isComplete ? 1800 : 52,
-    );
+    )
 
-    return () => window.clearTimeout(timeout);
-  }, [length, phrase.length, reducedMotion]);
+    return () => window.clearTimeout(timeout)
+  }, [length, phrase.length, reducedMotion])
 
   return (
     <div
@@ -155,7 +155,7 @@ function Typewriter() {
         aria-hidden="true"
       />
     </div>
-  );
+  )
 }
 
 function BadgeGroup({ badges, className }: BadgeGroupProps) {
@@ -175,7 +175,7 @@ function BadgeGroup({ badges, className }: BadgeGroupProps) {
         </span>
       ))}
     </div>
-  );
+  )
 }
 
 export function Hero() {
@@ -264,17 +264,17 @@ export function Hero() {
                    gap-5 2xl:top-[79%] 2xl:gap-6"
       >
         <Link href="/tasks">
-          <Button variant='default' size='xl'>
+          <Button variant="default" size="xl">
             Каталог задач
             <ArrowRight data-icon="inline-end" aria-hidden="true" />
           </Button>
         </Link>
         <Link href="/for-company">
-          <Button variant='outline' size='xl'>
+          <Button variant="outline" size="xl">
             Для компаний
           </Button>
         </Link>
       </div>
     </section>
-  );
+  )
 }

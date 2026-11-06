@@ -1,24 +1,32 @@
 "use client"
 
-import {Controller, useFormContext, type ControllerProps} from "react-hook-form";
-import type {ComponentProps} from "react";
-import {Slider} from "@/components/ui/slider";
+import { Controller, useFormContext, type ControllerProps } from "react-hook-form"
+import type { ComponentProps } from "react"
+import { Slider } from "@/components/ui/slider"
 
 export interface FormSliderProps extends Omit<
   ComponentProps<typeof Slider>,
   "children" | "value" | "defaultValue" | "onValueChange" | "inputRef"
 > {
-  name: string;
-  range?: boolean;
-  rules?: ControllerProps["rules"];
+  name: string
+  range?: boolean
+  rules?: ControllerProps["rules"]
 }
 
 /** Поле Form для числа или диапазона: range задаёт два ползунка, подписи показывают границы и выбранные значения. */
 export default function FormSlider({
-  name, rules, disabled, range = false, min = 0, max = 100, id = name, onBlur, ...props
+  name,
+  rules,
+  disabled,
+  range = false,
+  min = 0,
+  max = 100,
+  id = name,
+  onBlur,
+  ...props
 }: FormSliderProps) {
-  const { control } = useFormContext();
-  const defaultValue = range ? [min, max] : min;
+  const { control } = useFormContext()
+  const defaultValue = range ? [min, max] : min
 
   return (
     <Controller
@@ -28,7 +36,7 @@ export default function FormSlider({
       disabled={disabled}
       defaultValue={defaultValue}
       render={({ field, fieldState }) => {
-        const value = field.value ?? defaultValue;
+        const value = field.value ?? defaultValue
 
         return (
           <div className="flex w-full flex-col gap-2">
@@ -51,9 +59,9 @@ export default function FormSlider({
               aria-invalid={fieldState.invalid}
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) {
-                  field.onBlur();
+                  field.onBlur()
                 }
-                onBlur?.(event);
+                onBlur?.(event)
               }}
             />
             <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
@@ -61,8 +69,8 @@ export default function FormSlider({
               <span>Макс.: {max}</span>
             </div>
           </div>
-        );
+        )
       }}
     />
-  );
+  )
 }
