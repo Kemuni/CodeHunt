@@ -1,11 +1,11 @@
-import Image from "next/image";
+import Image from "next/image"
 
 const links = [
   { href: "#top", label: "Главная" },
-  { href: "#practice", label: "Каталог задач" },
+  { href: "/tasks", label: "Каталог задач" },
   { href: "#portfolio", label: "Топ решений" },
   { href: "#how-to-start", label: "Как получить портфолио" },
-];
+]
 
 export function SiteFooter() {
   return (
@@ -31,7 +31,7 @@ export function SiteFooter() {
           aria-hidden="true"
         />
       </div>
-      
+
       <Image
         className="pointer-events-none absolute h-auto right-8 top-12 z-0 hidden
                   w-50 lg:block 2xl:w-62"
@@ -129,5 +129,5 @@ export function SiteFooter() {
         </address>
       </div>
     </footer>
-  );
+  )
 }

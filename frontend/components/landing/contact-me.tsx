@@ -1,48 +1,46 @@
-"use client";
+"use client"
 
-import Image from "next/image";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { cn } from "cn";
-import type { z } from "zod";
+import Image from "next/image"
+import { useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { cn } from "cn"
+import type { z } from "zod"
 
-import Form from "@/components/ui/form/form";
-import FormInput from "@/components/ui/form/input";
-import FormField from "@/components/ui/form/form-field";
-import FormTextarea from "@/components/ui/form/textarea";
-import FormCheckbox from "@/components/ui/form/checkbox";
-import { Button } from "@/components/ui/button";
+import Form from "@/components/ui/form/form"
+import FormInput from "@/components/ui/form/input"
+import FormField from "@/components/ui/form/form-field"
+import FormTextarea from "@/components/ui/form/textarea"
+import FormCheckbox from "@/components/ui/form/checkbox"
+import { Button } from "@/components/ui/button"
 
-import { UserType } from "@/lib/types";
-import { 
-  companyContactMeSchema, 
-  candidateContactMeSchema 
-} from "@/schemas/contact-schemas"; 
-import { 
-  sendEmployerContactForm, 
-  sendCandidateContactForm 
-} from "@/lib/api/contact";
+import { UserType } from "@/lib/types"
+import { companyContactMeSchema, candidateContactMeSchema } from "@/schemas/contact-schemas"
+import { sendEmployerContactForm, sendCandidateContactForm } from "@/lib/api/contact"
 
-type EmployerFormOutput = z.output<typeof companyContactMeSchema>;
-type CandidateFormOutput = z.output<typeof candidateContactMeSchema>;
+type EmployerFormOutput = z.output<typeof companyContactMeSchema>
+type CandidateFormOutput = z.output<typeof candidateContactMeSchema>
+type ContactFormPayload = {
+  type: UserType
+  data: EmployerFormOutput | CandidateFormOutput
+}
 
 export default function ContactMeSection({ type }: { type: UserType }) {
   const mutation = useMutation({
-    mutationFn: (payload: { type: UserType; data: EmployerFormOutput | CandidateFormOutput }) => {
+    mutationFn: (payload: ContactFormPayload) => {
       if (payload.type === "employer") {
-        return sendEmployerContactForm(payload.data as EmployerFormOutput);
+        return sendEmployerContactForm(payload.data as EmployerFormOutput)
       }
-      return sendCandidateContactForm(payload.data as CandidateFormOutput);
+      return sendCandidateContactForm(payload.data as CandidateFormOutput)
     },
     onSuccess: () => {
-      toast.success("Заявка успешно отправлена! Мы свяжемся с вами.");
+      toast.success("Заявка успешно отправлена! Мы свяжемся с вами.")
     },
     onError: (e: Error) => {
-      toast.error(e.message || "Не удалось отправить форму");
+      toast.error(e.message || "Не удалось отправить форму")
     },
-  });
+  })
 
-  const isEmployer = type === "employer";
+  const isEmployer = type === "employer"
 
   return (
     <div
@@ -95,9 +93,7 @@ export default function ContactMeSection({ type }: { type: UserType }) {
         <h2 className="font-heading text-5xl font-medium tracking-wide text-primary">
           Заполните форму
         </h2>
-        <h5 className="text-2xl text-black">
-          и мы обязательно свяжемся!
-        </h5>
+        <h5 className="text-2xl text-black">и мы обязательно свяжемся!</h5>
       </span>
 
       <div className="z-20">
@@ -114,15 +110,15 @@ export default function ContactMeSection({ type }: { type: UserType }) {
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function EmployerFields({
   onSubmit,
   isPending,
 }: {
-  onSubmit: (data: EmployerFormOutput) => void;
-  isPending: boolean;
+  onSubmit: (data: EmployerFormOutput) => void
+  isPending: boolean
 }) {
   return (
     <Form
@@ -176,24 +172,19 @@ function EmployerFields({
         <FormCheckbox name="agreeToSubmit" />
       </FormField>
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={isPending}
-        className="w-fit col-span-2 m-auto mt-6"
-      >
+      <Button type="submit" size="lg" disabled={isPending} className="w-fit col-span-2 m-auto mt-6">
         {isPending ? "Отправка..." : "Отправить"}
       </Button>
     </Form>
-  );
+  )
 }
 
 function CandidateFields({
   onSubmit,
   isPending,
 }: {
-  onSubmit: (data: CandidateFormOutput) => void;
-  isPending: boolean;
+  onSubmit: (data: CandidateFormOutput) => void
+  isPending: boolean
 }) {
   return (
     <Form
@@ -215,9 +206,9 @@ function CandidateFields({
         <FormField name="email" label="Электронная почта">
           <FormInput name="email" placeholder="example@example.com" />
         </FormField>
-        <FormField 
-          name="content" 
-          label="Сообщение или предложение" 
+        <FormField
+          name="content"
+          label="Сообщение или предложение"
           className="row-span-2 flex flex-col"
         >
           <FormTextarea
@@ -226,8 +217,8 @@ function CandidateFields({
             className="flex-1 min-h-[120px] resize-none"
           />
         </FormField>
-      </div> 
-      
+      </div>
+
       <FormField
         name="agreeHRMails"
         orientation="horizontal"
@@ -245,14 +236,9 @@ function CandidateFields({
         <FormCheckbox name="agreeToSubmit" />
       </FormField>
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={isPending}
-        className="w-fit col-span-2 m-auto mt-6"
-      >
+      <Button type="submit" size="lg" disabled={isPending} className="w-fit col-span-2 m-auto mt-6">
         {isPending ? "Отправка..." : "Отправить"}
       </Button>
     </Form>
-  );
+  )
 }

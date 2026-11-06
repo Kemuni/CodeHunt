@@ -1,31 +1,40 @@
 "use client"
 
-import {Controller, useFormContext} from "react-hook-form";
-import {ComponentProps} from "react";
-import {Checkbox} from "@/components/ui/checkbox";
-
+import { Controller, useFormContext } from "react-hook-form"
+import { ComponentProps } from "react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useFormFieldId } from "./form-field"
 
 interface FormCheckboxProps extends ComponentProps<typeof Checkbox> {
   name: string
 }
 
-
-export default function FormCheckbox({
-  name, ...props
-}: FormCheckboxProps) {
-  const { control, formState: { errors } } = useFormContext()
-  const error = errors?.[name]
+/** Связывает чекбокс с boolean-полем родительского Form, включая изменение, потерю фокуса и фокус при ошибке. */
+export default function FormCheckbox({ name, id, disabled, onBlur, ...props }: FormCheckboxProps) {
+  const { control } = useFormContext()
+  const controlId = useFormFieldId(name, id)
 
   return (
     <Controller
       control={control}
-      render={
-        ({ field }) => (
-          <Checkbox id={name} aria-invalid={!!error} {...props}
-                    checked={field.value} onCheckedChange={field.onChange} />
-        )
-      }
+      disabled={disabled}
+      render={({ field, fieldState }) => (
+        <Checkbox
+          {...props}
+          id={controlId}
+          name={field.name}
+          ref={field.ref}
+          disabled={field.disabled}
+          aria-invalid={fieldState.invalid}
+          checked={field.value ?? false}
+          onCheckedChange={field.onChange}
+          onBlur={(event) => {
+            field.onBlur()
+            onBlur?.(event)
+          }}
+        />
+      )}
       name={name}
     />
-  );
+  )
 }

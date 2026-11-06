@@ -1,24 +1,18 @@
-import Image from "next/image";
-import Link from "next/link";
-import {Button} from "@/components/ui/button";
+import Image from "next/image"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 const navigationLinks = [
-  { href: "#practice", label: "Каталог задач" },
+  { href: "/tasks", label: "Каталог задач" },
   { href: "#portfolio", label: "Топ решений" },
   { href: "#why", label: "Направления" },
-];
+]
 
 export function SiteHeader() {
   return (
-    <header className="relative z-999 flex h-23.5 w-full items-center px-21.25 xl:px-42">
+    <header className="relative z-49 flex h-23.5 w-full items-center px-21.25 xl:px-42">
       <Link href={"/"} className="block shrink-0">
-        <Image
-          src="/figma/our-logo.svg"
-          alt="Track dev"
-          width={90}
-          height={64}
-          priority
-        />
+        <Image src="/figma/our-logo.svg" alt="Track dev" width={90} height={64} priority />
       </Link>
 
       <nav
@@ -45,5 +39,5 @@ export function SiteHeader() {
         </Link>
       </div>
     </header>
-  );
+  )
 }

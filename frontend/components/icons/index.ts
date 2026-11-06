@@ -1,3 +1,3 @@
-import DoubleSlash from "./double-slash";
+import DoubleSlash from "./double-slash"
 
-export { DoubleSlash };
+export { DoubleSlash }

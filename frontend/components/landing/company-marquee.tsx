@@ -1,6 +1,6 @@
-import Image from "next/image";
+import Image from "next/image"
 
-import {DoubleSlash} from "@/components/icons";
+import { DoubleSlash } from "@/components/icons"
 
 const companies = [
   {
@@ -33,11 +33,11 @@ const companies = [
     src: "/figma/company-logos/wildberries.svg",
     width: 387,
   },
-];
+]
 
 type CompanyLogosProps = {
-  isDuplicate?: boolean;
-};
+  isDuplicate?: boolean
+}
 
 function CompanyLogos({ isDuplicate = false }: CompanyLogosProps) {
   return (
@@ -53,12 +53,15 @@ function CompanyLogos({ isDuplicate = false }: CompanyLogosProps) {
         />
       ))}
     </div>
-  );
+  )
 }
 
 export function CompanyMarquee() {
   return (
-    <section className="flex flex-col overflow-hidden pt-8 gap-20 w-full" aria-labelledby="company-marquee-title" >
+    <section
+      className="flex flex-col overflow-hidden pt-8 gap-20 w-full"
+      aria-labelledby="company-marquee-title"
+    >
       {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
         <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-primary/50">
           <DoubleSlash className="size-4" aria-hidden="true" />
@@ -72,7 +75,10 @@ export function CompanyMarquee() {
         </h2>
       </div> */}
 
-      <div className="w-full overflow-hidden" aria-label="Компании, задачи которых представлены на платформе">
+      <div
+        className="w-full overflow-hidden"
+        aria-label="Компании, задачи которых представлены на платформе"
+      >
         <div className="flex w-max motion-safe:animate-[marquee_24s_linear_infinite_reverse] motion-reduce:animate-none">
           <CompanyLogos />
           <CompanyLogos isDuplicate />
@@ -81,9 +87,10 @@ export function CompanyMarquee() {
         </div>
       </div>
       <div className="flex px-10 2xl:px-40">
-        <div className="relative isolate flex h-fit w-full flex-col gap-5 overflow-hidden
-                        rounded-2xl bg-black px-10 py-8">
-
+        <div
+          className="relative isolate flex h-fit w-full flex-col gap-5 overflow-hidden
+                        rounded-2xl bg-black px-10 py-8"
+        >
           {/* ─── Декорации ─── */}
           <div className="pointer-events-none absolute left-[92.4%] top-16 z-0 w-full">
             <Image
@@ -149,13 +156,17 @@ export function CompanyMarquee() {
           </div>
 
           {/* ─── Контент ─── */}
-          <p className="relative z-10 m-0 inline-flex items-center gap-2 text-lg
-                        font-light leading-[19px] text-white font-[family-name:var(--body)]">
+          <p
+            className="relative z-10 m-0 inline-flex items-center gap-2 text-lg
+                        font-light leading-[19px] text-white font-[family-name:var(--body)]"
+          >
             <DoubleSlash className="size-6 text-primary-pink" aria-hidden="true" />
             Почему мы
           </p>
-          <h2 className="relative z-10 m-0 mt-0.5 w-2/5 font-heading
-                        text-[40px] font-normal leading-[1.05] tracking-[1.2px] text-white">
+          <h2
+            className="relative z-10 m-0 mt-0.5 w-2/5 font-heading
+                        text-[40px] font-normal leading-[1.05] tracking-[1.2px] text-white"
+          >
             Помогаем по-настоящему проявить себя
           </h2>
 
@@ -164,14 +175,16 @@ export function CompanyMarquee() {
               <p className="font-heading text-[20px] font-medium text-primary-pink">001</p>
               <p className="font-heading text-[20px] font-medium text-white">Найдем задачи</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
-                Решая которые ты сможешь не только показать свои способности, но и улучшить их, благодаря целому каталогу.
+                Решая которые ты сможешь не только показать свои способности, но и улучшить их,
+                благодаря целому каталогу.
               </p>
             </div>
             <div className="flex w-2/5 flex-col border-b border-white/15 pb-2">
               <p className="font-heading text-[20px] font-medium text-primary-pink">002</p>
               <p className="font-heading text-[20px] font-medium text-white">Составим портфолио</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
-                С помощью которого компании смогут по достоинству оценить тебя, благодаря более подробному описанию резюме и интересным задачам.
+                С помощью которого компании смогут по достоинству оценить тебя, благодаря более
+                подробному описанию резюме и интересным задачам.
               </p>
             </div>
           </div>
@@ -179,21 +192,25 @@ export function CompanyMarquee() {
           <div className="relative z-10 flex flex-row justify-between pe-20">
             <div className="flex w-1/2 flex-col border-b border-white/15 pb-2">
               <p className="font-heading text-[20px] font-medium text-primary-pink">003</p>
-              <p className="font-heading text-[20px] font-medium text-white">Покажем тестовые компаний</p>
+              <p className="font-heading text-[20px] font-medium text-white">
+                Покажем тестовые компаний
+              </p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
-                Решая которые ты сможешь доказать навыки, а наниматели смогут увидеть их и предложить тебе оффер.
+                Решая которые ты сможешь доказать навыки, а наниматели смогут увидеть их и
+                предложить тебе оффер.
               </p>
             </div>
             <div className="flex w-2/5 flex-col border-b border-white/15 pb-2">
               <p className="font-heading text-[20px] font-medium text-primary-pink">004</p>
               <p className="font-heading text-[20px] font-medium text-white">Продвинем тебя</p>
               <p className="font-[family-name:var(--body)] text-[16px] font-normal text-white">
-                С помощью которого компании смогут по достоинству оценить тебя, благодаря более подробному описанию резюме и интересным задачам.
+                С помощью которого компании смогут по достоинству оценить тебя, благодаря более
+                подробному описанию резюме и интересным задачам.
               </p>
             </div>
           </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

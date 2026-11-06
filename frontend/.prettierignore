@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+.playwright-cli/
+@/
+next-env.d.ts
+*.tsbuildinfo
+package-lock.json
+.env*
+public/
+AGENTS.md
+
+/playwright-report/
+/test-results/
