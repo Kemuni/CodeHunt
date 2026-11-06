@@ -1,6 +1,5 @@
 import logging
 from typing import Annotated
-from uuid import uuid4
 
 from fastapi import Depends, File, Form, UploadFile
 from sqlalchemy import select
@@ -9,18 +8,14 @@ from starlette.concurrency import run_in_threadpool
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
 from app.core.config import settings
-from app.core.errors import (
-    FileTooLargeError,
-    InvalidResourceError,
-    UploadSizeMismatchError,
-)
 from app.models import TaskResource
 from app.models.enums import ResourceType
 from app.schemas import SuccessResponse
 from app.schemas.common import DownloadURL, PositiveID
 from app.schemas.domain import ResourcePatch, ResourceRead
-from app.services import catalog
-from app.services.common import assign, commit, flush, get
+from app.services import catalog, resources
+from app.services.common import assign, commit, get
+from app.services.media import MediaOwner
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
 
 router = APIResponseRouter(tags=["resources"])
@@ -73,55 +68,11 @@ async def upload(
     title: Annotated[str, Form(min_length=1, max_length=255)],
     type: Annotated[ResourceType, Form()],
 ):
-    await catalog.task(db, task_id)
-    title = title.strip()
-    filename = file.filename or "file"
-    if not title or len(filename) > 255 or len(file.content_type or "") > 255:
-        raise InvalidResourceError()
-    # Starlette сохраняет UploadFile во временный файл. Считаем фактический размер порциями.
-    size = 0
-    while chunk := await file.read(1024 * 1024):
-        size += len(chunk)
-        if size > settings.MAX_RESOURCE_BYTES:
-            raise FileTooLargeError()
-    await file.seek(0)
-    key = f"tasks/{task_id}/{uuid4().hex}"
-    # Освобождаем транзакцию БД перед длительной передачей файла.
-    await db.rollback()
-    try:
-        await run_in_threadpool(
-            storage.upload,
-            file.file,
-            key,
-            file.content_type or "application/octet-stream",
+    return SuccessResponse(
+        data=await resources.upload(
+            db, MediaOwner(task_id=task_id), file, title, type, storage
         )
-        metadata = await run_in_threadpool(storage.stat, key)
-        if metadata["ContentLength"] != size:
-            raise UploadSizeMismatchError()
-        await catalog.task(db, task_id, lock=True)
-        obj = TaskResource(
-            task_id=task_id,
-            title=title,
-            type=type,
-            object_key=key,
-            original_filename=filename,
-            content_type=file.content_type,
-            size_bytes=size,
-        )
-        db.add(obj)
-        await flush(db)
-        await db.refresh(obj)
-        await commit(db)
-    except Exception as exc:
-        await db.rollback()
-        try:
-            await run_in_threadpool(storage.delete, key)
-        except Exception:
-            logger.exception("Failed to remove orphaned upload %s", key)
-        if isinstance(exc, STORAGE_EXCEPTIONS):
-            raise storage_error(exc) from exc
-        raise
-    return SuccessResponse(data=obj)
+    )
 
 
 @router.patch(

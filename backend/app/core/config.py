@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "codehunt"
     S3_REGION: str = "us-east-1"
     S3_URL_TTL: int = Field(default=900, ge=1, le=604800)
+    MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
     MAX_RESOURCE_BYTES: int = Field(default=50 * 1024 * 1024, gt=0)
 
     @field_validator("DATABASE_URL", mode="before")

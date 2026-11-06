@@ -40,7 +40,6 @@ async def seed():
             category = TaskComplicationCategory(
                 title="Списки и навигация",
                 developer_type="frontend",
-                group="functionality",
             )
             db.add(category)
             await db.flush()

@@ -2,8 +2,10 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     contact_request,
+    draft_files,
     drafts,
     library,
+    photos,
     resources,
     solutions,
     tasks,
@@ -18,3 +20,7 @@ api_router.include_router(tasks.router)
 api_router.include_router(drafts.router)
 api_router.include_router(solutions.router)
 api_router.include_router(resources.router)
+
+api_router.include_router(photos.router)
+
+api_router.include_router(draft_files.router)

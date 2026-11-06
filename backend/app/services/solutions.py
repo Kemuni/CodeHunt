@@ -13,6 +13,7 @@ from app.schemas.domain import (
 )
 from app.services import catalog
 from app.services.common import commit, flush, get
+from app.services.composition import flatten
 
 
 async def solution(
@@ -46,7 +47,7 @@ async def create(
         raise SolutionAuthorMismatchError()
     parent = await catalog.task(session, task_id, public=True, lock=True)
     config = await catalog.configuration(session, task_id, data.task_level_preset_id)
-    preset, links = config["preset"], config["complications"]
+    preset, links = config["preset"], flatten(config["complications"])
     excluded = set(data.excluded_complication_link_ids)
     if not excluded.issubset({link.id for link in links}):
         raise InvalidExclusionsError()
@@ -61,7 +62,7 @@ async def create(
     )
     session.add(obj)
     await flush(session)
-    for link in links:
+    for position, link in enumerate(links):
         if link.id not in excluded:
             session.add(
                 TaskSolutionComplication(
@@ -71,7 +72,7 @@ async def create(
                     description=link.description,
                     acceptance_criteria=link.acceptance_criteria,
                     is_required=link.is_required,
-                    order_number=link.order_number,
+                    order_number=position,
                 )
             )
     await commit(session, obj)

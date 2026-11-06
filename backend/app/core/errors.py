@@ -179,3 +179,15 @@ class UploadSizeMismatchError(DomainError):
     status = HTTPStatus.SERVICE_UNAVAILABLE
     code = "upload_size_mismatch"
     default_message = "Не удалось проверить загруженный файл"
+
+
+class PhotoLimitError(DomainError):
+    status = HTTPStatus.CONFLICT
+    code = "photo_limit"
+    default_message = "У задания может быть не больше четырёх фотографий"
+
+
+class InvalidPhotoError(DomainError):
+    status = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "invalid_photo"
+    default_message = "Нужна корректная фотография JPEG, PNG или WebP"

@@ -115,36 +115,33 @@ def task_data(slug="movie-catalog"):
         "developer_type": "frontend",
         "difficulty_from": 0,
         "difficulty_to": 10,
-    }
-
-
-async def make_project(client, slug="movie-catalog", published=True):
-    task = (await client.post("/api/editor/tasks", json=task_data(slug))).json()["data"]
-    tid = task["id"]
-    links, presets = [], []
-    for index, level in enumerate(("easy", "medium", "high")):
-        response = await client.post(
-            f"/api/editor/tasks/{tid}/complications",
-            json={
+        "items": [
+            {
+                "kind": "complication",
                 "title": f"Требование {level}",
                 "description": f"Реализуйте {level}",
                 "acceptance_criteria": "Работает",
                 "level": level,
                 "is_required": True,
-                "order_number": index,
-            },
-        )
-        assert response.status_code == 201, response.text
-        links.append(response.json()["data"])
-        response = await client.post(
-            f"/api/editor/tasks/{tid}/presets",
-            json={"level": level, "description": f"Пресет {level}"},
-        )
-        assert response.status_code == 201, response.text
-        presets.append(response.json()["data"])
-    if published:
-        response = await client.patch(
-            f"/api/editor/tasks/{tid}", json={"status": "published"}
-        )
-        assert response.status_code == 200, response.text
-    return task, links, presets
+            }
+            for level in ("easy", "medium", "high")
+        ],
+        "presets": [
+            {"level": level, "description": f"Пресет {level}"}
+            for level in ("easy", "medium", "high")
+        ],
+    }
+
+
+async def make_project(client, slug="movie-catalog", published=True):
+    response = await client.post("/api/editor/tasks", json=task_data(slug))
+    assert response.status_code == 201, response.text
+    task = response.json()["data"]
+    if not published:
+        task = (
+            await client.patch(
+                f"/api/editor/tasks/{task['id']}", json={"status": "archived"}
+            )
+        ).json()["data"]
+    detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
+    return task, detail["complications"], detail["presets"]

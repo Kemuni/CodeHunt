@@ -195,7 +195,7 @@ async def test_source_delete_rollback_with_existing_solution(client):
         f"/api/tasks/{task['id']}/solutions",
         json={"author_id": 1, "task_level_preset_id": presets[0]["id"]},
     )
-    await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "draft"})
+    await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "archived"})
     assert (await client.delete(f"/api/editor/tasks/{task['id']}")).status_code == 409
     assert (
         len(

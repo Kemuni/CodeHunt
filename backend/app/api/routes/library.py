@@ -7,13 +7,14 @@ from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
 from app.core.errors import ConflictingFiltersError, TemplateInUseError
 from app.models import TaskComplication, TaskComplicationCategory, TaskComplicationLink
-from app.models.enums import ComplicationGroup, DeveloperType
+from app.models.enums import DeveloperType
 from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID
 from app.schemas.domain import (
     CategoryCreate,
     CategoryRead,
     CategoryUpdate,
+    DeveloperLibrary,
     TemplateCreate,
     TemplateRead,
     TemplateUpdate,
@@ -27,10 +28,22 @@ from app.services.common import (
     lock_hierarchy,
     page,
 )
+from app.services.library import grouped_templates
 
 router = APIResponseRouter(tags=["complication-library"])
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
+
+
+@router.get(
+    "/task-complications/library",
+    response_model=SuccessResponse[list[DeveloperLibrary]],
+    summary="Получить библиотеку требований по направлениям разработки с деревом категорий.",
+)
+async def library(
+    db: SessionDep, q: str | None = None, developer_type: DeveloperType | None = None
+):
+    return SuccessResponse(data=await grouped_templates(db, q, developer_type))
 
 
 @router.get(
@@ -45,7 +58,6 @@ async def categories(
     parent_id: PositiveID | None = None,
     roots_only: bool = False,
     developer_type: DeveloperType | None = None,
-    group: ComplicationGroup | None = None,
 ):
     if roots_only and parent_id is not None:
         raise ConflictingFiltersError()
@@ -56,8 +68,6 @@ async def categories(
         query = query.where(TaskComplicationCategory.parent_id == parent_id)
     if developer_type:
         query = query.where(TaskComplicationCategory.developer_type == developer_type)
-    if group:
-        query = query.where(TaskComplicationCategory.group == group)
     return SuccessResponse(data=await page(db, query, limit, offset))
 
 
@@ -122,7 +132,7 @@ async def delete_category(
 @router.get(
     "/task-complications",
     response_model=SuccessResponse[Page[TemplateRead]],
-    summary="Найти общие требования по тексту, категории, направлению или группе.",
+    summary="Найти общие требования по тексту, категории или направлению.",
 )
 async def templates(
     db: SessionDep,
@@ -131,7 +141,6 @@ async def templates(
     q: str | None = None,
     category_id: PositiveID | None = None,
     developer_type: DeveloperType | None = None,
-    group: ComplicationGroup | None = None,
 ):
     query = (
         select(TaskComplication)
@@ -149,8 +158,6 @@ async def templates(
         query = query.where(TaskComplication.category_id == category_id)
     if developer_type:
         query = query.where(TaskComplicationCategory.developer_type == developer_type)
-    if group:
-        query = query.where(TaskComplicationCategory.group == group)
     return SuccessResponse(data=await page(db, query, limit, offset))
 
 

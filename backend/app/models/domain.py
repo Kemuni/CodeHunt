@@ -25,7 +25,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
 from app.models.enums import (
-    ComplicationGroup,
     DeveloperType,
     Level,
     ResourceType,
@@ -77,9 +76,6 @@ class TaskComplicationCategory(IdentityMixin, Base):
     developer_type: Mapped[DeveloperType] = mapped_column(
         choice(DeveloperType, "category_developer_type"), index=True
     )
-    group: Mapped[ComplicationGroup] = mapped_column(
-        choice(ComplicationGroup, "category_group"), index=True
-    )
 
 
 class TaskComplication(IdentityMixin, Timestamps, Base):
@@ -117,17 +113,51 @@ class Task(IdentityMixin, Timestamps, Base):
     design_author_name: Mapped[str | None] = mapped_column(String(255))
     design_author_link: Mapped[str | None] = mapped_column(Text)
     status: Mapped[TaskStatus] = mapped_column(
-        choice(TaskStatus, "task_status"), server_default="draft"
+        choice(TaskStatus, "task_status"), server_default="published"
     )
+    is_hidden: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+
+
+class TaskComplicationLinkGroup(IdentityMixin, Timestamps, Base):
+    __tablename__ = "task_complication_link_groups"
+    __table_args__ = (
+        UniqueConstraint("task_id", "id", name="uq_link_group_task_id"),
+        ForeignKeyConstraint(
+            ["task_id", "parent_group_id"],
+            [
+                "task_complication_link_groups.task_id",
+                "task_complication_link_groups.id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_link_group_parent",
+        ),
+        CheckConstraint("parent_group_id <> id", name="ck_link_group_parent"),
+        CheckConstraint("order_number >= 0", name="ck_link_group_order"),
+        Index("ix_link_groups_tree", "task_id", "parent_group_id", "order_number"),
+    )
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
+    parent_group_id: Mapped[int | None] = mapped_column(BigInteger)
+    title: Mapped[str] = mapped_column(String(255))
+    order_number: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
 class TaskComplicationLink(IdentityMixin, Timestamps, Base):
     __tablename__ = "task_complication_links"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["task_id", "group_id"],
+            [
+                "task_complication_link_groups.task_id",
+                "task_complication_link_groups.id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_task_link_group",
+        ),
         CheckConstraint("order_number >= 0", name="ck_task_link_order"),
         Index("ix_task_links_composition", "task_id", "level", "order_number", "id"),
     )
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
+    group_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
     complication_id: Mapped[int | None] = mapped_column(
         ForeignKey("task_complications.id", ondelete="RESTRICT"), index=True
     )
@@ -212,9 +242,17 @@ class TaskSolutionComplication(IdentityMixin, Timestamps, Base):
 
 class TaskResource(IdentityMixin, Timestamps, Base):
     __tablename__ = "task_resources"
-    __table_args__ = (CheckConstraint("size_bytes >= 0", name="ck_resource_size"),)
-    task_id: Mapped[int] = mapped_column(
+    __table_args__ = (
+        CheckConstraint("size_bytes >= 0", name="ck_resource_size"),
+        CheckConstraint(
+            "(task_id IS NOT NULL) <> (draft_id IS NOT NULL)", name="ck_resource_owner"
+        ),
+    )
+    task_id: Mapped[int | None] = mapped_column(
         ForeignKey("tasks.id", ondelete="RESTRICT"), index=True
+    )
+    draft_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_drafts.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(255))
     type: Mapped[ResourceType] = mapped_column(choice(ResourceType, "resource_type"))
@@ -224,10 +262,50 @@ class TaskResource(IdentityMixin, Timestamps, Base):
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)
 
 
+class TaskPhoto(IdentityMixin, Timestamps, Base):
+    __tablename__ = "task_photos"
+    __table_args__ = (
+        # Четыре уникальные позиции ограничивают число фотографий на уровне БД.
+        UniqueConstraint(
+            "task_id",
+            "position",
+            name="uq_task_photo_position",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        UniqueConstraint(
+            "draft_id",
+            "position",
+            name="uq_draft_photo_position",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        CheckConstraint(
+            "(task_id IS NOT NULL) <> (draft_id IS NOT NULL)", name="ck_photo_owner"
+        ),
+        CheckConstraint("position BETWEEN 1 AND 4", name="ck_task_photo_position"),
+        CheckConstraint("size_bytes > 0", name="ck_task_photo_size"),
+    )
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="RESTRICT"), index=True
+    )
+    draft_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_drafts.id", ondelete="CASCADE"), index=True
+    )
+    position: Mapped[int] = mapped_column(SmallInteger)
+    object_key: Mapped[str] = mapped_column(Text, unique=True)
+    original_filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+
+    @property
+    def is_cover(self) -> bool:
+        return self.position == 1
+
+
 class TaskDraft(IdentityMixin, Timestamps, Base):
     __tablename__ = "task_drafts"
     __table_args__ = (
-        CheckConstraint("schema_version = 1", name="ck_draft_schema_version"),
         CheckConstraint("revision > 0", name="ck_draft_revision"),
         CheckConstraint("jsonb_typeof(payload) = 'object'", name="ck_draft_payload"),
         Index("ix_drafts_owner_updated", "owner_id", "updated_at", "id"),
@@ -236,5 +314,4 @@ class TaskDraft(IdentityMixin, Timestamps, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")
     )
-    schema_version: Mapped[int] = mapped_column(Integer, server_default="1")
     revision: Mapped[int] = mapped_column(Integer, server_default="1")

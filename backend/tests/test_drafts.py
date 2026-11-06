@@ -22,10 +22,12 @@ async def test_owner_admin_and_live_errors(client):
             url, headers={"X-User-ID": "3"}, json={"revision": 1, "payload": {}}
         )
     ).status_code == 404
-    assert (await client.delete(url, headers={"X-User-ID": "3"})).status_code == 404
+    assert (
+        await client.delete(url + "?revision=1", headers={"X-User-ID": "3"})
+    ).status_code == 404
     assert (
         await client.post(
-            url + "/materialize", headers={"X-User-ID": "3"}, json={"revision": 1}
+            url + "/publish", headers={"X-User-ID": "3"}, json={"revision": 1}
         )
     ).status_code == 404
     assert (
@@ -48,7 +50,7 @@ async def test_owner_admin_and_live_errors(client):
     assert any(error["code"] == "slug_taken" for error in draft["validation_errors"])
     listed = (await client.get("/api/editor/task-drafts")).json()["data"]["items"][0]
     assert listed["validation_errors"] == draft["validation_errors"]
-    response = await client.post(url + "/materialize", json={"revision": 2})
+    response = await client.post(url + "/publish", json={"revision": 2})
     assert response.status_code == 422
     assert response.json()["errors"]["details"][0]["field"] == "slug"
     assert (await client.get(url)).status_code == 200
@@ -57,22 +59,22 @@ async def test_owner_admin_and_live_errors(client):
         await client.patch(url, json={"revision": 1, "payload": {}})
     ).status_code == 409
     assert (
-        await client.post(url + "/materialize", json={"revision": 1})
+        await client.post(url + "/publish", json={"revision": 1})
     ).status_code == 409
     response = await client.patch(
         url, json={"revision": 2, "payload": {"slug": "free-slug"}}
     )
     assert response.json()["data"]["is_valid"]
-    response = await client.post(url + "/materialize", json={"revision": 3})
+    response = await client.post(url + "/publish", json={"revision": 3})
     assert response.status_code == 201, response.text
-    assert response.json()["data"]["status"] == "draft"
+    assert response.json()["data"]["status"] == "published"
     assert (await client.get(url)).status_code == 404
     assert (
-        await client.post(url + "/materialize", json={"revision": 3})
+        await client.post(url + "/publish", json={"revision": 3})
     ).status_code == 404
 
 
-async def test_invalid_draft_saved_not_materialized_and_parent_changes(client):
+async def test_invalid_draft_saved_not_published_and_parent_changes(client):
     parent = (await client.post("/api/editor/tasks", json=task_data("parent"))).json()[
         "data"
     ]
@@ -83,6 +85,7 @@ async def test_invalid_draft_saved_not_materialized_and_parent_changes(client):
     draft = response.json()["data"]
     assert draft["is_valid"]
     url = f"/api/editor/task-drafts/{draft['id']}"
+    await client.patch(f"/api/editor/tasks/{parent['id']}", json={"status": "archived"})
     await client.delete(f"/api/editor/tasks/{parent['id']}")
     assert (await client.get(url)).json()["data"]["validation_errors"][0][
         "code"
@@ -97,7 +100,7 @@ async def test_invalid_draft_saved_not_materialized_and_parent_changes(client):
     assert updated.status_code == 200
     assert not updated.json()["data"]["is_valid"]
     assert (
-        await client.post(url + "/materialize", json={"revision": 2})
+        await client.post(url + "/publish", json={"revision": 2})
     ).status_code == 422
     assert (
         await client.post("/api/editor/task-drafts", json={"payload": {"owner_id": 3}})
@@ -107,10 +110,10 @@ async def test_invalid_draft_saved_not_materialized_and_parent_changes(client):
             "/api/editor/task-drafts", json={"payload": {"title": "x" * 256001}}
         )
     ).status_code == 422
-    assert (await client.delete(url)).status_code == 200
+    assert (await client.delete(url + "?revision=2")).status_code == 200
 
 
-async def test_concurrent_draft_revision_and_materialization(client):
+async def test_concurrent_draft_revision_and_publication(client):
     draft = (await client.post("/api/editor/task-drafts", json={})).json()["data"]
     url = f"/api/editor/task-drafts/{draft['id']}"
     replies = await asyncio.gather(
@@ -123,6 +126,6 @@ async def test_concurrent_draft_revision_and_materialization(client):
     )
     assert sorted(r.status_code for r in replies) == [200, 409]
     replies = await asyncio.gather(
-        *[client.post(url + "/materialize", json={"revision": 2}) for _ in range(2)]
+        *[client.post(url + "/publish", json={"revision": 2}) for _ in range(2)]
     )
     assert sorted(r.status_code for r in replies) == [201, 404]

@@ -1,6 +1,9 @@
+from io import BytesIO
+
 import httpx
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError
+from PIL import Image
 
 from app.core.config import settings
 from app.main import app
@@ -154,6 +157,24 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
         downloaded = await http.get(url)
     assert downloaded.status_code == 200
     assert downloaded.content == b"real minio roundtrip"
+    from app.services import photos
+
+    monkeypatch.setattr(photos, "get_storage", lambda: store)
+    picture = BytesIO()
+    Image.new("RGB", (8, 8), "green").save(picture, format="PNG")
+    content = picture.getvalue()
+    photo_response = await client.post(
+        f"/api/editor/tasks/{task['id']}/photos",
+        files={"files": ("cover.png", content, "image/png")},
+    )
+    assert photo_response.status_code == 201, photo_response.text
+    photo = photo_response.json()["data"][0]
+    assert photo["is_cover"] and photo["content_type"] == "image/png"
+    async with httpx.AsyncClient() as http:
+        downloaded_photo = await http.get(photo["url"])
+    assert downloaded_photo.status_code == 200 and downloaded_photo.content == content
+    detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
+    assert detail["photos"][0]["id"] == photo["id"]
     # Это отдельный бакет тестового контейнера; рабочее хранилище не затрагивается.
     for obj in store.client.list_objects_v2(Bucket=settings.S3_BUCKET).get(
         "Contents", []

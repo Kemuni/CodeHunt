@@ -21,7 +21,6 @@ async def test_parent_chain_uses_one_query_and_handles_existing_cycles(db):
             node = TaskComplicationCategory(
                 title=f"Категория {index}",
                 developer_type="frontend",
-                group="functionality",
                 parent_id=nodes[-1].id if nodes else None,
             )
             session.add(node)

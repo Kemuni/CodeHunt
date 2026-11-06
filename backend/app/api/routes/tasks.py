@@ -9,6 +9,8 @@ from app.models.enums import DeveloperType, Level, TaskStatus
 from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID
 from app.schemas.domain import (
+    CompositionItem,
+    CompositionUpdate,
     Configuration,
     LinkCopy,
     LinkCreate,
@@ -18,11 +20,12 @@ from app.schemas.domain import (
     PresetCreate,
     PresetRead,
     PresetUpdate,
-    TaskCreate,
+    TaskDetail,
+    TaskPublication,
     TaskRead,
     TaskUpdate,
 )
-from app.services import catalog
+from app.services import catalog, composition
 from app.services.common import commit, get, page
 
 router = APIResponseRouter(tags=["tasks"])
@@ -53,7 +56,11 @@ async def tasks(
         and difficulty_min > difficulty_max
     ):
         raise InvalidDifficultyError()
-    query = select(Task).where(Task.status == TaskStatus.PUBLISHED).order_by(Task.id)
+    query = (
+        select(Task)
+        .where(Task.status == TaskStatus.PUBLISHED, Task.is_hidden.is_(False))
+        .order_by(Task.id)
+    )
     if q:
         query = query.where(
             or_(
@@ -80,25 +87,31 @@ async def tasks(
 
 @router.get(
     "/tasks/by-slug/{slug}",
-    response_model=SuccessResponse[TaskRead],
+    response_model=SuccessResponse[TaskDetail],
     summary="Получить опубликованное задание по slug.",
 )
 async def by_slug(slug: str, db: SessionDep):
     obj = await db.scalar(
-        select(Task).where(Task.slug == slug, Task.status == TaskStatus.PUBLISHED)
+        select(Task).where(
+            Task.slug == slug,
+            Task.status == TaskStatus.PUBLISHED,
+            Task.is_hidden.is_(False),
+        )
     )
     if obj is None:
         raise NotFoundError("Задание не найдено")
-    return SuccessResponse(data=obj)
+    return SuccessResponse(data=await catalog.detail(db, obj))
 
 
 @router.get(
     "/tasks/{task_id}",
-    response_model=SuccessResponse[TaskRead],
+    response_model=SuccessResponse[TaskDetail],
     summary="Получить опубликованное задание по идентификатору.",
 )
 async def public_task(task_id: PositiveID, db: SessionDep):
-    return SuccessResponse(data=await catalog.task(db, task_id, public=True))
+    return SuccessResponse(
+        data=await catalog.detail(db, await catalog.task(db, task_id, public=True))
+    )
 
 
 @router.get(
@@ -132,6 +145,11 @@ async def public_configuration(
 
 
 @router.get(
+    "/editor/tasks/all",
+    response_model=SuccessResponse[Page[TaskRead]],
+    summary="Получить все задания для администратора, включая скрытые и архивные.",
+)
+@router.get(
     "/editor/tasks",
     response_model=SuccessResponse[Page[TaskRead]],
     summary="Список заданий всех состояний для администратора.",
@@ -142,10 +160,13 @@ async def editor_tasks(
     limit: Limit = 20,
     offset: Offset = 0,
     status: TaskStatus | None = None,
+    is_hidden: bool | None = None,
 ):
     query = select(Task).order_by(Task.id)
     if status:
         query = query.where(Task.status == status)
+    if is_hidden is not None:
+        query = query.where(Task.is_hidden == is_hidden)
     return SuccessResponse(data=await page(db, query, limit, offset))
 
 
@@ -153,9 +174,9 @@ async def editor_tasks(
     "/editor/tasks",
     response_model=SuccessResponse[TaskRead],
     status_code=201,
-    summary="Создать неопубликованное задание с заполненными обязательными полями.",
+    summary="Создать готовое опубликованное задание с требованиями и пресетами.",
 )
-async def create_task(data: TaskCreate, db: SessionDep, _admin: CurrentAdmin):
+async def create_task(data: TaskPublication, db: SessionDep, _admin: CurrentAdmin):
     return SuccessResponse(
         data=await catalog.create_task(db, data.model_dump(mode="json"))
     )
@@ -163,11 +184,13 @@ async def create_task(data: TaskCreate, db: SessionDep, _admin: CurrentAdmin):
 
 @router.get(
     "/editor/tasks/{task_id}",
-    response_model=SuccessResponse[TaskRead],
-    summary="Получить задание для редактирования, включая черновик.",
+    response_model=SuccessResponse[TaskDetail],
+    summary="Получить опубликованное или архивное задание для редактирования.",
 )
 async def editor_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
-    return SuccessResponse(data=await catalog.task(db, task_id))
+    return SuccessResponse(
+        data=await catalog.detail(db, await catalog.task(db, task_id))
+    )
 
 
 @router.patch(
@@ -188,7 +211,7 @@ async def update_task(
 @router.delete(
     "/editor/tasks/{task_id}",
     response_model=SuccessResponse[None],
-    summary="Удалить неиспользуемое неопубликованное задание.",
+    summary="Удалить неиспользуемое архивное задание.",
 )
 async def delete_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
     await catalog.delete_task(db, task_id)
@@ -397,3 +420,24 @@ async def editor_configuration(
 ):
     await catalog.task(db, task_id)
     return SuccessResponse(data=await catalog.configuration(db, task_id, preset_id))
+
+
+@router.get(
+    "/editor/tasks/{task_id}/composition",
+    response_model=SuccessResponse[list[CompositionItem]],
+    summary="Получить единое дерево групп и требований задания.",
+)
+async def read_composition(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
+    await catalog.task(db, task_id)
+    return SuccessResponse(data=await composition.read(db, task_id))
+
+
+@router.put(
+    "/editor/tasks/{task_id}/composition",
+    response_model=SuccessResponse[list[CompositionItem]],
+    summary="Атомарно сохранить дерево групп и требований, сохраняя ID существующих пунктов.",
+)
+async def replace_composition(
+    task_id: PositiveID, data: CompositionUpdate, db: SessionDep, _admin: CurrentAdmin
+):
+    return SuccessResponse(data=await composition.replace(db, task_id, data))

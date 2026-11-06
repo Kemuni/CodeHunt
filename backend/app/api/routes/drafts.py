@@ -1,3 +1,6 @@
+from typing import Annotated
+
+from fastapi import Query
 from sqlalchemy import select
 
 from app.api.base import APIResponseRouter
@@ -8,13 +11,13 @@ from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID
 from app.schemas.domain import (
     DraftCreate,
-    DraftMaterialize,
+    DraftPublish,
     DraftRead,
     DraftUpdate,
-    TaskRead,
+    TaskDetail,
 )
 from app.services import drafts
-from app.services.common import commit, get, page
+from app.services.common import get, page
 
 router = APIResponseRouter(prefix="/editor/task-drafts", tags=["task-drafts"])
 
@@ -77,21 +80,25 @@ async def update(
     response_model=SuccessResponse[None],
     summary="Удалить собственный черновик формы.",
 )
-async def delete(draft_id: PositiveID, db: SessionDep, admin: CurrentAdmin):
-    await db.delete(await get(db, TaskDraft, draft_id, owner_id=admin.id, lock=True))
-    await commit(db)
+async def delete(
+    draft_id: PositiveID,
+    db: SessionDep,
+    admin: CurrentAdmin,
+    revision: Annotated[int, Query(gt=0)],
+):
+    await drafts.delete(db, admin.id, draft_id, revision)
     return SuccessResponse()
 
 
 @router.post(
-    "/{draft_id}/materialize",
-    response_model=SuccessResponse[TaskRead],
+    "/{draft_id}/publish",
+    response_model=SuccessResponse[TaskDetail],
     status_code=201,
-    summary="Проверить форму и атомарно заменить её валидным неопубликованным заданием.",
+    summary="Опубликовать всё задание и перенести фотографии и вложения одной транзакцией.",
 )
-async def materialize(
-    draft_id: PositiveID, data: DraftMaterialize, db: SessionDep, admin: CurrentAdmin
+async def publish(
+    draft_id: PositiveID, data: DraftPublish, db: SessionDep, admin: CurrentAdmin
 ):
     return SuccessResponse(
-        data=await drafts.materialize(db, admin.id, draft_id, data.revision)
+        data=await drafts.publish(db, admin.id, draft_id, data.revision)
     )

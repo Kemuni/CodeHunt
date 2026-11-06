@@ -61,7 +61,7 @@ async def test_atomic_solution_rollback(client, db, monkeypatch):
 
 
 async def test_resource_compensation_on_database_failure(client, monkeypatch):
-    from app.api.routes import resources
+    from app.services import resources
 
     task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
     store = MemoryStorage()
@@ -90,9 +90,7 @@ async def test_competing_drafts_keep_loser_and_live_parent_validation(client):
         draft_ids.append(response.json()["data"]["id"])
     replies = await asyncio.gather(
         *[
-            client.post(
-                f"/api/editor/task-drafts/{did}/materialize", json={"revision": 1}
-            )
+            client.post(f"/api/editor/task-drafts/{did}/publish", json={"revision": 1})
             for did in draft_ids
         ]
     )

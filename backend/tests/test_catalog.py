@@ -11,7 +11,6 @@ async def test_category_tree_and_template_lifecycle(client):
     category_data = {
         "title": "Функции",
         "developer_type": "frontend",
-        "group": "functionality",
     }
     root = (
         await client.post("/api/task-complication-categories", json=category_data)
@@ -33,7 +32,7 @@ async def test_category_tree_and_template_lifecycle(client):
     ).json()["data"]["items"][0]["id"] == child["id"]
     assert (
         await client.get(
-            "/api/task-complication-categories?roots_only=false&developer_type=frontend&group=functionality"
+            "/api/task-complication-categories?roots_only=false&developer_type=frontend"
         )
     ).json()["data"]["total"] == 2
     assert (
@@ -85,7 +84,7 @@ async def test_category_tree_and_template_lifecycle(client):
     ).status_code == 200
     assert (
         await client.get(
-            f"/api/task-complications?q=Пагинация&category_id={child['id']}&developer_type=frontend&group=functionality"
+            f"/api/task-complications?q=Пагинация&category_id={child['id']}&developer_type=frontend"
         )
     ).json()["data"]["total"] == 1
     assert (
@@ -145,7 +144,7 @@ async def test_tasks_presets_filters_and_partial_edits(client):
     assert (await client.get(f"/api/tasks/{tid}")).status_code == 404
     assert (await client.get("/api/tasks/by-slug/movie-catalog")).status_code == 404
     assert (await client.get(base)).status_code == 200
-    assert (await client.get("/api/editor/tasks?status=draft")).json()["data"][
+    assert (await client.get("/api/editor/tasks?status=archived")).json()["data"][
         "total"
     ] == 1
     assert (await client.get(f"{base}/complications")).json()["data"][0]["id"] == links[
@@ -238,7 +237,7 @@ async def test_tasks_presets_filters_and_partial_edits(client):
     ).status_code == 422
     assert (await client.get(f"/api/tasks?parent_task_id={tid}")).json()["data"][
         "total"
-    ] == 0
+    ] == 1
     copy = await client.post(
         f"/api/editor/tasks/{other['id']}/complications/copy",
         json={"source_link_id": links[0]["id"], "title": "Копия"},
@@ -251,6 +250,7 @@ async def test_tasks_presets_filters_and_partial_edits(client):
             json={"title": "Чужой"},
         )
     ).status_code == 404
+    await client.patch(f"/api/editor/tasks/{other['id']}", json={"status": "archived"})
     assert (await client.delete(f"/api/editor/tasks/{other['id']}")).status_code == 200
     reversed_ids = [link["id"] for link in reversed(links)]
     assert (
@@ -261,7 +261,7 @@ async def test_tasks_presets_filters_and_partial_edits(client):
             base + "/complications/order", json={"ids": [links[0]["id"]] * 3}
         )
     ).status_code == 422
-    assert (await client.patch(base, json={"status": "draft"})).status_code == 200
+    assert (await client.patch(base, json={"status": "archived"})).status_code == 200
     for preset in presets:
         assert (
             await client.delete(f"{base}/presets/{preset['id']}")
