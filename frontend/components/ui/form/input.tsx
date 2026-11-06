@@ -3,6 +3,7 @@
 import {useFormContext} from "react-hook-form";
 import {ComponentProps} from "react";
 import {Input} from "@/components/ui/input";
+import {useFormFieldId} from "./form-field";
 
 
 interface FormInputProps extends ComponentProps<typeof Input> {
@@ -11,12 +12,19 @@ interface FormInputProps extends ComponentProps<typeof Input> {
 
 
 export default function FormInput({
-  name, ...props
+  name, id, "aria-describedby": describedBy, ...props
 }: FormInputProps) {
-  const { register, formState: { errors } } = useFormContext()
-  const error = errors?.[name]
+  const { register, getFieldState, formState } = useFormContext()
+  const { error } = getFieldState(name, formState)
+  const controlId = useFormFieldId(name, id)
 
   return (
-    <Input id={name} aria-invalid={!!error} {...props} {...register(name)}/>
+    <Input
+      {...props}
+      {...register(name)}
+      id={controlId}
+      aria-invalid={!!error}
+      aria-describedby={[describedBy, error && `${controlId}-error`].filter(Boolean).join(" ") || undefined}
+    />
   );
 }

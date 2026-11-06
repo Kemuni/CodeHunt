@@ -25,7 +25,7 @@ export default function Form<TSchema extends z.ZodType<any, any, any>>({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className={className}>{ children }</form>
+      <form noValidate onSubmit={methods.handleSubmit(onSubmit)} className={className}>{ children }</form>
     </FormProvider>
   )
 }

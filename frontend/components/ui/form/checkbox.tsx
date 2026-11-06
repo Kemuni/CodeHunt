@@ -3,6 +3,7 @@
 import {Controller, useFormContext} from "react-hook-form";
 import {ComponentProps} from "react";
 import {Checkbox} from "@/components/ui/checkbox";
+import {useFormFieldId} from "./form-field";
 
 
 interface FormCheckboxProps extends ComponentProps<typeof Checkbox> {
@@ -11,18 +12,31 @@ interface FormCheckboxProps extends ComponentProps<typeof Checkbox> {
 
 
 export default function FormCheckbox({
-  name, ...props
+  name, id, disabled, onBlur, "aria-describedby": describedBy, ...props
 }: FormCheckboxProps) {
-  const { control, formState: { errors } } = useFormContext()
-  const error = errors?.[name]
+  const { control } = useFormContext()
+  const controlId = useFormFieldId(name, id)
 
   return (
     <Controller
       control={control}
+      disabled={disabled}
       render={
-        ({ field }) => (
-          <Checkbox id={name} aria-invalid={!!error} {...props}
-                    checked={field.value} onCheckedChange={field.onChange} />
+        ({ field, fieldState }) => (
+          <Checkbox
+            {...props}
+            id={controlId}
+            name={field.name}
+            ref={field.ref}
+            disabled={field.disabled}
+            aria-invalid={fieldState.invalid}
+            checked={field.value ?? false}
+            onCheckedChange={field.onChange}
+            onBlur={(event) => {
+              field.onBlur();
+              onBlur?.(event);
+            }}
+          />
         )
       }
       name={name}

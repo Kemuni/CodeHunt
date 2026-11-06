@@ -16,6 +16,11 @@ import {
 import {GalleryUpload} from "@/components/ui/form/gallery-upload";
 import FormSelect from "@/components/ui/form/select";
 import FormSlider from "@/components/ui/form/slider";
+import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible";
+import {Button} from "@/components/ui/button";
+import {ChevronDownIcon} from "lucide-react";
+import TaskItemsEditor from "./task-items-editor";
+import type {TaskItem} from "./task-items-state";
 
 
 const schema = z.object({
@@ -37,11 +42,40 @@ const schema = z.object({
 });
 
 
+
+const defaultItems: TaskItem[] = [
+  {
+    id: "1",
+    required: true,
+    difficultyLevel: "base",
+    title: "Проведение тестирования скорости печати с просмотром результата",
+    description: "Возможность начать тест, нажав кнопку “Пуск”. После начала появляется текст и можно сразу начинать вводить символы. Тест позволяет оценить скорость набора текста (WPM - Words Per Minute) и оценить корректность введенных символов.",
+    criteria: "Проверяется путем нажатия на кнопку запуска тестирования. После запуска пользователь должен сразу иметь возможность вводить текст, без необходимости нажатия мышкой на блок. Каждый раз текст для проверки должен быть разным и не показываться заранее пользователю. Возможен ввод неверного символа с его подсветкой и учета в последующем результате теста. Имеется выделяющиеся цвета, которые показывают корректность ввода и текущий курсор ввода.",
+  },
+  {
+    id: "2",
+    required: true,
+    difficultyLevel: "base",
+    title: "Выбор уровня сложности",
+    description: "Подготовить несколько текстов для проверки скорости печати разных уровней сложности: “Легкий”, “Средний” и “Сложный”. Пример данных текстов вы можете найти в ресурсах, приложенных к заданию.",
+    criteria: "Проверяется путем нажатия на кнопку запуска тестирования. После запуска пользователь должен сразу иметь возможность вводить текст, без необходимости нажатия мышкой на блок. Каждый раз текст для проверки должен быть разным и не показываться заранее пользователю. Возможен ввод неверного символа с его подсветкой и учета в последующем результате теста. Имеется выделяющиеся цвета, которые показывают корректность ввода и текущий курсор ввода.",
+  },
+  {
+    id: "3",
+    required: true,
+    difficultyLevel: "base",
+    title: "Режимы тестирования",
+    description: "Добавьте режимы тестирования \"Таймер (60 секунд)\" и \"Прохождение\" (таймер отсчитывает время, без ограничений). Адаптируйте под него рассчет WPM и корректность введенных символов. ",
+    criteria: "Проверяется путем нажатия на кнопку запуска тестирования. После запуска пользователь должен сразу иметь возможность вводить текст, без необходимости нажатия мышкой на блок. Каждый раз текст для проверки должен быть разным и не показываться заранее пользователю. Возможен ввод неверного символа с его подсветкой и учета в последующем результате теста. Имеется выделяющиеся цвета, которые показывают корректность ввода и текущий курсор ввода.",
+  },
+]
+
 export default function AdminTasksPage() {
   const developerTypes = [
     { label: "Фронтенд", value: "frontend" },
     { label: "Бэкенд", value: "backend" },
   ]
+
 
   return (
     <PageLayout>
@@ -65,12 +99,25 @@ export default function AdminTasksPage() {
                 <FormField name="title" label="Название задачи" className="col-span-2">
                   <FormInput name="title" placeholder="Введите название" />
                 </FormField>
-                <FormField name="designerAuthor" label="Автор дизайна" className="col-span-2 sm:col-span-1">
-                  <FormInput name="designerAuthor" placeholder="Введите автора дизайна" />
-                </FormField>
-                <FormField name="designerLink" label="Ссылка на дизайнера" className="col-span-2 sm:col-span-1">
-                  <FormInput name="designerLink" placeholder="Введите ссылку" />
-                </FormField>
+                <Collapsible className="col-span-2 rounded-2xl border p-2">
+                  <CollapsibleTrigger
+                    render={<Button type="button" variant="ghost" />}
+                    className="group w-full justify-start"
+                  >
+                    Данные о дизайнере
+                    <ChevronDownIcon aria-hidden="true" className="transition-transform group-aria-expanded:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent keepMounted>
+                    <div className="grid grid-cols-1 gap-x-5 gap-y-4 px-3 pt-4 pb-2 sm:grid-cols-2">
+                      <FormField name="designerAuthor" label="Автор дизайна">
+                        <FormInput name="designerAuthor" placeholder="Введите автора дизайна" />
+                      </FormField>
+                      <FormField name="designerLink" label="Ссылка на дизайнера">
+                        <FormInput name="designerLink" placeholder="Введите ссылку" />
+                      </FormField>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
                 <FormField name="shortDescription" label="Краткое описание задачи" className="col-span-2">
                   <FormTextarea name="shortDescription" placeholder="Кратко опишите" />
                 </FormField>
@@ -112,6 +159,7 @@ export default function AdminTasksPage() {
             </Form>
           </SectionLayoutContent>
         </SectionLayout>
+        <TaskItemsEditor initialItems={defaultItems} />
       </PageLayoutContent>
     </PageLayout>
   );

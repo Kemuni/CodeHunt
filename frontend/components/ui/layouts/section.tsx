@@ -2,9 +2,7 @@ import React, {HTMLAttributes} from "react";
 import {cn} from "cn";
 
 
-export interface SectionLayoutProps extends HTMLAttributes<HTMLDivElement> {}
-
-export const SectionLayout: React.FC<SectionLayoutProps> = ({
+export const SectionLayout: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => {
 
@@ -15,9 +13,23 @@ export const SectionLayout: React.FC<SectionLayoutProps> = ({
   );
 }
 
-export interface SectionLayoutHeaderProps extends HTMLAttributes<HTMLHeadingElement> {}
+export const SectionLayoutHeaderRow: React.FC<HTMLAttributes<HTMLDivElement>> = ({
+  children, className, ...props
+}) => (
+  <div className={cn("flex w-full flex-wrap items-center gap-x-4 gap-y-3", className)} {...props}>
+    {children}
+  </div>
+);
 
-export const SectionLayoutHeader: React.FC<SectionLayoutHeaderProps> = ({
+export const SectionLayoutActions: React.FC<HTMLAttributes<HTMLDivElement>> = ({
+  children, className, ...props
+}) => (
+  <div className={cn("ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2", className)} {...props}>
+    {children}
+  </div>
+);
+
+export const SectionLayoutHeader: React.FC<HTMLAttributes<HTMLHeadingElement>> = ({
   children, className, ...props
 }) => {
 
@@ -29,9 +41,7 @@ export const SectionLayoutHeader: React.FC<SectionLayoutHeaderProps> = ({
 }
 
 
-export interface SectionLayoutDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
-
-export const SectionLayoutDescription: React.FC<SectionLayoutDescriptionProps> = ({
+export const SectionLayoutDescription: React.FC<HTMLAttributes<HTMLParagraphElement>> = ({
   children, className, ...props
 }) => {
 
@@ -43,9 +53,7 @@ export const SectionLayoutDescription: React.FC<SectionLayoutDescriptionProps> =
 }
 
 
-export interface SectionLayoutContentProps extends HTMLAttributes<HTMLDivElement> {}
-
-export const SectionLayoutContent: React.FC<SectionLayoutContentProps> = ({
+export const SectionLayoutContent: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => {
 
