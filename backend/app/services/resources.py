@@ -1,0 +1,133 @@
+import logging
+from uuid import uuid4
+
+from fastapi import UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
+
+from app.core.config import settings
+from app.core.errors import (
+    FileTooLargeError,
+    InvalidResourceError,
+    UploadSizeMismatchError,
+)
+from app.models import TaskResource
+from app.models.enums import ResourceType
+from app.schemas.domain import ResourceDownloadRead, ResourceRead
+from app.services.common import assign, commit, flush, get
+from app.services.media import MediaOwner
+from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
+
+logger = logging.getLogger(__name__)
+
+
+async def read(
+    session: AsyncSession, owner: MediaOwner, storage: Storage | None = None
+) -> list[ResourceDownloadRead]:
+    objects = (
+        await session.scalars(
+            select(TaskResource)
+            .where(owner.condition(TaskResource))
+            .order_by(TaskResource.id)
+        )
+    ).all()
+    if not objects:
+        return []
+    store = storage or get_storage()
+    result = []
+    for obj in objects:
+        try:
+            url = await run_in_threadpool(store.get_download_url, obj.object_key)
+        except STORAGE_EXCEPTIONS as exc:
+            raise storage_error(exc) from exc
+        result.append(
+            ResourceDownloadRead(
+                **ResourceRead.model_validate(obj).model_dump(),
+                url=url,
+                expires_in=settings.S3_URL_TTL,
+            )
+        )
+    return result
+
+
+async def upload(
+    session: AsyncSession,
+    owner: MediaOwner,
+    file: UploadFile,
+    title: str,
+    resource_type: ResourceType,
+    storage: Storage,
+):
+    await owner.get(session)
+    title = title.strip()
+    filename = file.filename or "file"
+    if (
+        not title
+        or len(title) > 255
+        or len(filename) > 255
+        or len(file.content_type or "") > 255
+    ):
+        raise InvalidResourceError()
+    size = 0
+    while chunk := await file.read(1024 * 1024):
+        size += len(chunk)
+        if size > settings.MAX_RESOURCE_BYTES:
+            raise FileTooLargeError()
+    await file.seek(0)
+    key = f"resources/{uuid4().hex}"
+    await session.rollback()
+    try:
+        await run_in_threadpool(
+            storage.upload,
+            file.file,
+            key,
+            file.content_type or "application/octet-stream",
+        )
+        metadata = await run_in_threadpool(storage.stat, key)
+        if metadata["ContentLength"] != size:
+            raise UploadSizeMismatchError()
+        parent = await owner.get(session, lock=True)
+        obj = TaskResource(
+            **owner.values(),
+            title=title,
+            type=resource_type,
+            object_key=key,
+            original_filename=filename,
+            content_type=file.content_type,
+            size_bytes=size,
+        )
+        session.add(obj)
+        owner.touch(parent)
+        await flush(session)
+        await session.refresh(obj)
+        await commit(session)
+        return obj
+    except Exception as exc:
+        await session.rollback()
+        try:
+            await run_in_threadpool(storage.delete, key)
+        except Exception:
+            logger.exception("Не удалось удалить файл после неудачной загрузки %s", key)
+        if isinstance(exc, STORAGE_EXCEPTIONS):
+            raise storage_error(exc) from exc
+        raise
+
+
+async def update(
+    session: AsyncSession, owner: MediaOwner, resource_id: int, values: dict
+):
+    parent = await owner.get(session, lock=True)
+    obj = await get(session, TaskResource, resource_id, **owner.values())
+    assign(obj, values)
+    owner.touch(parent)
+    return await commit(session, obj)
+
+
+async def delete(session: AsyncSession, owner: MediaOwner, resource_id: int):
+    parent = await owner.get(session, lock=True)
+    await session.delete(
+        await get(session, TaskResource, resource_id, **owner.values())
+    )
+    owner.touch(parent)
+    await commit(session)

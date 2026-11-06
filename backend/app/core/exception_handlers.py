@@ -4,9 +4,12 @@ from collections.abc import Mapping
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.errors import DomainError
 from app.schemas import ErrorDetail, ErrorResponse
+from app.services.common import integrity_error
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +32,26 @@ def error_response(
 def register_exception_handlers(app: FastAPI) -> None:
     """Регистрируем обработчики ошибок FastAPI приложения"""
 
+    @app.exception_handler(DomainError)
+    async def domain_exception_handler(_: Request, exc: DomainError) -> JSONResponse:
+        payload = ErrorResponse(
+            errors=ErrorDetail(code=exc.code, message=exc.message, details=exc.details)
+        )
+        return JSONResponse(
+            status_code=exc.status,
+            content=payload.model_dump(mode="json"),
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_exception_handler(
+        request: Request, exc: IntegrityError
+    ) -> JSONResponse:
+        translated = integrity_error(exc)
+        if translated is not None:
+            return await domain_exception_handler(request, translated)
+        logger.exception("Unexpected database constraint failure", exc_info=exc)
+        return error_response("internal_error", "Внутренняя ошибка сервера", 500)
+
     @app.exception_handler(RequestValidationError)
     async def request_validation_exception_handler(
         _: Request, exc: RequestValidationError
@@ -40,7 +63,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             messages.append(f"{location}: {message}" if location else message)
         return error_response(
             "validation_error",
-            "; ".join(messages) or "Некорректные входные данные",
+            ". ".join(messages) or "Некорректные входные данные",
             422,
         )
 

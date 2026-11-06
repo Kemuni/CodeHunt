@@ -1,32 +1,6 @@
-from typing import Literal
-
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models import RequestUserRole
-
-
-class ErrorDetail(BaseModel):
-    code: str
-    message: str
-
-
-class APIResponse[T](BaseModel):  # noqa: UP046
-    """Базовый единый формат ответа нашего API"""
-
-    success: bool
-    data: T | None = None
-    errors: ErrorDetail | None = None
-
-
-class SuccessResponse[T](APIResponse[T]):  # noqa
-    success: Literal[True] = True  # type: ignore
-    errors: None = None  # type: ignore
-
-
-class ErrorResponse(APIResponse[None]):  # noqa
-    success: Literal[False] = False  # type: ignore
-    data: None = None
-    errors: ErrorDetail  # type: ignore
 
 
 class CandidateContactRequestIn(BaseModel):
@@ -52,6 +26,7 @@ class EmployerContactRequestIn(CandidateContactRequestIn):
 
 
 class ContactRequestPublic(CandidateContactRequestIn):
+    model_config = {"from_attributes": True}
     id: int
     telegram: str | None = Field(max_length=255, default=None)
     company: str | None = Field(max_length=255, default=None)
