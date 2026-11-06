@@ -44,6 +44,7 @@ function renderOption(item: FormSelectOption) {
   );
 }
 
+/** Собирает Select из items (варианты или группы) и связывает выбор с родительским Form. Начальное значение задаётся в defaultValues формы. */
 export default function FormSelect({
   name, items, placeholder = "Выберите значение", className, size, rules,
   disabled, multiple, id = name, ...props

@@ -4,6 +4,7 @@ import {cn} from "cn";
 
 export interface PageLayoutProps extends HTMLAttributes<HTMLDivElement> {}
 
+/** Задаёт внешние адаптивные отступы страницы; карточки разделов оформляются через SectionLayout. */
 export const PageLayout: React.FC<PageLayoutProps> = ({
   children, className, ...props
 }) => {
@@ -17,6 +18,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
 export interface PageLayoutHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 
+/** Оформляет главный заголовок страницы с декоративным элементом. */
 export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
   className, children, ...props
 }) => {
@@ -43,6 +45,7 @@ export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
 
 export interface PageLayoutContentProps extends HTMLAttributes<HTMLDivElement> {}
 
+/** Размещает секции страницы вертикально с общими отступами. */
 export const PageLayoutContent: React.FC<PageLayoutContentProps> = ({
   className, children, ...props
 }) => {

@@ -14,6 +14,7 @@ import {
   SectionLayoutHeader
 } from "@/components/ui/layouts/section";
 import {GalleryUpload} from "@/components/ui/form/gallery-upload";
+import {FileUpload} from "@/components/ui/form/file-upload";
 import FormSelect from "@/components/ui/form/select";
 import FormSlider from "@/components/ui/form/slider";
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible";
@@ -23,22 +24,31 @@ import TaskItemsEditor from "./task-items-editor";
 import type {TaskItem} from "./task-items-state";
 
 
-const schema = z.object({
-  title: z.string().trim(),
+/** Данные основной секции. Пункты, фотографии и вложения управляются отдельно. */
+const taskInfoSchema = z.object({
+  title: z.string().trim().min(1, "Введите название задачи"),
+  designerAuthor: z.string().trim().optional(),
+  designerLink: z.string().trim().refine(
+    (value) => value === "" || z.url({protocol: /^https?$/}).safeParse(value).success,
+    {message: "Введите корректную ссылку на дизайнера (http или https)"},
+  ).optional(),
+  shortDescription: z.string().trim().min(1, "Введите краткое описание задачи"),
+  fullDescription: z.string().trim().min(1, "Введите полное описание задачи"),
   developerType: z.enum(["frontend", "backend"], {
     error: "Выберите направление разработки",
   }),
   difficulty: (
     z
     .tuple([
-      z.number().min(1).max(10),
-      z.number().min(1).max(10),
+      z.number().int("Сложность должна быть целым числом").min(1, "Минимальная сложность — 1").max(10, "Максимальная сложность — 10"),
+      z.number().int("Сложность должна быть целым числом").min(1, "Минимальная сложность — 1").max(10, "Максимальная сложность — 10"),
     ])
     .refine(([first, second]) => first <= second, {
-      message: "Первое число не может быть больше второго",
+      message: "Минимальная сложность не может быть больше максимальной",
     })
-  )
-
+  ),
+  isFree: z.boolean(),
+  isHidden: z.boolean(),
 });
 
 
@@ -86,11 +96,17 @@ export default function AdminTasksPage() {
           <SectionLayoutDescription>То, что пользователь видит в первой карточке товара</SectionLayoutDescription>
           <SectionLayoutContent>
             <Form
-              schema={schema}
+              schema={taskInfoSchema}
               defaultValues={{
                 title: "",
+                designerAuthor: "",
+                designerLink: "",
+                shortDescription: "",
+                fullDescription: "",
                 developerType: undefined,
                 difficulty: [2, 6],
+                isFree: false,
+                isHidden: false,
               }}
               onSubmit={(v) => console.log(v)}
               className="grid grid-cols-1 gap-y-8 sm:grid-cols-2 sm:gap-x-12 sm:gap-y-4 2xl:gap-x-24"
@@ -146,7 +162,7 @@ export default function AdminTasksPage() {
                 </FormField>
               </div>
 
-              {/* Divider for mobile */}
+              {/* Разделитель на мобильных экранах */}
               <div className="h-0 w-full border block sm:hidden" />
 
               <div className="flex flex-col gap-3">
@@ -160,6 +176,13 @@ export default function AdminTasksPage() {
           </SectionLayoutContent>
         </SectionLayout>
         <TaskItemsEditor initialItems={defaultItems} />
+        <SectionLayout>
+          <SectionLayoutHeader>Вложения</SectionLayoutHeader>
+          <SectionLayoutDescription>Файлы и материалы для выполнения задачи</SectionLayoutDescription>
+          <SectionLayoutContent>
+            <FileUpload />
+          </SectionLayoutContent>
+        </SectionLayout>
       </PageLayoutContent>
     </PageLayout>
   );

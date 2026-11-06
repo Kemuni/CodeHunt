@@ -2,6 +2,7 @@ import React, {HTMLAttributes} from "react";
 import {cn} from "cn";
 
 
+/** Визуальная карточка раздела страницы; не создаёт форму и не управляет данными. */
 export const SectionLayout: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => {
@@ -13,6 +14,7 @@ export const SectionLayout: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   );
 }
 
+/** Общая строка для SectionLayoutHeader и SectionLayoutActions; допускает перенос на узком экране. */
 export const SectionLayoutHeaderRow: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => (
@@ -21,6 +23,7 @@ export const SectionLayoutHeaderRow: React.FC<HTMLAttributes<HTMLDivElement>> = 
   </div>
 );
 
+/** Контейнер кнопок справа в SectionLayoutHeaderRow; обработчики действий передаёт вызывающий компонент. */
 export const SectionLayoutActions: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => (
@@ -53,6 +56,7 @@ export const SectionLayoutDescription: React.FC<HTMLAttributes<HTMLParagraphElem
 }
 
 
+/** Контент секции с единым отступом от её заголовка и описания. */
 export const SectionLayoutContent: React.FC<HTMLAttributes<HTMLDivElement>> = ({
   children, className, ...props
 }) => {

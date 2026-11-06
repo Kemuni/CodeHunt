@@ -3,6 +3,7 @@
 import {useMemo, useReducer} from "react";
 import {createTaskItemsState, taskItemsReducer, type TaskItem, type TaskItemsActionPayloads} from "./task-items-state";
 
+/** Локальное состояние редактора и типизированные операции над пунктами. Ввод и ошибки хранятся в Form; сетевых запросов здесь нет. */
 export function useTaskItems(initialItems: TaskItem[]) {
   const [state, dispatch] = useReducer(taskItemsReducer, initialItems, createTaskItemsState);
 

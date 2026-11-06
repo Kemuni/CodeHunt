@@ -22,6 +22,7 @@ export interface TaskItem extends TaskItemFields {
   difficultyLevel: TaskDifficultyLevel;
 }
 
+/** Снимок пункта при открытии редактора; текущий ввод хранится отдельно в react-hook-form. */
 export interface TaskItemDraft {
   item: TaskItem;
   isNew: boolean;
@@ -61,6 +62,7 @@ export function createTaskItemsState(items: TaskItem[]): TaskItemsState {
   };
 }
 
+/** Применяет операции к спискам и сеансам редактирования. При сохранении принимает готовые значения; ошибки полей показывает Form. */
 export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction): TaskItemsState {
   const {difficultyLevel} = action;
   const draft = state.draftsByDifficultyLevel[difficultyLevel];

@@ -11,6 +11,7 @@ interface FormInputProps extends ComponentProps<typeof Input> {
 }
 
 
+/** Регистрирует текстовое поле по name в родительском Form и отображает состояние ошибки. */
 export default function FormInput({
   name, id, ...props
 }: FormInputProps) {

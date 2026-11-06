@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react"
+import {useState} from "react"
 import {
   formatBytes,
   useFileUpload,
@@ -33,6 +33,7 @@ interface GalleryUploadProps {
   onFilesChange?: (files: FileWithPreview[]) => void
 }
 
+/** Локальный выбор и предпросмотр изображений. Передаёт список через onFilesChange; не регистрируется в Form и не отправляет файлы на сервер. */
 export function GalleryUpload({
                                 maxFiles = 10,
                                 maxSize = 5 * 1024 * 1024, // 5MB

@@ -13,6 +13,7 @@ export interface FormSliderProps extends Omit<
   rules?: ControllerProps["rules"];
 }
 
+/** Поле Form для числа или диапазона: range задаёт два ползунка, подписи показывают границы и выбранные значения. */
 export default function FormSlider({
   name, rules, disabled, range = false, min = 0, max = 100, id = name, onBlur, ...props
 }: FormSliderProps) {

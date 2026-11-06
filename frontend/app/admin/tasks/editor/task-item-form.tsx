@@ -14,6 +14,7 @@ interface TaskItemFormProps {
   onCancel: () => void;
 }
 
+/** Редактирует один пункт через Form и Zod. Хранит ввод и ошибки до сохранения; onSave получает проверенные значения без изменения исходного пункта. */
 export default function TaskItemForm({item, onSave, onCancel}: TaskItemFormProps) {
   const difficultyLevelLabel = taskDifficultyLevels.find((level) => level.value === item.difficultyLevel)?.label;
 

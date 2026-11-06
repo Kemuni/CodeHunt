@@ -13,6 +13,7 @@ interface FormProps<TSchema extends z.ZodType<any, any, any>> {
   children: ReactNode
 }
 
+/** Создаёт контекст react-hook-form: проверяет данные по Zod при отправке и передаёт в onSubmit результат разбора схемой. */
 export default function Form<TSchema extends z.ZodType<any, any, any>>({
   schema, onSubmit, defaultValues, className, children
 }: FormProps<TSchema>) {

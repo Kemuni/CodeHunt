@@ -89,11 +89,11 @@ export const useFileUpload = (
     (file: File | FileMetadata): string | null => {
       if (file instanceof File) {
         if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`
+          return `Файл «${file.name}» превышает максимальный размер ${formatBytes(maxSize)}.`
         }
       } else {
         if (file.size > maxSize) {
-          return `File "${file.name}" exceeds the maximum size of ${formatBytes(maxSize)}.`
+          return `Файл «${file.name}» превышает максимальный размер ${formatBytes(maxSize)}.`
         }
       }
 
@@ -114,7 +114,7 @@ export const useFileUpload = (
         })
 
         if (!isAccepted) {
-          return `File "${file instanceof File ? file.name : file.name}" is not an accepted file type.`
+          return `Недопустимый тип файла «${file.name}». Разрешённые типы: ${accept}.`
         }
       }
 
@@ -403,15 +403,15 @@ export const useFileUpload = (
   ]
 }
 
-// Helper function to format bytes to human-readable format
+// Форматирует размер файла в удобном для чтения виде.
 export const formatBytes = (bytes: number, decimals = 2): string => {
-  if (bytes === 0) return "0 Bytes"
+  if (bytes === 0) return "0 Б"
 
   const k = 1024
   const dm = decimals < 0 ? 0 : decimals
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+  const sizes = ["Б", "КБ", "МБ", "ГБ", "ТБ", "ПБ", "ЭБ", "ЗБ", "ЙБ"]
 
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return Number.parseFloat((bytes / k ** i).toFixed(dm)) + sizes[i]
+  return Number.parseFloat((bytes / k ** i).toFixed(dm)) + " " + sizes[i]
 }

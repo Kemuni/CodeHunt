@@ -11,6 +11,7 @@ interface FormTextareaProps extends ComponentProps<typeof Textarea> {
 }
 
 
+/** Регистрирует многострочное поле в родительском Form; подпись и сообщение об ошибке задаются через FormField. */
 export default function FormTextarea({
   name, id, ...props
 }: FormTextareaProps) {

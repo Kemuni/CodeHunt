@@ -11,6 +11,7 @@ interface FormCheckboxProps extends ComponentProps<typeof Checkbox> {
 }
 
 
+/** Связывает чекбокс с boolean-полем родительского Form, включая изменение, потерю фокуса и фокус при ошибке. */
 export default function FormCheckbox({
   name, id, disabled, onBlur, ...props
 }: FormCheckboxProps) {

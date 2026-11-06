@@ -29,6 +29,7 @@ interface TaskItemCardProps {
   actions: TaskItemsActions;
 }
 
+/** Карточка пункта: переключает просмотр и форму редактирования, показывает меню и ручку сортировки. Изменения списка делегирует actions. */
 function TaskItemCard({item, index, difficultyLevel, editing, busy, actions}: TaskItemCardProps) {
   const difficultyLevelLabel = taskDifficultyLevels.find((entry) => entry.value === difficultyLevel)?.label;
 
@@ -120,6 +121,7 @@ function TaskItemCard({item, index, difficultyLevel, editing, busy, actions}: Ta
   );
 }
 
+/** Управляет тремя уровнями сложности и списками пунктов. Вкладки сохраняют формы смонтированными, чтобы не терять незавершённый ввод. */
 export default function TaskItemsEditor({initialItems}: {initialItems: TaskItem[]}) {
   const {state, actions} = useTaskItems(initialItems);
 
