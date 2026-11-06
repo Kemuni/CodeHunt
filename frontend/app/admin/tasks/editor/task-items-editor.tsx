@@ -19,6 +19,8 @@ import {
 } from "./task-items-state";
 import {useTaskItems, type TaskItemsActions} from "./use-task-items";
 import TaskItemForm from "./task-item-form";
+import ExpandableText from "./expandable-text";
+import {cn} from "cn";
 
 interface TaskItemCardProps {
   item: TaskItem;
@@ -55,15 +57,22 @@ function TaskItemCard({item, index, difficultyLevel, editing, busy, actions}: Ta
       ) : (
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 flex-1 text-xl font-semibold wrap-break-word">
-              {item.title}
+            <h3 className="min-w-0 flex-1 text-xl font-semibold">
+              <ExpandableText as="span" text={item.title} maxLength={160} maxLines={2} />
               {!item.required && <span className="ml-2 text-sm font-normal text-muted-foreground">(необязательно)</span>}
             </h3>
-            <span className="ml-auto shrink-0 rounded-full bg-dark-green/15 px-2 py-0.5 text-sm font-light text-dark-green">
+            <span
+              className={cn(
+                "ml-auto shrink-0 rounded-full  px-2 py-0.5 text-sm font-light ",
+                difficultyLevel === "base" && "bg-dark-green/15 text-dark-green",
+                difficultyLevel === "medium" && "bg-warning-orange/15 text-warning-orange",
+                difficultyLevel === "maximum" && "bg-primary/15 text-primary",
+              )}
+            >
               {difficultyLevelLabel}
             </span>
           </div>
-          <p className="text-base whitespace-pre-wrap wrap-break-word">{item.description}</p>
+          <ExpandableText text={item.description} className="text-base" />
           <Collapsible>
             <CollapsibleTrigger
               render={<Button type="button" variant="ghost" className="hover:bg-primary/5 aria-expanded:bg-primary/5 text-primary!" />}
@@ -73,9 +82,12 @@ function TaskItemCard({item, index, difficultyLevel, editing, busy, actions}: Ta
               <ChevronDownIcon aria-hidden="true" className="transition-transform group-aria-expanded:rotate-180" />
             </CollapsibleTrigger>
             <CollapsibleContent keepMounted>
-              <p className="mt-1 border-l border-primary bg-primary/5 px-3 py-2 text-sm whitespace-pre-wrap wrap-break-word text-primary">
-                {item.criteria}
-              </p>
+              <ExpandableText
+                text={item.criteria}
+                maxLines={5}
+                maxLength={500}
+                className="mt-1 border-l border-primary bg-primary/5 px-3 py-2 text-sm text-primary"
+              />
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -166,7 +178,12 @@ export default function TaskItemsEditor({initialItems}: {initialItems: TaskItem[
             const visibleItems = draft?.isNew ? [...items, draft.item] : items;
 
             return (
-              <TabsContent key={difficultyLevel.value} value={difficultyLevel.value} keepMounted>
+              <TabsContent
+                key={difficultyLevel.value}
+                value={difficultyLevel.value}
+                keepMounted
+                className="max-h-[min(65vh,48rem)] overflow-y-auto overscroll-contain p-1 py-4 scrollbar-gutter-stable border-b"
+              >
                 {!visibleItems.length && (
                   <p className="rounded-md border border-dashed p-6 text-center text-muted-foreground">
                     Пока нет пунктов. Добавьте новый пункт или перенесите его из другой сложности.

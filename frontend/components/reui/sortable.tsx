@@ -9,6 +9,7 @@ import {
   isValidElement,
   useCallback,
   useContext,
+  useId,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -163,6 +164,7 @@ function Sortable<T>({
   children,
   ...props
 }: SortableRootProps<T>) {
+  const contextId = useId()
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const mounted = useSyncExternalStore(
     subscribeToNothing,
@@ -275,6 +277,7 @@ function Sortable<T>({
   return (
     <SortableInternalContext.Provider value={contextValue}>
       <DndContext
+        id={`sortable-${contextId}`}
         sensors={sensors}
         modifiers={modifiers}
         accessibility={accessibility}

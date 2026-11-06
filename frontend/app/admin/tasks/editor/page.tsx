@@ -135,10 +135,18 @@ export default function AdminTasksPage() {
                   </CollapsibleContent>
                 </Collapsible>
                 <FormField name="shortDescription" label="Краткое описание задачи" className="col-span-2">
-                  <FormTextarea name="shortDescription" placeholder="Кратко опишите" />
+                  <FormTextarea
+                    name="shortDescription"
+                    placeholder="Кратко опишите"
+                    className="field-sizing-fixed min-h-24 max-h-80 resize-y overflow-y-auto"
+                  />
                 </FormField>
                 <FormField name="fullDescription" label="Общее описание" className="col-span-2">
-                  <FormTextarea name="fullDescription" placeholder="Опишите задачу целиком" className="h-24" />
+                  <FormTextarea
+                    name="fullDescription"
+                    placeholder="Опишите задачу целиком"
+                    className="field-sizing-fixed min-h-24 max-h-80 resize-y overflow-y-auto"
+                  />
                 </FormField>
                 <FormField name="developerType" label="Направление разработки"
                            className="col-span-2 sm:col-span-1 justify-around"
