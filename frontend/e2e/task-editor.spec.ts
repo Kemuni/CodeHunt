@@ -106,14 +106,14 @@ test("draft autosave, attachments, publication and explicit updates of an existi
     const published = await api(`tasks/${taskId}`)
     expect(published.photos).toHaveLength(1)
     expect(published.resources).toHaveLength(1)
-    expect(published.complications).toHaveLength(1)
+    expect(published.presets.easy.complications).toHaveLength(1)
     await page.getByRole("button", { name: "Действия: Обязательный пункт", exact: true }).click()
     await page.getByRole("menuitem", { name: "Изменить пункт", exact: true }).click()
     await page.getByLabel("Критерии проверки", { exact: true }).fill("Обновлённый критерий")
     await page.getByRole("button", { name: "Сохранить", exact: true }).click()
-    expect((await api(`editor/tasks/${taskId}`)).complications[0].acceptance_criteria).toBe(
-      "Условие выполнено",
-    )
+    expect(
+      (await api(`editor/tasks/${taskId}`)).presets.easy.complications[0].acceptance_criteria,
+    ).toBe("Условие выполнено")
     const draftsAfterPublish = (await api("editor/task-drafts?limit=100")).total
     await page.getByLabel("Название задачи", { exact: true }).fill(`${title} изменено`)
     await page.waitForTimeout(1000)
@@ -152,8 +152,8 @@ test("draft autosave, attachments, publication and explicit updates of an existi
     await page.getByRole("button", { name: "Сохранить задачу", exact: true }).click()
     await expect(page.getByText("Основная информация и пункты задачи сохранены")).toBeVisible()
     expect((await api(`editor/tasks/${taskId}`)).title).toBe(`${title} изменено`)
-    const savedItem = (await api(`editor/tasks/${taskId}`)).complications[0]
-    expect(savedItem.id).toBe(published.complications[0].id)
+    const savedItem = (await api(`editor/tasks/${taskId}`)).presets.easy.complications[0]
+    expect(savedItem.id).toBe(published.presets.easy.complications[0].id)
     expect(savedItem.acceptance_criteria).toBe("Обновлённый критерий")
     await page.getByRole("button", { name: "Посмотреть second.png", exact: true }).click()
     await expect(page.getByRole("dialog")).toBeVisible()

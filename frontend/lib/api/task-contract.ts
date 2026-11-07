@@ -46,10 +46,17 @@ export type TaskDetail = {
   updated_at: string
   id: number
   status: TaskStatus
-  complications: Array<ComplicationItem | ComplicationGroupRead>
-  presets: Array<PresetRead>
+  presets: TaskPresets
   photos: Array<PhotoRead>
   resources: Array<ResourceDownloadRead>
+}
+
+/** Все уровни присутствуют; каждый содержит только собственные пункты. */
+export type TaskPresets = Record<Level, TaskPresetRead>
+
+export type TaskPresetRead = {
+  preset: PresetRead | null
+  complications: Array<ComplicationItem | ComplicationGroupRead>
 }
 
 export type TaskRead = {
@@ -202,6 +209,7 @@ export type CompositionLink = {
 }
 
 export type CompositionGroup = {
+  level: Level
   kind?: "group"
   id?: number | null
   title: string
@@ -233,6 +241,7 @@ export type ComplicationItem = {
 }
 
 export type ComplicationGroupRead = {
+  level: Level
   created_at: string
   updated_at: string
   id: number

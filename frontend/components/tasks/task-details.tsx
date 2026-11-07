@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
-import type { ComplicationItem, ComplicationGroupRead } from "@/lib/api/task-contract"
+import type { ComplicationItem, ComplicationGroupRead, Level } from "@/lib/api/task-contract"
 import { levelLabels } from "@/lib/tasks/labels"
 import { PageLayout, PageLayoutContent, PageLayoutHeader } from "@/components/ui/layouts/page"
 import {
@@ -59,22 +59,21 @@ function Requirements({ nodes }: { nodes: Array<ComplicationItem | ComplicationG
   )
 }
 
-/** React Query загружает задачу и состав выбранного уровня, включая пункты более простых уровней. */
+/** Задача приходит с готовым деревом собственных пунктов каждого уровня. */
 export default function TaskDetails({ id }: { id: number }) {
   const taskQuery = useQuery({
     queryKey: ["public-task", id],
     queryFn: () => tasksApi.task(id, false),
     retry: false,
   })
-  const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
+  const [selectedLevel, setSelectedLevel] = useState<Level | null>(null)
   const task = taskQuery.data
-  const presetId = selectedPreset ?? task?.presets[0]?.id
-  const config = useQuery({
-    queryKey: ["public-configuration", id, presetId],
-    queryFn: () => tasksApi.configuration(id, presetId!),
-    enabled: !!presetId,
-    retry: false,
-  })
+  const availableLevels = (["easy", "medium", "high"] as const).filter(
+    (level) => task?.presets[level].preset,
+  )
+  const level =
+    selectedLevel && availableLevels.includes(selectedLevel) ? selectedLevel : availableLevels[0]
+  const selected = level ? task?.presets[level] : undefined
   const download = async (resourceId: number) => {
     try {
       const result = await tasksApi.resourceUrl("task", id, resourceId, false)
@@ -155,42 +154,26 @@ export default function TaskDetails({ id }: { id: number }) {
         <SectionLayout>
           <SectionLayoutHeader>Пункты задачи</SectionLayoutHeader>
           <SectionLayoutContent>
-            <Tabs
-              value={String(presetId ?? "")}
-              onValueChange={(value) => setSelectedPreset(Number(value))}
-            >
+            <Tabs value={level ?? ""} onValueChange={(value) => setSelectedLevel(value as Level)}>
               <TabsList>
-                {task.presets.map((preset) => (
-                  <TabsTrigger key={preset.id} value={String(preset.id)}>
-                    {levelLabels[preset.level]}
+                {availableLevels.map((level) => (
+                  <TabsTrigger key={level} value={level}>
+                    {levelLabels[level]}
                   </TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
-            {config.isPending && presetId ? (
-              <p className="mt-4">Загружаем пункты…</p>
-            ) : config.error ? (
-              <div role="alert">
-                <p>{config.error.message}</p>
-                <Button variant="outline" onClick={() => void config.refetch()}>
-                  Повторить
-                </Button>
-              </div>
-            ) : (
-              <>
-                {config.data && (
-                  <div className="my-4">
-                    <p className="whitespace-pre-wrap">{config.data.preset.description}</p>
-                    {config.data.preset.average_days_to_complete && (
-                      <p className="text-sm text-muted-foreground">
-                        Среднее время выполнения: {config.data.preset.average_days_to_complete} дн.
-                      </p>
-                    )}
-                  </div>
+            {selected?.preset && (
+              <div className="my-4">
+                <p className="whitespace-pre-wrap">{selected.preset.description}</p>
+                {selected.preset.average_days_to_complete && (
+                  <p className="text-sm text-muted-foreground">
+                    Среднее время выполнения: {selected.preset.average_days_to_complete} дн.
+                  </p>
                 )}
-                <Requirements nodes={config.data?.complications ?? task.complications} />
-              </>
+              </div>
             )}
+            <Requirements nodes={selected?.complications ?? []} />
           </SectionLayoutContent>
         </SectionLayout>
         {!!task.resources.length && (

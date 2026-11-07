@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type {
   TaskDetail,
+  TaskPresets,
   TaskPublication,
   CompositionLink,
   CompositionGroup,
@@ -10,7 +11,7 @@ import type {
   PresetCreate,
 } from "@/lib/api/task-contract"
 import type { DraftPayload } from "@/lib/api/tasks"
-import { isCategory, countTaskItems, type TaskNode } from "./task-tree"
+import { isCategory, type TaskNode } from "./task-tree"
 import type { TaskDifficultyLevel } from "./task-items-state"
 
 export const levelToApi: Record<TaskDifficultyLevel, Level> = {
@@ -73,7 +74,7 @@ export const emptyInfo: TaskInfo = {
 export function hasLevelContent(info: TaskInfo, nodes: TaskNode[], level: Level) {
   return (
     !!info.presets[level].description.trim() ||
-    countTaskItems(nodes.filter((node) => levelToApi[node.difficultyLevel] === level)) > 0
+    nodes.some((node) => levelToApi[node.difficultyLevel] === level)
   )
 }
 
@@ -112,118 +113,89 @@ type ApiNode = CompositionLink | CompositionGroup | ComplicationItem | Complicat
 const isGroup = (node: ApiNode): node is CompositionGroup | ComplicationGroupRead =>
   node.kind === "group"
 
-/** Проецирует общее дерево API на вкладки сложности, сохраняя серверные ID групп и пунктов. */
+const levelFromApi: Record<Level, TaskDifficultyLevel> = {
+  easy: "base",
+  medium: "medium",
+  high: "maximum",
+}
+
+/** Каждый узел, включая пустую группу, имеет собственный уровень и серверный ID. */
 export function fromComposition(items: ApiNode[]): TaskNode[] {
-  const visit = (
-    nodes: ApiNode[],
-    difficultyLevel: TaskDifficultyLevel,
-    path: string,
-  ): TaskNode[] =>
-    nodes.flatMap((node, index): TaskNode[] => {
-      const key = `${path}-${index}`
-      if (isGroup(node)) {
-        const children = visit(node.items ?? [], difficultyLevel, key)
-        if (!children.length && (node.items?.length || difficultyLevel !== "base")) return []
-        return [
-          {
-            kind: "category",
-            id: node.id ?? `local-group-${key}-${difficultyLevel}`,
-            title: node.title,
-            difficultyLevel,
-            children,
-          },
-        ]
-      }
-      if (node.level !== levelToApi[difficultyLevel]) return []
-      return [
-        {
-          id: node.id ?? `local-item-${key}`,
-          complicationId: node.complication_id ?? null,
-          difficultyLevel,
-          title: node.title,
-          description: node.description,
-          criteria: node.acceptance_criteria,
-          required: node.is_required ?? false,
-        },
-      ]
-    })
-  return (Object.keys(levelToApi) as TaskDifficultyLevel[]).flatMap((level) =>
-    visit(items, level, "root"),
+  return compositionNodes(items, "root")
+}
+
+export function fromPresets(presets: TaskPresets): TaskNode[] {
+  return (["easy", "medium", "high"] as const).flatMap((level) =>
+    compositionNodes(presets[level].complications, level),
   )
 }
 
-/** Объединяет проекции общих групп и передаёт ID только тех узлов, которые уже существуют на сервере. */
-export function toComposition(nodes: TaskNode[]): Array<CompositionLink | CompositionGroup> {
-  const result = serializeNodes(nodes)
-  const groupIds = new Set<number>()
-  const visit = (items: Array<CompositionLink | CompositionGroup>) => {
-    for (const item of items) {
-      if (item.kind !== "group") continue
-      // После переноса части общей группы в другую ветку API создаёт для неё отдельную группу.
-      if (item.id) {
-        if (groupIds.has(item.id)) delete item.id
-        else groupIds.add(item.id)
-      }
-      visit(item.items ?? [])
-    }
-  }
-  visit(result)
-  return result
-}
-function serializeNodes(nodes: TaskNode[]): Array<CompositionLink | CompositionGroup> {
-  const result: Array<CompositionLink | CompositionGroup> = []
-  for (const node of nodes) {
-    if (isCategory(node)) {
-      const existing =
-        typeof node.id === "number"
-          ? result.find(
-              (n): n is CompositionGroup =>
-                n.kind === "group" && n.id === node.id && n.title === node.title,
-            )
-          : undefined
-      if (existing) {
-        existing.items = mergeGroups([...(existing.items ?? []), ...serializeNodes(node.children)])
-      } else
-        result.push({
-          kind: "group",
-          ...(typeof node.id === "number" ? { id: node.id } : {}),
-          title: node.title,
-          items: serializeNodes(node.children),
-        })
-    } else
-      result.push({
-        kind: "complication",
-        ...(typeof node.id === "number" ? { id: node.id } : {}),
-        complication_id: node.complicationId ?? null,
+function compositionNodes(nodes: ApiNode[], path: string): TaskNode[] {
+  return nodes.map((node, index): TaskNode => {
+    const key = `${path}-${index}`
+    const difficultyLevel = levelFromApi[node.level]
+    if (isGroup(node)) {
+      return {
+        kind: "category",
+        id: node.id ?? `local-group-${key}`,
         title: node.title,
-        description: node.description,
-        acceptance_criteria: node.criteria,
-        level: levelToApi[node.difficultyLevel],
-        is_required: node.required,
-      })
-  }
-  return result
-}
-function mergeGroups(nodes: Array<CompositionLink | CompositionGroup>) {
-  const merged: Array<CompositionLink | CompositionGroup> = []
-  for (const node of nodes) {
-    const previous =
-      node.kind === "group" && node.id
-        ? merged.find(
-            (n): n is CompositionGroup =>
-              n.kind === "group" && n.id === node.id && n.title === node.title,
-          )
-        : undefined
-    if (previous && node.kind === "group")
-      previous.items = mergeGroups([...(previous.items ?? []), ...(node.items ?? [])])
-    else merged.push(node)
-  }
-  return merged
+        difficultyLevel,
+        children: compositionNodes(node.items ?? [], key),
+      }
+    }
+    return {
+      id: node.id ?? `local-item-${key}`,
+      complicationId: node.complication_id ?? null,
+      difficultyLevel,
+      title: node.title,
+      description: node.description,
+      criteria: node.acceptance_criteria,
+      required: node.is_required ?? false,
+    }
+  })
 }
 
-/** Восстанавливает значения полей из задачи или неполного черновика, включая выбранные уровни. */
-export function infoFromPayload(data: DraftPayload | TaskDetail): TaskInfo {
+/** Сохраняет явный уровень групп; перенос между вкладками меняет level, а не ID. */
+export function toComposition(nodes: TaskNode[]): Array<CompositionLink | CompositionGroup> {
+  return nodes.map((node) => {
+    const identity = typeof node.id === "number" ? { id: node.id } : {}
+    if (isCategory(node)) {
+      return {
+        kind: "group",
+        ...identity,
+        title: node.title,
+        level: levelToApi[node.difficultyLevel],
+        items: toComposition(node.children),
+      }
+    }
+    return {
+      kind: "complication",
+      ...identity,
+      complication_id: node.complicationId ?? null,
+      title: node.title,
+      description: node.description,
+      acceptance_criteria: node.criteria,
+      level: levelToApi[node.difficultyLevel],
+      is_required: node.required,
+    }
+  })
+}
+
+/** Читает метаданные задачи по ключам уровней без поиска в общем списке пресетов. */
+export function infoFromTask(task: TaskDetail): TaskInfo {
+  return infoFromData(task, (level) => task.presets[level].preset)
+}
+
+/** Восстанавливает поля неполного черновика, который хранит формат записи API. */
+export function infoFromPayload(data: DraftPayload): TaskInfo {
   const presets = Array.isArray(data.presets) ? (data.presets as PresetCreate[]) : []
+  return infoFromData(data, (level) => presets.find((preset) => preset.level === level))
+}
+
+function infoFromData(
+  data: DraftPayload | TaskDetail,
+  presetForLevel: (level: Level) => PresetCreate | null | undefined,
+): TaskInfo {
   const text = (key: string) =>
     typeof (data as DraftPayload)[key] === "string" ? ((data as DraftPayload)[key] as string) : ""
   return {
@@ -244,7 +216,7 @@ export function infoFromPayload(data: DraftPayload | TaskDetail): TaskInfo {
     isHidden: data.is_hidden === true,
     presets: Object.fromEntries(
       Object.entries(emptyInfo.presets).map(([key, value]) => {
-        const preset = presets.find((p) => p.level === key)
+        const preset = presetForLevel(key as Level)
         return [
           key,
           preset

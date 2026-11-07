@@ -23,7 +23,9 @@ import {
   createTaskInfoSchema,
   emptyInfo,
   infoFromPayload,
+  infoFromTask,
   fromComposition,
+  fromPresets,
   toPayload,
   publication,
   type TaskInfo,
@@ -55,17 +57,22 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const initialDraft = initial && "payload" in initial ? initial : null
-  const initialTask = initial && "complications" in initial ? initial : null
+  const initialTask = initial && "presets" in initial ? initial : null
   const [initialInfo] = useState(() =>
-    initial ? infoFromPayload(initialDraft?.payload ?? initialTask!) : structuredClone(emptyInfo),
+    initialTask
+      ? infoFromTask(initialTask)
+      : initialDraft
+        ? infoFromPayload(initialDraft.payload)
+        : structuredClone(emptyInfo),
   )
   const [tree, setTree] = useState(() =>
-    fromComposition(
-      initialTask?.complications ??
-        (Array.isArray(initialDraft?.payload.items)
-          ? (initialDraft.payload.items as Array<CompositionLink | CompositionGroup>)
-          : []),
-    ),
+    initialTask
+      ? fromPresets(initialTask.presets)
+      : fromComposition(
+          Array.isArray(initialDraft?.payload.items)
+            ? (initialDraft.payload.items as Array<CompositionLink | CompositionGroup>)
+            : [],
+        ),
   )
   const [treeVersion, setTreeVersion] = useState(0)
   const [originalPayload] = useState<DraftPayload>(() => initialDraft?.payload ?? {})
@@ -169,30 +176,32 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
       contentRef.current.nodes = savedNodes
       setTree(savedNodes)
       setTreeVersion((v) => v + 1)
-      persistedTaskRef.current = { ...persistedTaskRef.current, complications: composition }
       for (const preset of presets) {
-        const previous: PresetRead | undefined = persistedTaskRef.current.presets.find(
-          (p) => p.level === preset.level,
-        )
+        const previous = persistedTaskRef.current.presets[preset.level].preset
         const saved: PresetRead = previous
           ? await tasksApi.updatePreset(existing.id, previous.id, preset)
           : await tasksApi.createPreset(existing.id, preset)
         persistedTaskRef.current = {
           ...persistedTaskRef.current,
-          presets: [
-            ...persistedTaskRef.current.presets.filter((p) => p.level !== saved.level),
-            saved,
-          ],
+          presets: {
+            ...persistedTaskRef.current.presets,
+            [saved.level]: { ...persistedTaskRef.current.presets[saved.level], preset: saved },
+          },
         }
       }
-      for (const previous of persistedTaskRef.current.presets) {
+      for (const { preset: previous } of Object.values(persistedTaskRef.current.presets)) {
+        if (!previous) continue
         if (presets.some((preset) => preset.level === previous.level)) continue
         await tasksApi.deletePreset(existing.id, previous.id)
         persistedTaskRef.current = {
           ...persistedTaskRef.current,
-          presets: persistedTaskRef.current.presets.filter((preset) => preset.id !== previous.id),
+          presets: {
+            ...persistedTaskRef.current.presets,
+            [previous.level]: { ...persistedTaskRef.current.presets[previous.level], preset: null },
+          },
         }
       }
+      persistedTaskRef.current = await tasksApi.task(existing.id)
       setTask(persistedTaskRef.current)
       savedPayload.current = JSON.stringify(
         toPayload(contentRef.current.info, contentRef.current.nodes, originalPayload),
