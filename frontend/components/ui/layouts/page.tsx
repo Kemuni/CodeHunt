@@ -1,5 +1,6 @@
 import React, { HTMLAttributes } from "react"
 import { cn } from "cn"
+import Image from "next/image"
 
 export type PageLayoutProps = HTMLAttributes<HTMLDivElement>
 
@@ -31,7 +32,9 @@ export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
     >
       <h2>{children}</h2>
       <div className="relative hidden sm:block">
-        <div className="absolute left-20 -bottom-1 size-20 rotate-45 bg-gray-300/25" />
+        <div className="absolute left-15 -bottom-1 size-20">
+          <Image src="/figma/Asterisk 2.svg" alt="decoration" fill/>
+        </div>
       </div>
     </div>
   )
