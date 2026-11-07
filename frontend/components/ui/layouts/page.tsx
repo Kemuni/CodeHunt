@@ -49,7 +49,7 @@ export const PageLayoutContent: React.FC<PageLayoutContentProps> = ({
   ...props
 }) => {
   return (
-    <div className={cn("w-full mt-14 flex flex-col gap-6", className)} {...props}>
+    <div className={cn("w-full min-h-screen mt-14 flex flex-col gap-6", className)} {...props}>
       {children}
     </div>
   )

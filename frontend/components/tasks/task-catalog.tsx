@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
+import { PlusIcon } from "lucide-react"
 import { tasksApi } from "@/lib/api/tasks"
+import type { DraftRead, TaskRead } from "@/lib/api/task-contract"
 import { PageLayout, PageLayoutHeader, PageLayoutContent } from "@/components/ui/layouts/page"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,7 +18,8 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card"
-import {PlusIcon} from "lucide-react";
+
+const PAGE_SIZE = 20
 
 /** Публичный каталог и административный список. Собственные черновики запрашиваются отдельным API только в административном режиме. */
 export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
@@ -39,169 +42,236 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
   })
   const result = drafts ? draftsQuery : tasksQuery
   const total = result.data?.total ?? 0
+
+  function handleTabChange(value: string) {
+    setTab(value)
+    setOffset(0)
+  }
+
+  function handleSearch() {
+    setQuery(search)
+    setOffset(0)
+  }
+
   return (
     <PageLayout>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
-        {admin && (
-          <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
-            <PlusIcon />
-            Добавить задачу
-          </Button>
-        )}
-      </div>
+      <TaskCatalogHeader admin={admin} />
       <PageLayoutContent>
         {admin ? (
-          <Tabs
-            value={tab}
-            onValueChange={(value) => {
-              setTab(String(value))
-              setOffset(0)
-            }}
-          >
-            <TabsList>
-              <TabsTrigger value="tasks">Все задачи</TabsTrigger>
-              <TabsTrigger value="drafts">Мои черновики</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <TaskCatalogTabs value={tab} onValueChange={handleTabChange} />
         ) : (
-          <div className="flex gap-2">
-            <Input
-              aria-label="Поиск задач"
-              placeholder="Поиск по задачам"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setQuery(search)
-                  setOffset(0)
-                }
-              }}
-            />
-            <Button
-              onClick={() => {
-                setQuery(search)
-                setOffset(0)
-              }}
-            >
-              Найти
-            </Button>
-          </div>
+          <TaskCatalogSearch value={search} onValueChange={setSearch} onSearch={handleSearch} />
         )}
-        {result.isPending ? (
-          <p role="status">Загружаем…</p>
-        ) : result.error ? (
-          <div role="alert">
-            <p className="text-destructive">{result.error.message}</p>
-            <Button variant="outline" className="mt-3" onClick={() => void result.refetch()}>
-              Повторить
-            </Button>
+        <TaskCatalogResults
+          isPending={result.isPending}
+          error={result.error}
+          onRetry={() => void result.refetch()}
+          total={total}
+          drafts={drafts}
+        >
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {drafts
+              ? draftsQuery.data?.items.map((draft) => <DraftCard key={draft.id} draft={draft} />)
+              : tasksQuery.data?.items.map((task) => (
+                  <TaskCard key={task.id} task={task} admin={admin} />
+                ))}
           </div>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground">Всего: {total}</p>
-            {!total && (
-              <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                {drafts ? "У вас пока нет черновиков" : "Задач пока нет"}
-              </p>
-            )}
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {drafts
-                ? draftsQuery.data?.items.map((draft) => (
-                    <Card key={draft.id}>
-                      <CardHeader>
-                        <CardTitle>
-                          {typeof draft.payload.title === "string" && draft.payload.title
-                            ? draft.payload.title
-                            : "Без названия"}
-                        </CardTitle>
-                        <CardDescription>Черновик #{draft.id}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p>
-                          {draft.is_valid
-                            ? "Готов к публикации"
-                            : `Проблем с валидацией: ${draft.validation_errors.length}`}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Фото: {draft.photos.length} · Вложения: {draft.resources.length}
-                        </p>
-                      </CardContent>
-                      <CardFooter>
-                        <Button
-                          render={<Link href={`/admin/tasks/editor?draftId=${draft.id}`} />}
-                          nativeButton={false}
-                          variant="outline"
-                        >
-                          Продолжить редактирование
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))
-                : tasksQuery.data?.items.map((task) => (
-                    <Card key={task.id}>
-                      <CardHeader>
-                        <CardTitle>{task.title}</CardTitle>
-                        <CardDescription>
-                          {task.developer_type === "frontend" ? "Фронтенд" : "Фуллстек"} · Сложность{" "}
-                          {task.difficulty_from}–{task.difficulty_to}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="whitespace-pre-wrap wrap-anywhere">
-                          {task.short_description}
-                        </p>
-                        {admin && (
-                          <p className="mt-3 text-sm text-muted-foreground">
-                            {task.status === "archived" ? "В архиве" : "Опубликована"}
-                            {task.is_hidden ? " · Скрыта" : ""}
-                          </p>
-                        )}
-                      </CardContent>
-                      <CardFooter className="mt-auto">
-                        <Button
-                          render={
-                            <Link
-                              href={
-                                admin
-                                  ? `/admin/tasks/editor?taskId=${task.id}`
-                                  : `/tasks/${task.id}`
-                              }
-                            />
-                          }
-                          nativeButton={false}
-                          variant="outline"
-                        >
-                          {admin ? "Редактировать" : "Открыть задачу"}
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-            </div>
-            {total > 20 && (
-              <div className="flex items-center justify-center gap-3">
-                <Button
-                  variant="outline"
-                  disabled={!offset}
-                  onClick={() => setOffset((value) => Math.max(0, value - 20))}
-                >
-                  Назад
-                </Button>
-                <span>
-                  {Math.floor(offset / 20) + 1} / {Math.ceil(total / 20)}
-                </span>
-                <Button
-                  variant="outline"
-                  disabled={offset + 20 >= total}
-                  onClick={() => setOffset((value) => value + 20)}
-                >
-                  Далее
-                </Button>
-              </div>
-            )}
-          </>
-        )}
+          <TaskCatalogPagination total={total} offset={offset} onOffsetChange={setOffset} />
+        </TaskCatalogResults>
       </PageLayoutContent>
     </PageLayout>
+  )
+}
+
+function TaskCatalogHeader({ admin }: { admin: boolean }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
+      {admin && (
+        <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
+          <PlusIcon />
+          Добавить задачу
+        </Button>
+      )}
+    </div>
+  )
+}
+
+interface TaskCatalogTabsProps {
+  value: string
+  onValueChange: (value: string) => void
+}
+
+function TaskCatalogTabs({ value, onValueChange }: TaskCatalogTabsProps) {
+  return (
+    <Tabs value={value} onValueChange={(value) => onValueChange(String(value))}>
+      <TabsList>
+        <TabsTrigger value="tasks">Все задачи</TabsTrigger>
+        <TabsTrigger value="drafts">Мои черновики</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  )
+}
+
+interface TaskCatalogSearchProps {
+  value: string
+  onValueChange: (value: string) => void
+  onSearch: () => void
+}
+
+function TaskCatalogSearch({ value, onValueChange, onSearch }: TaskCatalogSearchProps) {
+  return (
+    <div className="flex gap-2">
+      <Input
+        aria-label="Поиск задач"
+        placeholder="Поиск по задачам"
+        value={value}
+        onChange={(event) => onValueChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") onSearch()
+        }}
+      />
+      <Button onClick={onSearch}>Найти</Button>
+    </div>
+  )
+}
+
+interface TaskCatalogResultsProps {
+  isPending: boolean
+  error: Error | null
+  onRetry: () => void
+  total: number
+  drafts: boolean
+  children: ReactNode
+}
+
+function TaskCatalogResults({
+  isPending,
+  error,
+  onRetry,
+  total,
+  drafts,
+  children,
+}: TaskCatalogResultsProps) {
+  if (isPending) return <p role="status">Загружаем…</p>
+
+  if (error) {
+    return (
+      <div role="alert">
+        <p className="text-destructive">{error.message}</p>
+        <Button variant="outline" className="mt-3" onClick={onRetry}>
+          Повторить
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">Всего: {total}</p>
+      {!total && (
+        <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+          {drafts ? "У вас пока нет черновиков" : "Задач пока нет"}
+        </p>
+      )}
+      {children}
+    </>
+  )
+}
+
+function DraftCard({ draft }: { draft: DraftRead }) {
+  const title =
+    typeof draft.payload.title === "string" && draft.payload.title
+      ? draft.payload.title
+      : "Без названия"
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>Черновик #{draft.id}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p>
+          {draft.is_valid
+            ? "Готов к публикации"
+            : `Проблем с валидацией: ${draft.validation_errors.length}`}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Фото: {draft.photos.length} · Вложения: {draft.resources.length}
+        </p>
+      </CardContent>
+      <CardFooter>
+        <Button
+          render={<Link href={`/admin/tasks/editor?draftId=${draft.id}`} />}
+          nativeButton={false}
+          variant="outline"
+        >
+          Продолжить редактирование
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function TaskCard({ task, admin }: { task: TaskRead; admin: boolean }) {
+  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{task.title}</CardTitle>
+        <CardDescription>
+          {task.developer_type === "frontend" ? "Фронтенд" : "Фуллстек"} · Сложность{" "}
+          {task.difficulty_from}–{task.difficulty_to}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="whitespace-pre-wrap wrap-anywhere">{task.short_description}</p>
+        {admin && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {task.status === "archived" ? "В архиве" : "Опубликована"}
+            {task.is_hidden ? " · Скрыта" : ""}
+          </p>
+        )}
+      </CardContent>
+      <CardFooter className="mt-auto">
+        <Button render={<Link href={href} />} nativeButton={false} variant="outline">
+          {admin ? "Редактировать" : "Открыть задачу"}
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+interface TaskCatalogPaginationProps {
+  total: number
+  offset: number
+  onOffsetChange: (offset: number) => void
+}
+
+function TaskCatalogPagination({ total, offset, onOffsetChange }: TaskCatalogPaginationProps) {
+  if (total <= PAGE_SIZE) return null
+
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <Button
+        variant="outline"
+        disabled={!offset}
+        onClick={() => onOffsetChange(Math.max(0, offset - PAGE_SIZE))}
+      >
+        Назад
+      </Button>
+      <span>
+        {Math.floor(offset / PAGE_SIZE) + 1} / {Math.ceil(total / PAGE_SIZE)}
+      </span>
+      <Button
+        variant="outline"
+        disabled={offset + PAGE_SIZE >= total}
+        onClick={() => onOffsetChange(offset + PAGE_SIZE)}
+      >
+        Далее
+      </Button>
+    </div>
   )
 }
