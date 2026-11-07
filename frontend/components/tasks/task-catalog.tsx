@@ -12,14 +12,7 @@ import { PageLayout, PageLayoutHeader, PageLayoutContent } from "@/components/ui
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
   Card,
   CardHeader,
@@ -397,37 +390,27 @@ function DeleteCatalogItemDialog({
   const needsArchive = target.kind === "task" && target.task.status !== "archived"
 
   return (
-    <Dialog
+    <ConfirmDialog
       open
       onOpenChange={(open) => {
         if (!open) onCancel()
       }}
-    >
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{isDraft ? "Удалить черновик?" : "Удалить задачу?"}</DialogTitle>
-          <DialogDescription>
-            {needsArchive
-              ? `Задача «${title}» будет снята с публикации и удалена.`
-              : `${isDraft ? "Черновик" : "Задача"} «${title}» будет удалён${isDraft ? "" : "а"}.`}{" "}
-            Восстановить {isDraft ? "его" : "её"} не получится.
-          </DialogDescription>
-        </DialogHeader>
-        {error && (
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-        )}
-        <DialogFooter>
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
-            Отмена
-          </Button>
-          <Button type="button" variant="destructive" disabled={pending} onClick={onConfirm}>
-            {pending ? "Удаляем…" : "Удалить"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      title={isDraft ? "Удалить черновик?" : "Удалить задачу?"}
+      description={
+        <>
+          {needsArchive
+            ? `Задача «${title}» будет снята с публикации и удалена.`
+            : `${isDraft ? "Черновик" : "Задача"} «${title}» будет удалён${isDraft ? "" : "а"}.`}{" "}
+          Восстановить {isDraft ? "его" : "её"} не получится.
+        </>
+      }
+      confirmText="Удалить"
+      pendingText="Удаляем…"
+      variant="destructive"
+      pending={pending}
+      error={error}
+      onConfirm={onConfirm}
+    />
   )
 }
 

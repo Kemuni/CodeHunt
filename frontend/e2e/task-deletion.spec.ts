@@ -101,7 +101,7 @@ async function mockCatalog(page: Page, tasks = [taskFixture()]) {
 }
 
 async function confirmDeletion(page: Page) {
-  await page.getByRole("dialog").getByRole("button", { name: "Удалить", exact: true }).click()
+  await page.getByRole("alertdialog").getByRole("button", { name: "Удалить", exact: true }).click()
 }
 
 test("public catalog hides deletion; cancelling preserves the task; confirming archives and deletes", async ({
@@ -114,9 +114,10 @@ test("public catalog hides deletion; cancelling preserves the task; confirming a
   await page.goto("/admin/tasks")
   const remove = page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true })
   await remove.click()
-  await expect(page.getByRole("dialog")).toContainText("снята с публикации и удалена")
+  await expect(page.getByRole("alertdialog")).toContainText("снята с публикации и удалена")
+  await expect(page.getByRole("button", { name: "Отмена", exact: true })).toBeFocused()
   await page.getByRole("button", { name: "Отмена", exact: true }).click()
-  await expect(page.getByRole("dialog")).toHaveCount(0)
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
   expect(state.writes).toEqual([])
   await remove.click()
   await confirmDeletion(page)
@@ -151,7 +152,7 @@ test("draft revision conflicts refresh the list and require a new confirmation",
   await page.getByRole("tab", { name: "Мои черновики", exact: true }).click()
   await page.getByRole("button", { name: "Удалить черновик «Мой черновик»", exact: true }).click()
   await confirmDeletion(page)
-  await expect(page.getByRole("dialog")).toHaveCount(0)
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
   await expect(page.getByText("Обновлённый черновик", { exact: true })).toBeVisible()
   await expect(page.getByText(/Черновик изменился в другом окне/)).toBeVisible()
   expect(state.writes).toEqual(["DELETE editor/task-drafts/7?revision=3"])
@@ -172,16 +173,20 @@ test("failed deletion preserves the task and explains its archive status", async
   await page.goto("/admin/tasks")
   await page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true }).click()
   await confirmDeletion(page)
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+  await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
     "перенесена в архив, но не удалена",
   )
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("используется в решениях")
+  await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
+    "используется в решениях",
+  )
   await page.getByRole("button", { name: "Отмена", exact: true }).click()
   await expect(page.getByText("В архиве", { exact: true })).toBeVisible()
   expect(state.writes).toEqual(["PATCH editor/tasks/1", "DELETE editor/tasks/1"])
   await page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true }).click()
   await confirmDeletion(page)
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Удаление недоступно")
+  await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
+    "Удаление недоступно",
+  )
   expect(state.writes).toEqual([
     "PATCH editor/tasks/1",
     "DELETE editor/tasks/1",
@@ -206,7 +211,7 @@ test("pending deletion disables repeat submission and dismissal", async ({ page 
     await expect(page.getByRole("button", { name: "Удаляем…", exact: true })).toBeDisabled()
     await expect(page.getByRole("button", { name: "Отмена", exact: true })).toBeDisabled()
     await page.keyboard.press("Escape")
-    await expect(page.getByRole("dialog")).toBeVisible()
+    await expect(page.getByRole("alertdialog")).toBeVisible()
     finish()
     await expect(page.getByText("Задач пока нет", { exact: true })).toBeVisible()
     expect(state.writes).toEqual(["DELETE editor/tasks/1"])
