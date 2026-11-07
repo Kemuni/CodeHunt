@@ -1,4 +1,3 @@
-import logging
 import warnings
 from io import BytesIO
 from uuid import uuid4
@@ -20,10 +19,9 @@ from app.core.errors import (
 from app.models import TaskPhoto
 from app.schemas.domain import PhotoRead
 from app.services.common import commit, flush
-from app.services.media import MediaOwner
+from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
 
-logger = logging.getLogger(__name__)
 IMAGE_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
 
@@ -172,14 +170,7 @@ async def upload(
         await commit(session)
         return result
     except Exception as exc:
-        await session.rollback()
-        for key in uploaded:
-            try:
-                await run_in_threadpool(storage.delete, key)
-            except Exception:
-                logger.exception(
-                    "Не удалось удалить файл после неудачной загрузки %s", key
-                )
+        await discard_upload(session, storage, uploaded)
         if isinstance(exc, STORAGE_EXCEPTIONS):
             raise storage_error(exc) from exc
         raise

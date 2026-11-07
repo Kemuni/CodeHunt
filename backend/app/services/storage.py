@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from functools import lru_cache
-from typing import BinaryIO, Protocol
+from typing import TYPE_CHECKING, BinaryIO, Protocol, TypedDict
 
 import boto3
 from botocore.config import Config
@@ -13,10 +15,17 @@ from app.core.errors import (
     StorageUnavailableError,
 )
 
+if TYPE_CHECKING:
+    from mypy_boto3_s3 import S3Client
+
+
+class ObjectMetadata(TypedDict):
+    ContentLength: int
+
 
 class Storage(Protocol):
     def upload(self, file: BinaryIO, key: str, content_type: str) -> None: ...
-    def stat(self, key: str) -> dict: ...
+    def stat(self, key: str) -> ObjectMetadata: ...
     def get_download_url(self, key: str) -> str: ...
     def delete(self, key: str) -> None: ...
 
@@ -38,7 +47,7 @@ class S3Storage:
             else self.client
         )
 
-    def _client(self, endpoint: str):
+    def _client(self, endpoint: str) -> S3Client:
         return boto3.client(
             "s3",
             endpoint_url=endpoint,
@@ -59,8 +68,9 @@ class S3Storage:
             file, settings.S3_BUCKET, key, ExtraArgs={"ContentType": content_type}
         )
 
-    def stat(self, key: str) -> dict:
-        return self.client.head_object(Bucket=settings.S3_BUCKET, Key=key)
+    def stat(self, key: str) -> ObjectMetadata:
+        metadata = self.client.head_object(Bucket=settings.S3_BUCKET, Key=key)
+        return {"ContentLength": metadata["ContentLength"]}
 
     def get_download_url(self, key: str) -> str:
         return self.url_client.generate_presigned_url(

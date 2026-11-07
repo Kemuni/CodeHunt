@@ -20,7 +20,7 @@ class MemoryStorage:
         self.fail_upload = False
         self.fail_stat = False
 
-    def upload(self, file, key, _content_type):
+    def upload(self, file, key, content_type):
         if self.fail_upload:
             raise EndpointConnectionError(endpoint_url="http://storage.test")
         self.objects[key] = file.read()
@@ -181,6 +181,39 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
     async with httpx.AsyncClient() as http:
         cover = await http.get(listed["cover_photo"]["url"])
     assert cover.status_code == 200 and cover.content == content
+
+    # Несовпадение размера должно удалить новые объекты и сохранить уже загруженные.
+    def stored_keys():
+        return {
+            obj["Key"]
+            for obj in store.client.list_objects_v2(Bucket=settings.S3_BUCKET).get(
+                "Contents", []
+            )
+        }
+
+    existing_keys = stored_keys()
+    stat = store.stat
+
+    def wrong_size(key):
+        metadata = stat(key)
+        metadata["ContentLength"] += 1
+        return metadata
+
+    with monkeypatch.context() as patch:
+        patch.setattr(store, "stat", wrong_size)
+        failed_resource = await client.post(
+            base,
+            data={"title": "Повреждённый файл", "type": "other"},
+            files={"file": ("bad.txt", b"bad", "text/plain")},
+        )
+        failed_photo = await client.post(
+            f"/api/editor/tasks/{task['id']}/photos",
+            files={"files": ("bad.png", content, "image/png")},
+        )
+    for response in (failed_resource, failed_photo):
+        assert response.status_code == 503, response.text
+        assert response.json()["errors"]["code"] == "upload_size_mismatch"
+    assert stored_keys() == existing_keys
     # Это отдельный бакет тестового контейнера; рабочее хранилище не затрагивается.
     for obj in store.client.list_objects_v2(Bucket=settings.S3_BUCKET).get(
         "Contents", []

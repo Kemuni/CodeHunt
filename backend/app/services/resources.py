@@ -1,4 +1,3 @@
-import logging
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -16,10 +15,8 @@ from app.models import TaskResource
 from app.models.enums import ResourceType
 from app.schemas.domain import ResourceDownloadRead, ResourceRead
 from app.services.common import assign, commit, flush, get
-from app.services.media import MediaOwner
+from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
-
-logger = logging.getLogger(__name__)
 
 
 async def read(
@@ -104,11 +101,7 @@ async def upload(
         await commit(session)
         return obj
     except Exception as exc:
-        await session.rollback()
-        try:
-            await run_in_threadpool(storage.delete, key)
-        except Exception:
-            logger.exception("Не удалось удалить файл после неудачной загрузки %s", key)
+        await discard_upload(session, storage, [key])
         if isinstance(exc, STORAGE_EXCEPTIONS):
             raise storage_error(exc) from exc
         raise

@@ -1,11 +1,32 @@
+import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core.errors import DraftRevisionConflictError
 from app.models import Task, TaskDraft
 from app.services.common import get
+from app.services.storage import Storage
+
+logger = logging.getLogger(__name__)
+
+
+async def discard_upload(
+    session: AsyncSession, storage: Storage, keys: Sequence[str]
+) -> None:
+    """Откатывает загрузку, сохраняя исходную ошибку даже при сбоях очистки."""
+    try:
+        await session.rollback()
+    except Exception:
+        logger.exception("Не удалось откатить транзакцию после неудачной загрузки")
+    for key in keys:
+        try:
+            await run_in_threadpool(storage.delete, key)
+        except Exception:
+            logger.exception("Не удалось удалить файл после неудачной загрузки %s", key)
 
 
 @dataclass(frozen=True)
