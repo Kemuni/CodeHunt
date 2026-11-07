@@ -144,4 +144,10 @@ async def make_project(client, slug="movie-catalog", published=True):
             )
         ).json()["data"]
     detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
-    return task, detail["complications"], detail["presets"]
+    links = (await client.get(f"/api/editor/tasks/{task['id']}/composition")).json()[
+        "data"
+    ]
+    presets = [
+        value["preset"] for value in detail["presets"].values() if value["preset"]
+    ]
+    return task, links, presets

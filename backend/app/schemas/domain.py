@@ -287,6 +287,7 @@ class ComplicationGroupRead(Read, Dates):
     task_id: int
     parent_group_id: int | None
     title: str
+    level: Level
     order_number: int
     items: list["CompositionItem"] = Field(default_factory=list)
 
@@ -306,7 +307,16 @@ class CompositionGroup(Input):
     kind: Literal["group"] = "group"
     id: PositiveID | None = None
     title: Title
+    level: Level
     items: list["CompositionWriteItem"] = Field(default_factory=list, max_length=1000)
+
+    @model_validator(mode="after")
+    def same_level(self) -> Self:
+        if any(item.level != self.level for item in self.items):
+            raise ValueError(
+                "Все пункты и вложенные группы должны иметь уровень родительской группы"
+            )
+        return self
 
 
 CompositionWriteItem = Annotated[
@@ -379,9 +389,23 @@ class GalleryUpdate(Input):
         return ids
 
 
-class TaskDetail(TaskRead):
+class TaskPresetRead(BaseModel):
+    preset: PresetRead | None = Field(
+        description="Метаданные пресета или null, если пресет уровня ещё не создан",
+    )
     complications: list[CompositionItem]
-    presets: list[PresetRead]
+
+
+class TaskPresets(BaseModel):
+    easy: TaskPresetRead
+    medium: TaskPresetRead
+    high: TaskPresetRead
+
+
+class TaskDetail(TaskRead):
+    presets: TaskPresets = Field(
+        description="Собственные требования и группы каждого уровня, включая пустые группы, без наследования нижних уровней",
+    )
     photos: list[PhotoRead]
     resources: list[ResourceDownloadRead]
 

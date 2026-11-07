@@ -5,6 +5,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import (
+    ConstraintViolationError,
     InvalidOrderError,
     InvalidTaskError,
     NotFoundError,
@@ -19,12 +20,15 @@ from app.models import (
     TaskPhoto,
     TaskResource,
 )
-from app.models.enums import TaskStatus
+from app.models.enums import LEVELS, TaskStatus
 from app.schemas.common import Page
 from app.schemas.domain import (
     LinkCreate,
+    PresetRead,
     TaskCreate,
     TaskDetail,
+    TaskPresetRead,
+    TaskPresets,
     TaskPublication,
     TaskRead,
 )
@@ -126,9 +130,13 @@ async def save_child(
         with session.no_autoflush:
             await template_reference(session, obj.complication_id)
             if obj.group_id is not None:
-                await get(
+                group = await get(
                     session, TaskComplicationLinkGroup, obj.group_id, task_id=task_id
                 )
+                if group.level != obj.level:
+                    raise ConstraintViolationError(
+                        "Уровень пункта должен совпадать с уровнем группы"
+                    )
     parent.updated_at = func.clock_timestamp()
     await ensure_publishable(session, parent)
     return await commit(session, obj)
@@ -200,14 +208,24 @@ async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
         )
     ).all()
     gallery = await photos.read(session, MediaOwner(task_id=obj.id))
+    trees = composition.by_level(await composition.read(session, obj.id))
+    presets_by_level = {
+        preset.level: PresetRead.model_validate(preset) for preset in presets
+    }
     return TaskDetail(
         **{key: getattr(obj, key) for key in TaskCreate.model_fields},
         id=obj.id,
         status=obj.status,
         created_at=obj.created_at,
         updated_at=obj.updated_at,
-        complications=await composition.read(session, obj.id),
-        presets=presets,
+        presets=TaskPresets.model_validate(
+            {
+                level: TaskPresetRead(
+                    preset=presets_by_level.get(level), complications=trees[level]
+                )
+                for level in LEVELS
+            }
+        ),
         cover_photo=next((photo for photo in gallery if photo.is_cover), None),
         photos=gallery,
         resources=await resources.read(session, MediaOwner(task_id=obj.id)),

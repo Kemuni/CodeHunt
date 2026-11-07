@@ -41,18 +41,17 @@ async def read(
     session: AsyncSession, task_id: int, level: Level | None = None
 ) -> list[CompositionItem]:
     # Загружаем всё дерево двумя запросами независимо от глубины вложенности.
-    groups = (
-        await session.scalars(
-            select(TaskComplicationLinkGroup).where(
-                TaskComplicationLinkGroup.task_id == task_id
-            )
-        )
-    ).all()
+    group_query = select(TaskComplicationLinkGroup).where(
+        TaskComplicationLinkGroup.task_id == task_id
+    )
     query = select(TaskComplicationLink).where(TaskComplicationLink.task_id == task_id)
     if level is not None:
-        query = query.where(
-            TaskComplicationLink.level.in_(LEVELS[: LEVELS.index(level) + 1])
+        allowed_levels = LEVELS[: LEVELS.index(level) + 1]
+        group_query = group_query.where(
+            TaskComplicationLinkGroup.level.in_(allowed_levels)
         )
+        query = query.where(TaskComplicationLink.level.in_(allowed_levels))
+    groups = (await session.scalars(group_query)).all()
     links = (await session.scalars(query)).all()
     children: dict[int | None, list] = defaultdict(list)
     for group in groups:
@@ -91,6 +90,14 @@ def flatten(items: Sequence[CompositionItem]) -> list[ComplicationItem]:
             result.extend(flatten(item.items))
         else:
             result.append(item)
+    return result
+
+
+def by_level(items: Sequence[CompositionItem]) -> dict[Level, list[CompositionItem]]:
+    """Группы уже однородны по уровню; пустые ветки сохраняют свой явный level."""
+    result: dict[Level, list[CompositionItem]] = {level: [] for level in LEVELS}
+    for item in items:
+        result[item.level].append(item)
     return result
 
 
@@ -192,7 +199,7 @@ async def save(session: AsyncSession, parent: Task, data: CompositionUpdate):
                 if item.id is not None
                 else TaskComplicationLinkGroup(task_id=task_id)
             )
-            obj.title, obj.order_number = item.title, position
+            obj.title, obj.level, obj.order_number = item.title, item.level, position
             session.add(obj)
             group_nodes[id(item)] = obj
             if item.id is not None:

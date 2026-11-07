@@ -49,18 +49,26 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
         "items": [
             {
                 "kind": "group",
+                "level": "easy",
                 "title": "Каталог",
                 "items": [
                     link_input(links[0]),
                     {
                         "kind": "group",
+                        "level": "easy",
                         "title": "Расширения",
-                        "items": [link_input(links[2])],
+                        "items": [],
                     },
                 ],
             },
             link_input(links[1]),
-            {"kind": "group", "title": "Пустая группа", "items": []},
+            {
+                "kind": "group",
+                "level": "high",
+                "title": "Максимальный",
+                "items": [link_input(links[2])],
+            },
+            {"kind": "group", "level": "high", "title": "Пустая группа", "items": []},
         ]
     }
     response = await client.put(url, json=payload)
@@ -72,7 +80,15 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
     assert tree[0]["items"][1]["parent_group_id"] == group_id
     assert (await client.get(url)).json()["data"] == tree
     detail = (await client.get(f"/api/tasks/{tid}")).json()["data"]
-    assert detail["complications"] == tree and len(detail["presets"]) == 3
+    assert "complications" not in detail
+    assert list(detail["presets"]) == ["easy", "medium", "high"]
+    assert detail["presets"]["easy"]["complications"] == [tree[0]]
+    assert detail["presets"]["medium"]["complications"] == [tree[1]]
+    assert detail["presets"]["high"]["complications"] == [tree[2], tree[3]]
+    for preset in presets:
+        assert detail["presets"][preset["level"]]["preset"] == preset
+    for path in (f"/api/editor/tasks/{tid}", f"/api/tasks/by-slug/{task['slug']}"):
+        assert (await client.get(path)).json()["data"] == detail
     assert detail["photos"] == []
     easy = (
         await client.get(f"/api/tasks/{tid}/presets/{presets[0]['id']}/configuration")
@@ -82,8 +98,8 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
     high = (
         await client.get(f"/api/tasks/{tid}/presets/{presets[2]['id']}/configuration")
     ).json()["data"]["complications"]
-    assert [item["kind"] for item in high] == ["group", "complication"]
-    assert high[0]["items"][1]["items"][0]["id"] == links[2]["id"]
+    assert [item["kind"] for item in high] == ["group", "complication", "group"]
+    assert high[2]["items"][0]["id"] == links[2]["id"]
     solution = await client.post(
         f"/api/tasks/{tid}/solutions",
         json={
@@ -102,19 +118,21 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
         "items": [
             {
                 "kind": "group",
+                "level": "easy",
                 "id": nested_id,
                 "title": "Расширения",
                 "items": [
                     {
                         "kind": "group",
+                        "level": "easy",
                         "id": group_id,
                         "title": "Каталог",
                         "items": [link_input(links[0])],
                     },
-                    link_input(links[2]),
                 ],
             },
             link_input(links[1]),
+            link_input(links[2]),
         ]
     }
     assert (await client.put(url, json=moved)).status_code == 200
@@ -154,9 +172,11 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
             "items": [
                 {
                     "kind": "group",
+                    "level": link["level"],
                     "title": "Группа",
-                    "items": [link_input(link) for link in links],
+                    "items": [link_input(link)],
                 }
+                for link in links
             ]
         },
     )
@@ -178,9 +198,17 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
                 "items": [
                     {
                         "kind": "group",
+                        "level": "easy",
                         "id": group["id"],
                         "title": "X",
-                        "items": [{"kind": "group", "id": group["id"], "title": "Y"}],
+                        "items": [
+                            {
+                                "kind": "group",
+                                "level": "easy",
+                                "id": group["id"],
+                                "title": "Y",
+                            }
+                        ],
                     }
                 ]
             },
@@ -191,7 +219,7 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
     assert (await client.put(url, json={"items": [bad_link]})).status_code == 404
     leaf = link_input(links[0])
     for _ in range(11):
-        leaf = {"kind": "group", "title": "Вложение", "items": [leaf]}
+        leaf = {"kind": "group", "level": "easy", "title": "Вложение", "items": [leaf]}
     assert (await client.put(url, json={"items": [leaf]})).status_code == 422
     # И точечный API, и FK запрещают привязать пункт к группе другого задания.
     assert (
@@ -591,7 +619,16 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
     }
     response = await client.put(
         base + "/composition",
-        json={"items": [{"kind": "group", "title": "Каталог", "items": [requirement]}]},
+        json={
+            "items": [
+                {
+                    "kind": "group",
+                    "level": "easy",
+                    "title": "Каталог",
+                    "items": [requirement],
+                }
+            ]
+        },
     )
     assert response.status_code == 200, response.text
     group = response.json()["data"][0]
@@ -621,3 +658,80 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
         await client.put(base + "/composition", json={"items": []})
     ).status_code == 422
     assert (await client.get(base + "/composition")).json()["data"] == detached
+
+
+async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(client, db):
+    task, links, presets = await make_project(client, published=False)
+    base = f"/api/editor/tasks/{task['id']}"
+    for preset in presets:
+        assert (
+            await client.delete(f"{base}/presets/{preset['id']}")
+        ).status_code == 200
+    tree = (
+        await client.put(
+            base + "/composition",
+            json={
+                "items": [
+                    {
+                        "kind": "group",
+                        "level": "high",
+                        "title": "Общая",
+                        "items": [
+                            link_input(links[2]),
+                            {
+                                "kind": "group",
+                                "level": "high",
+                                "title": "Пустая",
+                                "items": [],
+                            },
+                        ],
+                    },
+                    link_input(links[0]),
+                ]
+            },
+        )
+    ).json()["data"]
+    detail = (await client.get(base)).json()["data"]
+    assert "complications" not in detail
+    assert all(level["preset"] is None for level in detail["presets"].values())
+    assert detail["presets"]["medium"]["complications"] == []
+    assert detail["presets"]["easy"]["complications"] == [tree[1]]
+    assert detail["presets"]["high"]["complications"] == [tree[0]]
+    assert tree[0]["items"][1]["level"] == "high"
+
+    # Дерево читается один раз: количество SQL-запросов не зависит от числа пресетов.
+    async with db() as session:
+        obj = await catalog.task(session, task["id"])
+        queries = []
+
+        def record(_conn, _cursor, statement, _params, _context, _many):
+            queries.append(statement)
+
+        engine = session.bind
+        assert engine is not None
+        event.listen(engine.sync_engine, "before_cursor_execute", record)
+        try:
+            await catalog.detail(session, obj)
+            assert len(queries) == 5
+            for preset in presets:
+                response = await client.post(
+                    base + "/presets",
+                    json={
+                        "level": preset["level"],
+                        "description": preset["description"],
+                    },
+                )
+                assert response.status_code == 201
+            queries.clear()
+            populated = await catalog.detail(session, obj)
+            assert len(queries) == 5
+            assert all(
+                level.preset is not None
+                for level in (
+                    populated.presets.easy,
+                    populated.presets.medium,
+                    populated.presets.high,
+                )
+            )
+        finally:
+            event.remove(engine.sync_engine, "before_cursor_execute", record)

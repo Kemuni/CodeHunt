@@ -85,9 +85,18 @@ async def test_empty_form_files_live_validation_and_atomic_publication(
     data["items"] = [
         {
             "kind": "group",
+            "level": item["level"],
             "title": "Каталог",
-            "items": [{"kind": "group", "title": "Навигация", "items": data["items"]}],
+            "items": [
+                {
+                    "kind": "group",
+                    "level": item["level"],
+                    "title": "Навигация",
+                    "items": [item],
+                }
+            ],
         }
+        for item in data["items"]
     ]
     draft = (await client.patch(base, json={"revision": 3, "payload": data})).json()[
         "data"
@@ -98,7 +107,8 @@ async def test_empty_form_files_live_validation_and_atomic_publication(
     task = reply.json()["data"]
     assert task["status"] == "published" and len(task["presets"]) == 3
     assert (
-        task["complications"][0]["items"][0]["items"][0]["title"] == "Требование easy"
+        task["presets"]["easy"]["complications"][0]["items"][0]["items"][0]["title"]
+        == "Требование easy"
     )
     assert task["photos"][0]["id"] == photo["id"] and task["photos"][0]["is_cover"]
     assert task["cover_photo"] == task["photos"][0]
@@ -146,6 +156,7 @@ async def test_nested_errors_and_deleted_templates_remain_visible(client):
             "items": [
                 {
                     "kind": "group",
+                    "level": "easy",
                     "items": [
                         {"kind": "complication", "complication_id": template["id"]}
                     ],

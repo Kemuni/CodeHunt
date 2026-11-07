@@ -121,15 +121,18 @@ class Task(IdentityMixin, Timestamps, Base):
 class TaskComplicationLinkGroup(IdentityMixin, Timestamps, Base):
     __tablename__ = "task_complication_link_groups"
     __table_args__ = (
-        UniqueConstraint("task_id", "id", name="uq_link_group_task_id"),
+        UniqueConstraint("task_id", "level", "id", name="uq_link_group_task_level_id"),
         ForeignKeyConstraint(
-            ["task_id", "parent_group_id"],
+            ["task_id", "level", "parent_group_id"],
             [
                 "task_complication_link_groups.task_id",
+                "task_complication_link_groups.level",
                 "task_complication_link_groups.id",
             ],
             ondelete="RESTRICT",
             name="fk_link_group_parent",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         CheckConstraint("parent_group_id <> id", name="ck_link_group_parent"),
         CheckConstraint("order_number >= 0", name="ck_link_group_order"),
@@ -138,6 +141,7 @@ class TaskComplicationLinkGroup(IdentityMixin, Timestamps, Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
     parent_group_id: Mapped[int | None] = mapped_column(BigInteger)
     title: Mapped[str] = mapped_column(String(255))
+    level: Mapped[Level] = mapped_column(choice(Level, "task_link_group_level"))
     order_number: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
@@ -145,13 +149,16 @@ class TaskComplicationLink(IdentityMixin, Timestamps, Base):
     __tablename__ = "task_complication_links"
     __table_args__ = (
         ForeignKeyConstraint(
-            ["task_id", "group_id"],
+            ["task_id", "level", "group_id"],
             [
                 "task_complication_link_groups.task_id",
+                "task_complication_link_groups.level",
                 "task_complication_link_groups.id",
             ],
             ondelete="RESTRICT",
             name="fk_task_link_group",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         CheckConstraint("order_number >= 0", name="ck_task_link_order"),
         Index("ix_task_links_composition", "task_id", "level", "order_number", "id"),
