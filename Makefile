@@ -10,10 +10,10 @@ up-dev-env:
 
 # Останавливает инфраструктуру, сохраняя контейнеры и данные.
 stop-dev-env:
-	$(COMPOSE) down $(DEV_SERVICES)
+	$(COMPOSE) stop $(DEV_SERVICES)
 
 down-dev-env:
-	$(COMPOSE) stop $(DEV_SERVICES)
+	$(COMPOSE) down $(DEV_SERVICES)
 
 # Полное приложение; backend применяет миграции при запуске.
 up-all:
