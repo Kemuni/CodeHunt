@@ -9,6 +9,9 @@ up-dev-env:
 	$(COMPOSE) up -d --wait $(DEV_SERVICES)
 
 # Останавливает инфраструктуру, сохраняя контейнеры и данные.
+stop-dev-env:
+	$(COMPOSE) down $(DEV_SERVICES)
+
 down-dev-env:
 	$(COMPOSE) stop $(DEV_SERVICES)
 
