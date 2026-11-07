@@ -39,6 +39,8 @@ export const tasksApi = {
       method: "PATCH",
       body: { revision, payload },
     }),
+  deleteDraft: (id: number, revision: number) =>
+    taskRequest<null>(`editor/task-drafts/${id}?revision=${revision}`, { method: "DELETE" }),
   publish: (id: number, revision: number) =>
     taskRequest<TaskRead>(`editor/task-drafts/${id}/publish`, {
       method: "POST",
@@ -46,6 +48,7 @@ export const tasksApi = {
     }),
   updateTask: (id: number, body: TaskUpdate) =>
     taskRequest<TaskRead>(`editor/tasks/${id}`, { method: "PATCH", body }),
+  deleteTask: (id: number) => taskRequest<null>(`editor/tasks/${id}`, { method: "DELETE" }),
   composition: (id: number, body: CompositionUpdate) =>
     taskRequest<Array<ComplicationItem | ComplicationGroupRead>>(`editor/tasks/${id}/composition`, {
       method: "PUT",

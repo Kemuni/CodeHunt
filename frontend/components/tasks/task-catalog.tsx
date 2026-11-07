@@ -2,14 +2,24 @@
 
 import { useState, type ReactNode } from "react"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
-import { PlusIcon } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { PlusIcon, Trash2Icon } from "lucide-react"
+import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
+import { TaskApiError } from "@/lib/api/task-request"
 import type { DraftRead, TaskRead } from "@/lib/api/task-contract"
 import { PageLayout, PageLayoutHeader, PageLayoutContent } from "@/components/ui/layouts/page"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Card,
   CardHeader,
@@ -20,6 +30,8 @@ import {
 } from "@/components/ui/card"
 
 const PAGE_SIZE = 20
+
+type DeleteTarget = { kind: "task"; task: TaskRead } | { kind: "draft"; draft: DraftRead }
 
 /** Публичный каталог и административный список. Собственные черновики запрашиваются отдельным API только в административном режиме. */
 export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
@@ -42,6 +54,11 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
   })
   const result = drafts ? draftsQuery : tasksQuery
   const total = result.data?.total ?? 0
+  const deletion = useCatalogDeletion(() => {
+    if (result.data?.items.length === 1 && offset > 0) {
+      setOffset((value) => Math.max(0, value - PAGE_SIZE))
+    }
+  })
 
   function handleTabChange(value: string) {
     setTab(value)
@@ -71,14 +88,34 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
         >
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {drafts
-              ? draftsQuery.data?.items.map((draft) => <DraftCard key={draft.id} draft={draft} />)
+              ? draftsQuery.data?.items.map((draft) => (
+                  <DraftCard
+                    key={draft.id}
+                    draft={draft}
+                    onDelete={() => deletion.open({ kind: "draft", draft })}
+                  />
+                ))
               : tasksQuery.data?.items.map((task) => (
-                  <TaskCard key={task.id} task={task} admin={admin} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    admin={admin}
+                    onDelete={() => deletion.open({ kind: "task", task })}
+                  />
                 ))}
           </div>
           <TaskCatalogPagination total={total} offset={offset} onOffsetChange={setOffset} />
         </TaskCatalogResults>
       </PageLayoutContent>
+      {deletion.target && (
+        <DeleteCatalogItemDialog
+          target={deletion.target}
+          pending={deletion.pending}
+          error={deletion.error}
+          onCancel={deletion.close}
+          onConfirm={deletion.confirm}
+        />
+      )}
     </PageLayout>
   )
 }
@@ -179,11 +216,14 @@ function TaskCatalogResults({
   )
 }
 
-function DraftCard({ draft }: { draft: DraftRead }) {
-  const title =
-    typeof draft.payload.title === "string" && draft.payload.title
-      ? draft.payload.title
-      : "Без названия"
+function draftTitle(draft: DraftRead) {
+  return typeof draft.payload.title === "string" && draft.payload.title
+    ? draft.payload.title
+    : "Без названия"
+}
+
+function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void }) {
+  const title = draftTitle(draft)
 
   return (
     <Card>
@@ -201,7 +241,7 @@ function DraftCard({ draft }: { draft: DraftRead }) {
           Фото: {draft.photos.length} · Вложения: {draft.resources.length}
         </p>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-wrap gap-2">
         <Button
           render={<Link href={`/admin/tasks/editor?draftId=${draft.id}`} />}
           nativeButton={false}
@@ -209,12 +249,21 @@ function DraftCard({ draft }: { draft: DraftRead }) {
         >
           Продолжить редактирование
         </Button>
+        <DeleteCatalogItemButton label={`Удалить черновик «${title}»`} onClick={onDelete} />
       </CardFooter>
     </Card>
   )
 }
 
-function TaskCard({ task, admin }: { task: TaskRead; admin: boolean }) {
+function TaskCard({
+  task,
+  admin,
+  onDelete,
+}: {
+  task: TaskRead
+  admin: boolean
+  onDelete: () => void
+}) {
   const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`
 
   return (
@@ -235,12 +284,150 @@ function TaskCard({ task, admin }: { task: TaskRead; admin: boolean }) {
           </p>
         )}
       </CardContent>
-      <CardFooter className="mt-auto">
+      <CardFooter className="mt-auto flex flex-wrap gap-2">
         <Button render={<Link href={href} />} nativeButton={false} variant="outline">
           {admin ? "Редактировать" : "Открыть задачу"}
         </Button>
+        {admin && (
+          <DeleteCatalogItemButton label={`Удалить задачу «${task.title}»`} onClick={onDelete} />
+        )}
       </CardFooter>
     </Card>
+  )
+}
+
+function DeleteCatalogItemButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <Button type="button" variant="destructive" aria-label={label} onClick={onClick}>
+      <Trash2Icon />
+      Удалить
+    </Button>
+  )
+}
+
+/** Не повторяет разрушительные запросы автоматически; конфликт версии требует нового подтверждения. */
+function useCatalogDeletion(onDeleted: () => void) {
+  const queryClient = useQueryClient()
+  const [target, setTarget] = useState<DeleteTarget | null>(null)
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: async (selected: DeleteTarget) => {
+      if (selected.kind === "draft") {
+        await tasksApi.deleteDraft(selected.draft.id, selected.draft.revision)
+        return
+      }
+      let archived = false
+      if (selected.task.status !== "archived") {
+        const task = await tasksApi.updateTask(selected.task.id, { status: "archived" })
+        archived = true
+        setTarget({ kind: "task", task })
+      }
+      try {
+        await tasksApi.deleteTask(selected.task.id)
+      } catch (error) {
+        const message =
+          error instanceof TaskApiError && error.code === "reference_conflict"
+            ? "Задача используется в решениях или связана с другими задачами. Удаление недоступно."
+            : error instanceof Error
+              ? error.message
+              : "Не удалось удалить задачу"
+        throw new Error(`${archived ? "Задача перенесена в архив, но не удалена. " : ""}${message}`)
+      }
+    },
+    onSuccess: (_, selected) => {
+      setTarget(null)
+      onDeleted()
+      toast.success(selected.kind === "draft" ? "Черновик удалён" : "Задача удалена")
+    },
+    onError: (error) => {
+      if (error instanceof TaskApiError && error.code === "draft_revision_conflict") {
+        setTarget(null)
+        toast.error(
+          "Черновик изменился в другом окне. Проверьте обновлённый список и подтвердите удаление заново.",
+        )
+      }
+    },
+    onSettled: (_, __, selected) => {
+      const id = selected.kind === "task" ? selected.task.id : selected.draft.id
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["task-catalog"] }),
+        queryClient.invalidateQueries({ queryKey: ["task-editor", { kind: selected.kind, id }] }),
+        ...(selected.kind === "task"
+          ? [queryClient.invalidateQueries({ queryKey: ["public-task", id] })]
+          : []),
+      ])
+    },
+  })
+
+  return {
+    target,
+    pending: mutation.isPending,
+    error: mutation.error?.message,
+    open: (selected: DeleteTarget) => {
+      if (mutation.isPending) return
+      mutation.reset()
+      setTarget(selected)
+    },
+    close: () => {
+      if (!mutation.isPending) setTarget(null)
+    },
+    confirm: () => {
+      if (target && !mutation.isPending) mutation.mutate(target)
+    },
+  }
+}
+
+interface DeleteCatalogItemDialogProps {
+  target: DeleteTarget
+  pending: boolean
+  error?: string
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+function DeleteCatalogItemDialog({
+  target,
+  pending,
+  error,
+  onCancel,
+  onConfirm,
+}: DeleteCatalogItemDialogProps) {
+  const isDraft = target.kind === "draft"
+  const title = isDraft ? draftTitle(target.draft) : target.task.title
+  const needsArchive = target.kind === "task" && target.task.status !== "archived"
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>{isDraft ? "Удалить черновик?" : "Удалить задачу?"}</DialogTitle>
+          <DialogDescription>
+            {needsArchive
+              ? `Задача «${title}» будет снята с публикации и удалена.`
+              : `${isDraft ? "Черновик" : "Задача"} «${title}» будет удалён${isDraft ? "" : "а"}.`}{" "}
+            Восстановить {isDraft ? "его" : "её"} не получится.
+          </DialogDescription>
+        </DialogHeader>
+        {error && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+            Отмена
+          </Button>
+          <Button type="button" variant="destructive" disabled={pending} onClick={onConfirm}>
+            {pending ? "Удаляем…" : "Удалить"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
