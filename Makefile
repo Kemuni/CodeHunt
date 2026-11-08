@@ -6,7 +6,7 @@ UV_COMMAND = uv --directory backend
 
 # Окружение для локального backend: БД, файлы и интерфейсы управления.
 up-dev-env:
-	$(COMPOSE) up -d --wait $(DEV_SERVICES)
+	$(COMPOSE) up -d $(DEV_SERVICES)
 
 # Останавливает инфраструктуру, сохраняя контейнеры и данные.
 stop-dev-env:
@@ -17,7 +17,7 @@ down-dev-env:
 
 # Полное приложение; backend применяет миграции при запуске.
 up-all:
-	$(COMPOSE) up --build -d --wait
+	$(COMPOSE) up --build -d
 
 down-all:
 	$(COMPOSE) down
