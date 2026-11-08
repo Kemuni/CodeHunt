@@ -5,7 +5,8 @@ import { Tektur, Roboto } from 'next/font/google'
 import { cn } from "@/lib/utils";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
-import { Providers } from "./providers";
+import { Provider } from "../components/providers/providers";
+
 
 const roboto = Roboto({subsets:['latin', 'cyrillic'], variable:'--font-sans'});
 
@@ -27,9 +28,11 @@ export default function RootLayout({
   return (
     <html data-scroll-behavior="smooth" lang="ru" className={cn("scroll-smooth", "font-sans", tektur.variable, roboto.variable)}>
       <body className="m-0 w-full bg-background">
-        <SiteHeader />
-        <Providers>{children}</Providers>
-        <SiteFooter />
+          <Provider>
+            <SiteHeader />
+            {children}
+            <SiteFooter />
+          </Provider>
       </body>
     </html>
   );
