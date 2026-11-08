@@ -12,7 +12,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Страница открывается на `http://localhost:3000`. В `.env.local`: `BACKEND_API_URL` — адрес backend (по умолчанию `http://127.0.0.1:8000`), `EDITOR_USER_ID` — ID администратора (по умолчанию `1`). Backend, PostgreSQL и MinIO запускаются отдельно; схема БД должна быть подготовлена. Frontend не выполняет миграции.
+Страница открывается на `http://localhost:3000`. В `.env.local`: `BACKEND_API_URL` — адрес backend (по умолчанию `http://127.0.0.1:8000`), `GITHUB_ID` и `GITHUB_SECRET` — GitHub OAuth App, `NEXTAUTH_SECRET` — случайный секрет cookie, `NEXTAUTH_URL` — полный адрес frontend. Backend, PostgreSQL и MinIO запускаются отдельно; схема БД должна быть подготовлена. Frontend не выполняет миграции.
 
 ## Маршруты и точки входа
 
@@ -30,7 +30,7 @@ npm run dev
 ## Данные и редактор
 
 - [task-contract.ts](lib/api/task-contract.ts) — типы ответов и запросов API. [task-request.ts](lib/api/task-request.ts) разбирает `{ success, data, errors }` и создаёт `TaskApiError` со статусом, кодом и ошибками полей. Операции задач — `lib/api/tasks.ts`, файлов — `lib/api/task-media.ts`.
-- Запросы задач идут через Next.js-прокси. Он добавляет `X-User-ID` для административных маршрутов. Это временный механизм выбора пользователя, полноценной авторизации во frontend пока нет. Контактные формы используют отдельные `lib/api/contact.ts` и `lib/config.ts`.
+- Запросы задач идут через Next.js-прокси. Он передаёт серверную Bearer-сессию вошедшего пользователя из зашифрованной HttpOnly cookie. Вход/выход выполняет NextAuth через GitHub; /admin защищён серверным layout и проверками backend. Роль задаётся подтверждёнными email в ADMIN_EMAILS backend. Контактные формы используют отдельные `lib/api/contact.ts` и `lib/config.ts`.
 - Единственный тип уровня — [TaskLevel](lib/tasks/task-level.ts): `Easy = "easy"`, `Medium = "medium"`, `High = "high"`. Русские подписи находятся в `lib/tasks/labels.ts`; `base` и `maximum` больше не используются как значения уровней.
 - Ответ задачи: `presets.easy`, `presets.medium`, `presets.high`. Каждый содержит `{ preset, complications }`; `preset` может быть `null`. `complications` содержит только собственные пункты уровня, включая вложенные и пустые группы. Не добавляйте наследование пунктов между уровнями.
 - Запись в API использует другой формат: массив `presets` и дерево `items`. Преобразования чтения/записи сосредоточены в [editor-model.ts](lib/tasks/editor-model.ts).
@@ -69,6 +69,13 @@ Unit-тесты лежат рядом с моделью редактора и к
 E2E_BASE_URL=http://localhost:3000 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
 ```
 
-Без `E2E_LIVE_API=1` проверки с настоящим backend пропускаются. Добавьте эту переменную для полного прогона: нужны доступные backend, БД, MinIO и администратор. Live-тесты создают собственные записи и удаляют их в `finally`; остальные подменяют API-ответы. Playwright сам серверы не запускает. Конфигурация — `playwright.config.ts`, сценарии — `e2e/`.
+Без `E2E_LIVE_API=1` проверки с настоящим backend пропускаются. Добавьте эту переменную для полного прогона: нужны доступные backend, БД, MinIO и администратор. Live-тесты создают собственные записи и удаляют их в `finally`; остальные подменяют API-ответы. Для изолированного прогона используйте `E2E_ISOLATED_AUTH=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`: Playwright сам запускает Next.js на localhost:3100 и тестовый backend на 8101 с тестовыми секретами. Для live-тестов необходим `E2E_STORAGE_STATE` с сессией тестового администратора; файл с cookie не коммитить. Конфигурация — `playwright.config.ts`, сценарии — `e2e/`.
 
 Для новой задачи: найдите маршрут и компонент → проверьте контракт и преобразования → используйте существующий общий UI → измените нужный слой → выполните соответствующие проверки. При изменении API обновляйте контракт, преобразования и фикстуры вместе; при изменении редактора проверяйте сохранение, конфликт ревизий и сохранность формы внутри свёрнутых групп.
+
+
+Настройка GitHub OAuth и миграция backend описаны в [development.md](../backend/docs/development.md#github-oauth). Callback для локального frontend: `http://localhost:3000/api/auth/callback/github`. Прокси не передаёт клиентские Authorization/X-User-ID; записи требуют Origin текущего сайта. Backend-токен не возвращается из `/api/auth/session`.
+
+Проверки GitHub OAuth 09.11.2026: 53 unit-теста, 25 изолированных E2E (3 live-теста пропущены), TypeScript и ESLint изменённых файлов прошли. Production-сборка через Webpack прошла; Turbopack в среде проверки остановился на запрете локального сокета. Реальный вход через GitHub пользовательским аккаунтом не выполнялся.
+
+Упрощение прокси 09.11.2026: route.ts передаёт запрос и сегменты пути в proxyBackend; фабрика обработчиков удалена. Чтение cookie NextAuth, выбор разрешённых заголовков и ответы об ошибках находятся в lib/backend-proxy.ts. Комментарии поясняют границы авторизации, проверку Origin и кеширование медиа; локальные ошибки прокси имеют Cache-Control: no-store. Unit-тесты используют настоящие зашифрованные cookie с отдельным тестовым секретом. Проверки: 55 unit-тестов, TypeScript и ESLint прошли; 6 целевых E2E авторизации прошли из временной копии через Webpack, чтобы не останавливать уже работающий dev-сервер. Полный E2E-набор и backend-тесты для этого рефакторинга повторно не запускались.
