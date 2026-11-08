@@ -1,6 +1,10 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { signIn, signOut, useSession } from "next-auth/react"
+
 
 const navigationLinks = [
   { href: "/tasks", label: "Каталог задач" },
@@ -9,6 +13,8 @@ const navigationLinks = [
 ]
 
 export function SiteHeader() {
+  const { data: session, status } = useSession();
+
   return (
     <header className="relative z-49 flex h-23.5 w-full items-center px-21.25 xl:px-42">
       <Link href={"/"} className="block shrink-0">
@@ -26,17 +32,41 @@ export function SiteHeader() {
         ))}
       </nav>
 
-      <div className="ml-auto flex gap-3">
-        <Link href={""}>
-          <Button variant="outline" size="lg">
-            Войти
-          </Button>
-        </Link>
-        <Link href={""}>
-          <Button variant="default" size="lg">
-            Регистрация
-          </Button>
-        </Link>
+      <div className="ml-auto flex gap-3 items-center">
+        {status === "loading" ? (
+          <span className="text-sm text-gray-400">Загрузка...</span>
+        ) : session ? (
+          <>
+            <span className="text-sm font-medium text-gray-700">
+              {session.user?.name || session.user?.email}
+            </span>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              Выйти
+            </Button>
+          </>
+        ) : (
+
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => signIn("github", { callbackUrl: "/" })}
+            >
+              Войти
+            </Button>
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => signIn("github", { callbackUrl: "/" })}
+            >
+              Регистрация
+            </Button>
+          </>
+        )}
       </div>
     </header>
   )

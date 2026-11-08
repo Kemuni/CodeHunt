@@ -1,8 +1,8 @@
 import type { z } from "zod"
 import type { companyContactMeSchema, candidateContactMeSchema } from "@/schemas/contact-schemas"
 
-import { routes } from "@/lib/config"
-//коммент для пуша я хезе
+import { routes } from "@/lib/config";
+
 
 interface ErrorResponse {
   success: false
