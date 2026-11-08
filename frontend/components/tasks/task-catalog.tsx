@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PlusIcon, Trash2Icon } from "lucide-react"
+import {ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon, BugIcon} from "lucide-react"
 import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
 import { TaskApiError } from "@/lib/api/task-request"
@@ -21,6 +21,9 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card"
+import Image from "next/image";
+import {Badge} from "@/components/reui/badge";
+import {cn} from "cn";
 
 const PAGE_SIZE = 20
 
@@ -32,20 +35,20 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
   const [offset, setOffset] = useState(0)
   const [search, setSearch] = useState("")
   const [query, setQuery] = useState("")
-  const drafts = admin && tab === "drafts"
+  const isDrafts = admin && tab === "drafts"
   const tasksQuery = useQuery({
     queryKey: ["task-catalog", admin, "tasks", offset, query],
     queryFn: () => tasksApi.list(admin, offset, query),
-    enabled: !drafts,
+    enabled: !isDrafts,
     retry: false,
   })
   const draftsQuery = useQuery({
     queryKey: ["task-catalog", true, "drafts", offset],
     queryFn: () => tasksApi.drafts(offset),
-    enabled: drafts,
+    enabled: isDrafts,
     retry: false,
   })
-  const result = drafts ? draftsQuery : tasksQuery
+  const result = isDrafts ? draftsQuery : tasksQuery
   const total = result.data?.total ?? 0
   const deletion = useCatalogDeletion(() => {
     if (result.data?.items.length === 1 && offset > 0) {
@@ -77,10 +80,10 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
           error={result.error}
           onRetry={() => void result.refetch()}
           total={total}
-          drafts={drafts}
+          isDrafts={isDrafts}
         >
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {drafts
+          <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {isDrafts
               ? draftsQuery.data?.items.map((draft) => (
                   <DraftCard
                     key={draft.id}
@@ -171,7 +174,7 @@ interface TaskCatalogResultsProps {
   error: Error | null
   onRetry: () => void
   total: number
-  drafts: boolean
+  isDrafts: boolean
   children: ReactNode
 }
 
@@ -180,7 +183,7 @@ function TaskCatalogResults({
   error,
   onRetry,
   total,
-  drafts,
+  isDrafts,
   children,
 }: TaskCatalogResultsProps) {
   if (isPending) return <p role="status">Загружаем…</p>
@@ -201,7 +204,7 @@ function TaskCatalogResults({
       <p className="text-sm text-muted-foreground">Всего: {total}</p>
       {!total && (
         <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-          {drafts ? "У вас пока нет черновиков" : "Задач пока нет"}
+          {isDrafts ? "У вас пока нет черновиков" : "Задач пока нет"}
         </p>
       )}
       {children}
@@ -217,32 +220,66 @@ function draftTitle(draft: DraftRead) {
 
 function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void }) {
   const title = draftTitle(draft)
+  const href = `/admin/tasks/editor?draftId=${draft.id}`;
+  let shortDescription;
+  if (
+    draft.payload?.short_description
+    && typeof draft.payload.short_description === "string"
+  ) {
+    shortDescription = draft.payload.short_description
+  }
+  else {
+    shortDescription = `Черновик #${draft.id}`;
+  }
+  const coverPhoto = draft.photos.find((i) => i.is_cover)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>Черновик #{draft.id}</CardDescription>
+    <Card className="relative pt-0 gap-4 pb-4">
+      <div className="relative w-full aspect-video bg-black/15" />
+      <div className="absolute inset-0 w-full aspect-video">
+        {
+          coverPhoto
+            ? (
+              <Image src={coverPhoto.url} alt="taskImage" fill sizes="20vw"
+                     loading="eager" className="aspect-video object-cover"
+              />
+            )
+            : (
+                <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
+                  <ImageOffIcon className="size-14" />
+                  <p className="text-md">Нет изображения</p>
+                </div>
+            )
+        }
+      </div>
+      <CardHeader className="flex flex-col gap-0.5 px-3">
+        <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
+          <Link href={href}>{title}</Link>
+        </CardTitle>
+        <CardDescription className='w-full line-clamp-3 wrap-break-word'>
+          {shortDescription}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3">
         <p>
           {draft.is_valid
-            ? "Готов к публикации"
+            ? "Готов к публикации!"
             : `Проблем с валидацией: ${draft.validation_errors.length}`}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Фото: {draft.photos.length} · Вложения: {draft.resources.length}
+          Фото: {draft.photos.length}<br/>Вложения: {draft.resources.length}
         </p>
       </CardContent>
-      <CardFooter className="flex flex-wrap gap-2">
+      <CardFooter className="flex flex-wrap justify-end gap-2">
+        <DeleteCatalogItemButton label={`Удалить черновик «${title}»`} onClick={onDelete} />
         <Button
-          render={<Link href={`/admin/tasks/editor?draftId=${draft.id}`} />}
+          render={<Link href={href} />}
           nativeButton={false}
+          size="icon"
           variant="outline"
         >
-          Продолжить редактирование
+          <ArrowRightIcon />
         </Button>
-        <DeleteCatalogItemButton label={`Удалить черновик «${title}»`} onClick={onDelete} />
       </CardFooter>
     </Card>
   )
@@ -257,33 +294,73 @@ function TaskCard({
   admin: boolean
   onDelete: () => void
 }) {
-  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`
+  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{task.title}</CardTitle>
-        <CardDescription>
-          {task.developer_type === "frontend" ? "Фронтенд" : "Фуллстек"} · Сложность{" "}
-          {task.difficulty_from}–{task.difficulty_to}
+    <Card className="relative pt-0 rounded-xl gap-4 pb-4">
+      <Badge
+          className={cn(
+              "absolute inset-3 z-11",
+              task.is_hidden ? "bg-gray-200 text-black" : "bg-[#A3E635] text-[#3F5212]"
+          )}
+      >
+          {task.is_hidden ? "Скрыто" : "Бесплатно"}
+      </Badge>
+      <Badge
+          className={cn(
+              "absolute right-3 top-3 z-11",
+              task.developer_type === "frontend" && "text-[#0F766E] bg-[#CCFBF1]",
+              task.developer_type === "fullstack" && "text-[#EA580C] bg-[#FFEDD5]",
+          )}
+      >
+        {task.developer_type === "frontend" ? "Фронтенд" : "Фуллстек"}
+      </Badge>
+
+      <div className="relative w-full z-9 aspect-video" />
+      <div className="absolute inset-0 w-full z-10 aspect-video bg-black/15">
+        {
+          task.cover_photo
+            ? (
+              <Image src={task.cover_photo.url} alt="taskImage" fill sizes="20vw"
+                     loading="eager" className="aspect-video object-cover"
+              />
+            )
+            : (
+                <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
+                  <ImageOffIcon className="size-14" />
+                  <p className="text-md">Нет изображения</p>
+                </div>
+            )
+        }
+      </div>
+
+      <CardHeader className="flex flex-col gap-0.5 px-3">
+        <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
+          <Link href={href}>{task.title}</Link>
+        </CardTitle>
+        <CardDescription className='w-full min-h-15 line-clamp-3 wrap-break-word'>
+          {task.short_description}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="whitespace-pre-wrap wrap-anywhere">{task.short_description}</p>
-        {admin && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            {task.status === "archived" ? "В архиве" : "Опубликована"}
-            {task.is_hidden ? " · Скрыта" : ""}
-          </p>
-        )}
-      </CardContent>
-      <CardFooter className="mt-auto flex flex-wrap gap-2">
-        <Button render={<Link href={href} />} nativeButton={false} variant="outline">
-          {admin ? "Редактировать" : "Открыть задачу"}
-        </Button>
-        {admin && (
-          <DeleteCatalogItemButton label={`Удалить задачу «${task.title}»`} onClick={onDelete} />
-        )}
+      <CardContent />
+      <CardFooter className="mt-auto flex justify-between">
+        <div className="flex gap-1 font-heading text-muted-foreground tracking-wide items-baseline">
+          <div className="flex items-center gap-0.5">
+            <h5 className="font-semibold text-2xl text-primary">
+              {task.difficulty_from}-{task.difficulty_to}
+            </h5>
+            <BugIcon className="text-primary" />
+          </div>
+          /10
+        </div>
+        <div className="flex gap-2">
+          {admin && (
+            <DeleteCatalogItemButton label={`Удалить задачу «${task.title}»`} onClick={onDelete} />
+          )}
+          <Button render={<Link href={href} />} nativeButton={false} variant="default" size="icon">
+            <ArrowRightIcon />
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   )
@@ -291,9 +368,8 @@ function TaskCard({
 
 function DeleteCatalogItemButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Button type="button" variant="destructive" aria-label={label} onClick={onClick}>
+    <Button type="button" size="icon" variant="destructive" aria-label={label} onClick={onClick}>
       <Trash2Icon />
-      Удалить
     </Button>
   )
 }

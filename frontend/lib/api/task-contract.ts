@@ -75,6 +75,7 @@ export type TaskRead = {
   updated_at: string
   id: number
   status: TaskStatus
+  cover_photo?: PhotoRead
 }
 
 export type DraftRead = {
