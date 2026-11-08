@@ -2,7 +2,8 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { CategoryLibrary } from "../api/task-contract"
 import { libraryParentOptions, libraryTemplates } from "./task-library"
-import { POST, GET } from "../../app/api/backend/[...path]/route"
+import { proxyBackend } from "../backend-proxy"
+import { sessionCookie } from "../../tests/proxy-session"
 
 // В ответе API потомок другого направления находится в отдельном дереве.
 test("parent choices exclude descendants across developer directions", () => {
@@ -20,32 +21,40 @@ test("parent choices exclude descendants across developer directions", () => {
   assert.deepEqual(libraryTemplates(categories), [])
 })
 
-test("proxy adds server-side administrator header to library writes only", async (context) => {
+test("proxy forwards the signed-in session to library reads and writes", async (context) => {
   const requests: { path: string; method: string | undefined; user: string | null }[] = []
   context.mock.method(globalThis, "fetch", async (url: URL, init: RequestInit) => {
     requests.push({
       path: url.pathname,
       method: init.method,
-      user: new Headers(init.headers).get("x-user-id"),
+      user: new Headers(init.headers).get("authorization"),
     })
     return Response.json({ success: true, data: null })
   })
   for (const path of ["task-complications", "task-complication-categories"]) {
-    const response = await POST(
+    const response = await proxyBackend(
       new Request(`http://localhost/api/backend/${path}`, {
         method: "POST",
         body: "{}",
-        headers: { "Content-Type": "application/json", "x-user-id": "999" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": "999",
+          Origin: "http://localhost",
+          Cookie: await sessionCookie(),
+        },
       }),
-      { params: Promise.resolve({ path: [path] }) },
+      [path],
     )
     assert.equal(response.status, 200)
   }
-  await GET(new Request("http://localhost/api/backend/task-complications/library"), {
-    params: Promise.resolve({ path: ["task-complications", "library"] }),
-  })
+  await proxyBackend(
+    new Request("http://localhost/api/backend/task-complications/library", {
+      headers: { Cookie: await sessionCookie() },
+    }),
+    ["task-complications", "library"],
+  )
   assert.deepEqual(
     requests.map((request) => request.user),
-    [process.env.EDITOR_USER_ID ?? "1", process.env.EDITOR_USER_ID ?? "1", null],
+    ["Bearer session-token", "Bearer session-token", "Bearer session-token"],
   )
 })

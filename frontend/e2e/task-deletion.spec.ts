@@ -1,5 +1,6 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
-import { test, expect, type Page } from "@playwright/test"
+import type { Page } from "@playwright/test"
+import { test, expect } from "./auth-fixture"
 import type { DraftRead, TaskRead } from "../lib/api/task-contract"
 
 const stamp = "2026-01-01T00:00:00Z"

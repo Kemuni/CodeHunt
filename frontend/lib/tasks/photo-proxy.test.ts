@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { GET, HEAD } from "../../app/api/backend/[...path]/route"
+import { proxyBackend } from "../backend-proxy"
+import { sessionCookie } from "../../tests/proxy-session"
 import { taskMediaUrl, taskPhotoUrl } from "../api/task-media"
 import { tasksApi } from "../api/tasks"
 import type { PhotoRead } from "../api/task-contract"
@@ -14,7 +15,7 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
     const headers = new Headers(init.headers)
     seen.push({
       path: url.pathname,
-      user: headers.get("x-user-id"),
+      user: headers.get("authorization"),
       etag: headers.get("if-none-match"),
     })
     return new Response(null, {
@@ -24,11 +25,11 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
   })
   for (const admin of [false, true]) {
     const path = [...(admin ? ["editor"] : []), "media", "photos", "42"]
-    const response = await GET(
+    const response = await proxyBackend(
       new Request(`http://localhost${taskPhotoUrl(photo, admin)}`, {
-        headers: { "If-None-Match": '"image"', "X-User-ID": "999" },
+        headers: { "If-None-Match": '"image"', "X-User-ID": "999", Cookie: await sessionCookie() },
       }),
-      { params: Promise.resolve({ path }) },
+      path,
     )
     assert.equal(response.status, 304)
     assert.equal(response.headers.get("etag"), '"image"')
@@ -37,12 +38,12 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
   }
   assert.deepEqual(
     seen.map((item) => item.user),
-    [null, process.env.EDITOR_USER_ID ?? "1"],
+    ["Bearer session-token", "Bearer session-token"],
   )
   assert.ok(seen.every((item) => item.etag === '"image"'))
-  const response = await HEAD(
+  const response = await proxyBackend(
     new Request("http://localhost/api/backend/media/photos/42", { method: "HEAD" }),
-    { params: Promise.resolve({ path: ["media", "photos", "42"] }) },
+    ["media", "photos", "42"],
   )
   assert.equal(response.status, 304)
 })
@@ -51,7 +52,7 @@ test("resource downloads preserve bytes, filename, cache headers and editor rout
   const disposition = "attachment; filename*=UTF-8''%D0%A4%D0%B0%D0%B9%D0%BB.zip"
   const seen: { path: string; user: string | null }[] = []
   context.mock.method(globalThis, "fetch", async (url: URL, init: RequestInit) => {
-    seen.push({ path: url.pathname, user: new Headers(init.headers).get("x-user-id") })
+    seen.push({ path: url.pathname, user: new Headers(init.headers).get("authorization") })
     return new Response(new Uint8Array([0, 128, 255]), {
       headers: {
         "content-type": "application/zip",
@@ -66,9 +67,10 @@ test("resource downloads preserve bytes, filename, cache headers and editor rout
     const path = [...(admin ? ["editor"] : []), "media", "resources", "42"]
     const url = taskMediaUrl("/api/media/resources/42", admin)
     assert.equal(url, `/api/backend/${path.join("/")}`)
-    const response = await GET(new Request(`http://localhost${url}`), {
-      params: Promise.resolve({ path }),
-    })
+    const response = await proxyBackend(
+      new Request(`http://localhost${url}`, { headers: { Cookie: await sessionCookie() } }),
+      path,
+    )
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), new Uint8Array([0, 128, 255]))
     assert.equal(response.headers.get("content-disposition"), disposition)
     assert.equal(response.headers.get("content-type"), "application/zip")
@@ -78,7 +80,7 @@ test("resource downloads preserve bytes, filename, cache headers and editor rout
   }
   assert.deepEqual(
     seen.map((item) => item.user),
-    [null, process.env.EDITOR_USER_ID ?? "1"],
+    ["Bearer session-token", "Bearer session-token"],
   )
 })
 

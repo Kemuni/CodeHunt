@@ -1,5 +1,5 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
-import { test, expect } from "@playwright/test"
+import { test, expect } from "./auth-fixture"
 import { readFile } from "node:fs/promises"
 import type {
   TaskDetail,
