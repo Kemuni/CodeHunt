@@ -220,6 +220,8 @@ test("nested presets restore fields and all editor branches without inherited du
   const stamp = "2026-01-01T00:00:00Z"
   const readLeaf = (id: number, level: TaskLevel): ComplicationItem => ({
     ...leaf(id, level),
+    order_number: id,
+    position: 0,
     id,
     task_id: 1,
     created_at: stamp,
@@ -236,7 +238,7 @@ test("nested presets restore fields and all editor branches without inherited du
     task_id: 1,
     parent_group_id: null,
     title: "Общая",
-    order_number: 0,
+    position: 0,
     created_at: stamp,
     updated_at: stamp,
     items,

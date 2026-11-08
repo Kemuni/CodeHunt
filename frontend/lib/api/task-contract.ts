@@ -122,7 +122,6 @@ export type PhotoRead = {
   content_type: string
   size_bytes: number
   url: string
-  expires_in: number
 }
 
 export type ResourceRead = {
@@ -150,12 +149,10 @@ export type ResourceDownloadRead = {
   content_type: string | null
   size_bytes: number | null
   url: string
-  expires_in: number
 }
 
 export type DownloadURL = {
   url: string
-  expires_in: number
 }
 
 export type DraftGalleryUpdate = {
@@ -235,7 +232,8 @@ export type ComplicationItem = {
   level: TaskLevel
   is_required?: boolean
   group_id?: number | null
-  order_number?: number
+  order_number: number
+  position: number
   created_at: string
   updated_at: string
   id: number
@@ -252,7 +250,7 @@ export type ComplicationGroupRead = {
   task_id: number
   parent_group_id: number | null
   title: string
-  order_number: number
+  position: number
   items?: Array<ComplicationItem | ComplicationGroupRead>
 }
 

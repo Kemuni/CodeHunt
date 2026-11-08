@@ -1,5 +1,7 @@
 "use client"
 
+import { taskPhotoUrl } from "@/lib/api/task-media"
+
 import { PageLayout, PageLayoutContent, PageLayoutHeader } from "@/components/ui/layouts/page"
 import {
   SectionLayout,
@@ -102,7 +104,7 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
                       id: photo.id,
                       name: photo.original_filename,
                       size: photo.size_bytes,
-                      url: photo.url,
+                      url: taskPhotoUrl(photo, true),
                       isCover: photo.is_cover,
                     }))}
                     busy={mediaDisabled}

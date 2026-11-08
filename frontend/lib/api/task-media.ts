@@ -1,6 +1,18 @@
 import type { DraftRead, PhotoRead, ResourceRead } from "./task-contract"
 import { taskRequest } from "./task-request"
 
+/** Постоянные адреса фото проходят через тот же origin; редактор использует административный маршрут. */
+export function taskPhotoUrl(photo: PhotoRead, admin = false): string {
+  return taskMediaUrl(photo.url, admin)
+}
+
+/** Скачивание файлов и показ фотографий используют общий прокси с проверкой доступа. */
+export function taskMediaUrl(url: string, admin = false): string {
+  return /^\/api\/media\/(photos|resources)\/\d+$/.test(url)
+    ? `/api/backend/${admin ? "editor/" : ""}${url.slice("/api/".length)}`
+    : url
+}
+
 function photoForm(files: File[], revision?: number) {
   const data = new FormData()
   files.forEach((file) => data.append("files", file))

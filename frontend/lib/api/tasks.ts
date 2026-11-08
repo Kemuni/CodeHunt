@@ -16,6 +16,7 @@ import type {
 } from "./task-contract"
 
 import { taskRequest } from "./task-request"
+import { taskMediaUrl } from "./task-media"
 
 /** Неполная форма черновика: обязательные поля проверяет backend перед публикацией. */
 export type DraftPayload = Record<string, JsonValue>
@@ -60,8 +61,10 @@ export const tasksApi = {
     taskRequest<PresetRead>(`editor/tasks/${id}/presets/${presetId}`, { method: "PATCH", body }),
   deletePreset: (id: number, presetId: number) =>
     taskRequest<null>(`editor/tasks/${id}/presets/${presetId}`, { method: "DELETE" }),
-  resourceUrl: (kind: "draft" | "task", id: number, resourceId: number, admin = true) =>
-    taskRequest<DownloadURL>(
+  resourceUrl: async (kind: "draft" | "task", id: number, resourceId: number, admin = true) => {
+    const result = await taskRequest<DownloadURL>(
       `${admin ? "editor/" : ""}${kind === "draft" ? "task-drafts" : "tasks"}/${id}/resources/${resourceId}/download-url`,
-    ),
+    )
+    return { ...result, url: taskMediaUrl(result.url, admin) }
+  },
 }

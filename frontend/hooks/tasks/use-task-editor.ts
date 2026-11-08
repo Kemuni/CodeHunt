@@ -18,6 +18,7 @@ import type {
   CompositionGroup,
 } from "@/lib/api/task-contract"
 import { DraftCoordinator, type DraftSnapshot } from "@/lib/tasks/draft-coordinator"
+import { downloadFile } from "@/lib/tasks/download-file"
 import {
   taskInfoSchema,
   createTaskInfoSchema,
@@ -293,7 +294,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
             ...persistedTaskRef.current!,
             resources: [
               ...persistedTaskRef.current!.resources,
-              { ...resource, url: "", expires_in: 0 },
+              { ...resource, url: `/api/media/resources/${resource.id}` },
             ],
           }
           setTask(persistedTaskRef.current)
@@ -315,18 +316,17 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
         setTask(persistedTaskRef.current)
       }
     }, "Файл удалён")
-  // Ссылка на файл временная: получаем свежую непосредственно перед скачиванием.
+  // Получаем постоянный адрес через API с проверкой принадлежности вложения.
   const downloadResource = async (id: number) => {
     try {
+      const resource = resources.find((file) => file.id === id)
+      if (!resource) throw new Error("Файл не найден")
       const url = await tasksApi.resourceUrl(
         coordinator ? "draft" : "task",
         coordinator ? coordinator.getSnapshot().draft!.id : persistedTaskRef.current!.id,
         id,
       )
-      const link = document.createElement("a")
-      link.href = url.url
-      link.download = ""
-      link.click()
+      await downloadFile(url.url, resource.original_filename)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось скачать файл")
     }

@@ -1,7 +1,13 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
 import { test, expect } from "@playwright/test"
 import { readFile } from "node:fs/promises"
-import type { TaskDetail, CompositionUpdate, ComplicationItem } from "../lib/api/task-contract"
+import type {
+  TaskDetail,
+  CompositionUpdate,
+  ComplicationItem,
+  DraftRead,
+  ResourceDownloadRead,
+} from "../lib/api/task-contract"
 
 function taskFixture(): TaskDetail {
   const stamp = "2026-01-01T00:00:00Z"
@@ -40,6 +46,8 @@ function taskFixture(): TaskDetail {
         {
           kind: "complication",
           id: index + 1,
+          position: 0,
+          order_number: 1,
           task_id: task.id,
           level,
           title: `Пункт ${level}`,
@@ -53,6 +61,69 @@ function taskFixture(): TaskDetail {
     }
   }
   return task
+}
+
+for (const kind of ["task", "draft"] as const) {
+  test(`editor downloads ${kind} attachments through the protected media proxy`, async ({
+    page,
+  }) => {
+    const task = taskFixture()
+    const filename = "Материалы проекта.zip"
+    const resource: ResourceDownloadRead = {
+      id: 42,
+      task_id: kind === "task" ? task.id : null,
+      draft_id: kind === "draft" ? task.id : null,
+      title: "Материалы",
+      type: "asset",
+      original_filename: filename,
+      content_type: "application/zip",
+      size_bytes: 10,
+      url: "/api/media/resources/42",
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+    }
+    task.resources = [resource]
+    const draft: DraftRead = {
+      id: task.id,
+      owner_id: 1,
+      payload: {},
+      revision: 1,
+      validation_errors: [],
+      is_valid: false,
+      photos: [],
+      resources: [resource],
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+    }
+    const base = `/api/backend/editor/${kind === "draft" ? "task-drafts" : "tasks"}/${task.id}`
+    let mediaRequests = 0
+    await page.route("**/api/backend/**", async (route) => {
+      const path = new URL(route.request().url()).pathname
+      if (path === base) {
+        await route.fulfill({ json: { success: true, data: kind === "draft" ? draft : task } })
+      } else if (path === `${base}/resources/42/download-url`) {
+        await route.fulfill({ json: { success: true, data: { url: resource.url } } })
+      } else if (path === "/api/backend/editor/media/resources/42") {
+        mediaRequests++
+        await route.fulfill({
+          contentType: "application/zip",
+          body: "attachment",
+          headers: {
+            "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+            "Cache-Control": "private, no-cache",
+            ETag: '"file"',
+          },
+        })
+      } else await route.abort()
+    })
+    await page.goto(`/admin/tasks/editor?${kind}Id=${task.id}`)
+    const pending = page.waitForEvent("download")
+    await page.getByRole("button", { name: "Скачать Материалы", exact: true }).click()
+    const downloaded = await pending
+    expect(downloaded.suggestedFilename()).toBe(filename)
+    expect(await readFile((await downloaded.path())!, "utf8")).toBe("attachment")
+    expect(mediaRequests).toBe(1)
+  })
 }
 
 test("public task shows all own-level sections without configuration requests", async ({
@@ -158,6 +229,8 @@ test("each level previews four numbered leaves across nested collapsible categor
       ...template,
       id,
       title: `${level} требование ${id}`,
+      order_number: id,
+      position: id - 1,
       is_required: id !== 6,
     })
     const group = {
@@ -167,7 +240,7 @@ test("each level previews four numbered leaves across nested collapsible categor
       created_at: task.created_at,
       updated_at: task.updated_at,
       parent_group_id: null,
-      order_number: 0,
+      position: 0,
     }
     task.presets[level].complications = [
       item(1),
@@ -193,6 +266,12 @@ test("each level previews four numbered leaves across nested collapsible categor
     await expect(section.getByRole("button", { name: "Показать все 6 пунктов" })).toBeVisible()
   }
   const base = page.getByRole("region", { name: "Базовый функционал", exact: true })
+  await expect(
+    page.getByRole("article", { name: "1. medium требование 1", exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("article", { name: "1. high требование 1", exact: true }),
+  ).toBeVisible()
   await expect(
     base
       .getByRole("group", { name: "Категория «Категория»", exact: true })
@@ -246,7 +325,6 @@ for (const width of [1440, 390]) {
       content_type: "image/png",
       size_bytes: 68,
       url: png,
-      expires_in: 900,
       created_at: task.created_at,
       updated_at: task.updated_at,
     }))
@@ -271,8 +349,7 @@ for (const width of [1440, 390]) {
       task_id: task.id,
       draft_id: null,
       size_bytes: 1234,
-      url: "https://files.test/expired",
-      expires_in: 1,
+      url: `/api/media/resources/${file.id}`,
       created_at: task.created_at,
       updated_at: task.updated_at,
     }))
@@ -282,7 +359,7 @@ for (const width of [1440, 390]) {
       if (path.endsWith("/resources/1/download-url")) {
         downloads++
         await route.fulfill({
-          json: { success: true, data: { url: "https://files.test/fresh", expires_in: 900 } },
+          json: { success: true, data: { url: "/api/media/resources/1" } },
         })
       } else if (path.endsWith("/resources/2/download-url")) {
         await route.fulfill({
@@ -292,17 +369,20 @@ for (const width of [1440, 390]) {
             errors: { code: "storage_unavailable", message: "Хранилище временно недоступно" },
           },
         })
+      } else if (path === "/api/backend/media/resources/1") {
+        await route.fulfill({
+          contentType: "application/pdf",
+          body: "test attachment",
+          headers: {
+            "Cache-Control": "private, no-cache",
+            ETag: '"attachment"',
+            "Content-Disposition": 'attachment; filename="specification.pdf"',
+          },
+        })
       } else {
         await route.fulfill({ json: { success: true, data: task } })
       }
     })
-    await page.route("https://files.test/fresh", (route) =>
-      route.fulfill({
-        contentType: "application/pdf",
-        body: "test attachment",
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }),
-    )
     await page.goto(`/tasks/${task.id}`)
     const back = page.getByRole("link", { name: "Вернуться назад", exact: true })
     await expect(back).toHaveAttribute("href", "/tasks")
@@ -381,7 +461,7 @@ test("empty media and categories have clear states and absent levels are omitted
       level: TaskLevel.High,
       task_id: task.id,
       parent_group_id: null,
-      order_number: 0,
+      position: 0,
       created_at: task.created_at,
       updated_at: task.updated_at,
       items: [],
@@ -410,7 +490,7 @@ test("shared editor groups preserve an unfinished item form when collapsed", asy
       level: TaskLevel.Easy,
       task_id: task.id,
       parent_group_id: null,
-      order_number: 0,
+      position: 0,
       created_at: task.created_at,
       updated_at: task.updated_at,
       items: task.presets.easy.complications,

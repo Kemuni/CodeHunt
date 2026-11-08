@@ -1,4 +1,5 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
+import { taskMediaUrl } from "@/lib/api/task-media"
 import { test, expect } from "@playwright/test"
 
 // Запуск только с явным выбором локального API: тест создаёт свои данные и удаляет их в finally.
@@ -171,7 +172,7 @@ test("draft autosave, attachments, publication and explicit updates of an existi
     await expect(page.getByText("Обязательный пункт", { exact: true })).toBeVisible()
     const attachment = (await api(`tasks/${taskId}`)).resources[0]
     const download = await api(`tasks/${taskId}/resources/${attachment.id}/download-url`)
-    expect(await (await request.get(download.url)).text()).toBe("Immediate upload")
+    expect(await (await request.get(taskMediaUrl(download.url))).text()).toBe("Immediate upload")
     await page.getByRole("button", { name: "Вложения", exact: true }).click()
     const downloadedFile = page.waitForEvent("download")
     await page

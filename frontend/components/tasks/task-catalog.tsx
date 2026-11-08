@@ -1,5 +1,7 @@
 "use client"
 
+import { taskPhotoUrl } from "@/lib/api/task-media"
+
 import TaskDifficulty from "@/components/tasks/task-difficulty"
 
 import { useState, type ReactNode } from "react"
@@ -240,7 +242,8 @@ function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void
       <div className="absolute inset-0 w-full aspect-video">
         {coverPhoto ? (
           <Image
-            src={coverPhoto.url}
+            src={taskPhotoUrl(coverPhoto, true)}
+            unoptimized
             alt="taskImage"
             fill
             sizes="20vw"
@@ -313,7 +316,8 @@ function TaskCard({
       <div className="absolute inset-0 w-full z-10 aspect-video bg-black/15">
         {task.cover_photo ? (
           <Image
-            src={task.cover_photo.url}
+            src={taskPhotoUrl(task.cover_photo, admin)}
+            unoptimized
             alt="taskImage"
             fill
             sizes="20vw"

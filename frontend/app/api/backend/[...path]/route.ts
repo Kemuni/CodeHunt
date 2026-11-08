@@ -9,6 +9,9 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
   const headers = new Headers()
   const contentType = request.headers.get("content-type")
   if (contentType) headers.set("content-type", contentType)
+  const isMedia = path[0] === "media" || (path[0] === "editor" && path[1] === "media")
+  if (isMedia && request.headers.has("if-none-match"))
+    headers.set("if-none-match", request.headers.get("if-none-match")!)
   const libraryWrite =
     ["task-complications", "task-complication-categories"].includes(path[0]) &&
     ["POST", "PATCH", "DELETE"].includes(request.method)
@@ -26,7 +29,22 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
       status: response.status,
       headers: {
         "content-type": response.headers.get("content-type") ?? "application/json",
-        "cache-control": "no-store",
+        "cache-control": isMedia
+          ? (response.headers.get("cache-control") ?? "no-store")
+          : "no-store",
+        ...(isMedia
+          ? Object.fromEntries(
+              [
+                "etag",
+                "vary",
+                "x-content-type-options",
+                "content-length",
+                "content-disposition",
+              ].flatMap((name) =>
+                response.headers.has(name) ? [[name, response.headers.get(name)!]] : [],
+              ),
+            )
+          : {}),
       },
     })
   } catch {
@@ -43,4 +61,4 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
   }
 }
 
-export { proxy as GET, proxy as POST, proxy as PATCH, proxy as PUT, proxy as DELETE }
+export { proxy as GET, proxy as HEAD, proxy as POST, proxy as PATCH, proxy as PUT, proxy as DELETE }

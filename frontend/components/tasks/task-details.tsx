@@ -1,5 +1,8 @@
 "use client"
 
+import { taskPhotoUrl } from "@/lib/api/task-media"
+import { downloadFile } from "@/lib/tasks/download-file"
+
 import { TaskLevel } from "@/lib/tasks/task-level"
 import { useId, useState } from "react"
 import Image from "next/image"
@@ -27,7 +30,7 @@ import type {
   TaskDetail,
   TaskPresetRead,
 } from "@/lib/api/task-contract"
-import {developerTypeLabels, levelLabels} from "@/lib/tasks/labels"
+import { developerTypeLabels, levelLabels } from "@/lib/tasks/labels"
 import { formatBytes } from "@/lib/hooks/use-file-upload"
 import { PageLayout, PageLayoutContent, PageLayoutHeader } from "@/components/ui/layouts/page"
 import {
@@ -54,35 +57,35 @@ import React from "react"
 
 const previewLimit = 4
 
-type NumberedRequirement =
-  | { kind: "item"; node: ComplicationItem; number: number }
+type PreviewRequirement =
+  | { kind: "item"; node: ComplicationItem; previewIndex: number }
   | {
       kind: "group"
       node: ComplicationGroupRead
-      number: number
+      previewIndex: number
       count: number
-      items: NumberedRequirement[]
+      items: PreviewRequirement[]
     }
 
-/** Нумерует только требования; у категории хранит номер её первого пункта для ограничения превью. */
-function numberRequirements(nodes: TaskPresetRead["complications"]) {
+/** Считает размер и границы превью; видимые номера берёт из ответа backend. */
+function previewRequirements(nodes: TaskPresetRead["complications"]) {
   let count = 0
-  const walk = (nodes: TaskPresetRead["complications"]): NumberedRequirement[] =>
+  const walk = (nodes: TaskPresetRead["complications"]): PreviewRequirement[] =>
     nodes.map((node) => {
-      if ("description" in node) return { kind: "item", node, number: ++count }
-      const number = count + 1
+      if ("description" in node) return { kind: "item", node, previewIndex: ++count }
+      const previewIndex = count + 1
       const items = walk(node.items ?? [])
-      return { kind: "group", node, number, count: count - number + 1, items }
+      return { kind: "group", node, previewIndex, count: count - previewIndex + 1, items }
     })
   const items = walk(nodes)
   return { items, count }
 }
 
-function Requirements({ nodes, limit }: { nodes: NumberedRequirement[]; limit: number }) {
+function Requirements({ nodes, limit }: { nodes: PreviewRequirement[]; limit: number }) {
   return (
     <div className="space-y-3">
       {nodes.map((entry) => {
-        if (entry.number > limit) return null
+        if (entry.previewIndex > limit) return null
         const { node } = entry
         if (entry.kind === "group")
           return (
@@ -90,16 +93,16 @@ function Requirements({ nodes, limit }: { nodes: NumberedRequirement[]; limit: n
               {entry.items.length ? <Requirements nodes={entry.items} limit={limit} /> : null}
             </TaskRequirementGroup>
           )
-        return <RequirementItem key={`item-${node.id}`} item={entry.node} number={entry.number} />
+        return <RequirementItem key={`item-${node.id}`} item={entry.node} />
       })}
     </div>
   )
 }
 
-function RequirementItem({ item, number }: { item: ComplicationItem; number: number }) {
+function RequirementItem({ item }: { item: ComplicationItem }) {
   return (
     <TaskRequirementCard
-      number={number}
+      number={item.order_number}
       level={item.level}
       item={{
         title: item.title,
@@ -115,7 +118,7 @@ function FunctionalitySection({ level, data }: { level: TaskLevel; data: TaskPre
   const [expanded, setExpanded] = useState(false)
   const contentId = useId()
   const titleId = useId()
-  const { items, count } = numberRequirements(data.complications)
+  const { items, count } = previewRequirements(data.complications)
 
   if (!data.preset) return null
   return (
@@ -190,7 +193,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
             >
               <div className="relative block w-full aspect-16/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
                 <Image
-                  src={photo.url}
+                  src={taskPhotoUrl(photo)}
                   alt={`${title} — фото ${index + 1}`}
                   fill
                   loading="eager"
@@ -224,7 +227,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
             {selectedImage && (
               <>
                 <Image
-                  src={selectedImage.url}
+                  src={taskPhotoUrl(selectedImage)}
                   alt={selectedImage.original_filename}
                   fill
                   unoptimized
@@ -322,14 +325,7 @@ function Attachment({ taskId, file }: { taskId: number; file: ResourceRead }) {
     setPending(true)
     try {
       const { url } = await tasksApi.resourceUrl("task", taskId, file.id, false)
-      const response = await fetch(url)
-      if (!response.ok) throw new Error("Не удалось скачать файл. Попробуйте ещё раз.")
-      const objectUrl = URL.createObjectURL(await response.blob())
-      const anchor = document.createElement("a")
-      anchor.href = objectUrl
-      anchor.download = file.original_filename
-      anchor.click()
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      await downloadFile(url, file.original_filename)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось скачать файл")
     } finally {
