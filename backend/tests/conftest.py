@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -12,11 +13,15 @@ from testcontainers.core.wait_strategies import HttpWaitStrategy
 # Реальные подключения в тестах создаются только по адресу контейнера.
 os.environ["DATABASE_URL"] = "postgresql://test:test@127.0.0.1:1/not_used"
 os.environ["PROJECT_NAME"] = "CodeHunt tests"
+os.environ["ADMIN_EMAILS"] = "admin@example.com,other-admin@example.com"
+os.environ["GITHUB_ID"] = "test-client"
+os.environ["GITHUB_SECRET"] = "test-secret"
 
 from app.api.deps import get_db  # noqa: E402
 from app.core.db import Base  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import User  # noqa: E402
+from app.models import AuthSession, User
+from app.services.auth import token_hash  # noqa: E402
 
 
 @pytest.fixture
@@ -62,9 +67,35 @@ async def db(postgres):
         async with factory() as session:
             session.add_all(
                 [
-                    User(email="admin@example.com", is_admin=True),
-                    User(email="member@example.com", is_admin=False),
-                    User(email="other-admin@example.com", is_admin=True),
+                    User(
+                        email="admin@example.com",
+                        github_id=1,
+                        verified_emails=["admin@example.com"],
+                        is_admin=True,
+                    ),
+                    User(
+                        email="member@example.com",
+                        github_id=2,
+                        verified_emails=["member@example.com"],
+                        is_admin=False,
+                    ),
+                    User(
+                        email="other-admin@example.com",
+                        github_id=3,
+                        verified_emails=["other-admin@example.com"],
+                        is_admin=True,
+                    ),
+                ]
+            )
+            await session.flush()
+            session.add_all(
+                [
+                    AuthSession(
+                        token_hash=token_hash(f"test-session-{user_id}"),
+                        user_id=user_id,
+                        expires_at=datetime.now(UTC) + timedelta(hours=1),
+                    )
+                    for user_id in (1, 2, 3)
                 ]
             )
             await session.commit()
@@ -90,7 +121,7 @@ async def client(db):
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="http://test",
-            headers={"X-User-ID": "1"},
+            headers={"Authorization": "Bearer test-session-1"},
         ) as http:
             yield http
     finally:

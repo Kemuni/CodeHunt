@@ -25,7 +25,7 @@ async def serve_file(
         "Cache-Control": "private, no-cache",
         "ETag": etag,
         "X-Content-Type-Options": "nosniff",
-        "Vary": "Cookie, X-User-ID",
+        "Vary": "Cookie, Authorization",
     }
     if isinstance(file, TaskResource):
         headers["Content-Disposition"] = (

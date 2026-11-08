@@ -198,7 +198,7 @@ async def test_draft_file_ownership_revision_editing_and_deletion(client, db, st
     assert len(store.objects) == 2
     base = f"/api/editor/task-drafts/{draft['id']}"
     rid, pid = draft["resources"][0]["id"], draft["photos"][0]["id"]
-    other = {"X-User-ID": "3"}
+    other = {"Authorization": "Bearer test-session-3"}
     assert (await client.get(base, headers=other)).status_code == 404
     assert (
         await client.get(base + f"/resources/{rid}/download-url", headers=other)

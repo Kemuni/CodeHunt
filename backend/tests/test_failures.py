@@ -33,8 +33,11 @@ async def test_non_positive_identifiers_are_validation_errors(client):
     ]:
         assert (await client.get(path)).status_code == 422
     assert (
-        await client.get("/api/editor/tasks", headers={"X-User-ID": str(invalid_id)})
-    ).status_code == 422
+        await client.get(
+            "/api/editor/tasks",
+            headers={"Authorization": f"Bearer test-session-{invalid_id}"},
+        )
+    ).status_code == 401
 
 
 async def test_atomic_solution_rollback(client, db, monkeypatch):

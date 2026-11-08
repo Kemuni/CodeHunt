@@ -10,7 +10,7 @@ pytestmark = pytest.mark.anyio
 async def test_solution_snapshots_and_independent_completion(client):
     task, links, presets = await make_project(client)
     tid = task["id"]
-    member = {"X-User-ID": "2"}
+    member = {"Authorization": "Bearer test-session-2"}
     payload = {
         "author_id": 2,
         "task_level_preset_id": presets[1]["id"],

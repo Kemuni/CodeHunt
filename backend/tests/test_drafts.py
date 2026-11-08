@@ -16,29 +16,44 @@ async def test_owner_admin_and_live_errors(client):
     assert draft["owner_id"] == 1 and not draft["is_valid"]
     assert any(error["field"] == "slug" for error in draft["validation_errors"])
     url = f"/api/editor/task-drafts/{draft['id']}"
-    assert (await client.get(url, headers={"X-User-ID": "3"})).status_code == 404
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-3"})
+    ).status_code == 404
     assert (
         await client.patch(
-            url, headers={"X-User-ID": "3"}, json={"revision": 1, "payload": {}}
+            url,
+            headers={"Authorization": "Bearer test-session-3"},
+            json={"revision": 1, "payload": {}},
         )
     ).status_code == 404
     assert (
-        await client.delete(url + "?revision=1", headers={"X-User-ID": "3"})
+        await client.delete(
+            url + "?revision=1", headers={"Authorization": "Bearer test-session-3"}
+        )
     ).status_code == 404
     assert (
         await client.post(
-            url + "/publish", headers={"X-User-ID": "3"}, json={"revision": 1}
+            url + "/publish",
+            headers={"Authorization": "Bearer test-session-3"},
+            json={"revision": 1},
         )
     ).status_code == 404
     assert (
-        await client.get("/api/editor/task-drafts", headers={"X-User-ID": "3"})
+        await client.get(
+            "/api/editor/task-drafts",
+            headers={"Authorization": "Bearer test-session-3"},
+        )
     ).json()["data"]["total"] == 0
     assert (
         await client.post(
-            "/api/editor/task-drafts", headers={"X-User-ID": "2"}, json={}
+            "/api/editor/task-drafts",
+            headers={"Authorization": "Bearer test-session-2"},
+            json={},
         )
     ).status_code == 403
-    assert (await client.get(url, headers={"X-User-ID": "999"})).status_code == 401
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-999"})
+    ).status_code == 401
 
     response = await client.patch(url, json={"revision": 1, "payload": task_data()})
     draft = response.json()["data"]

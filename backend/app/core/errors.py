@@ -59,6 +59,30 @@ class AdminRequiredError(DomainError):
     default_message = "Требуется администратор"
 
 
+class AuthenticationRequiredError(DomainError):
+    status = HTTPStatus.UNAUTHORIZED
+    code = "authentication_required"
+    default_message = "Войдите через GitHub заново"
+
+
+class GitHubUnavailableError(DomainError):
+    status = HTTPStatus.SERVICE_UNAVAILABLE
+    code = "github_unavailable"
+    default_message = "Вход через GitHub временно недоступен"
+
+
+class VerifiedEmailRequiredError(DomainError):
+    status = HTTPStatus.FORBIDDEN
+    code = "verified_email_required"
+    default_message = "Подтвердите email в настройках GitHub"
+
+
+class AccountConflictError(DomainError):
+    status = HTTPStatus.CONFLICT
+    code = "account_conflict"
+    default_message = "Этот email уже связан с другой учётной записью"
+
+
 class MissingPresetsError(DomainError):
     status = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "empty_presets"

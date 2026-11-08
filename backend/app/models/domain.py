@@ -64,6 +64,19 @@ class User(IdentityMixin, Timestamps, Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    github_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    verified_emails: Mapped[list[str]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
 class TaskComplicationCategory(IdentityMixin, Base):

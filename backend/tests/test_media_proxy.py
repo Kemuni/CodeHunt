@@ -73,7 +73,7 @@ async def test_proxy_caches_bytes_but_rechecks_access_and_etags(
     url = photo["url"]
     assert url == f"/api/media/photos/{photo['id']}"
     assert "expires_in" not in photo
-    client.headers.pop("x-user-id")
+    client.headers.pop("authorization")
     first = await client.get(url)
     assert first.status_code == 200 and first.content == image_bytes()
     assert first.headers["content-type"] == "image/png"
@@ -94,25 +94,34 @@ async def test_proxy_caches_bytes_but_rechecks_access_and_etags(
     assert (
         await client.patch(
             f"/api/editor/tasks/{task_id}",
-            headers={"X-User-ID": "1"},
+            headers={"Authorization": "Bearer test-session-1"},
             json={"is_hidden": True},
         )
     ).status_code == 200
     assert (await client.get(url)).status_code == 404
     denied = await client.get(url, headers={"If-None-Match": etag})
     assert denied.status_code == 404 and denied.headers["cache-control"] == "no-store"
-    assert (await client.get(url, headers={"X-User-ID": "2"})).status_code == 404
-    assert (await client.get(url, headers={"X-User-ID": "999"})).status_code == 401
-    assert (await client.get(url, headers={"X-User-ID": "1"})).content == image_bytes()
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-2"})
+    ).status_code == 404
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-999"})
+    ).status_code == 401
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-1"})
+    ).content == image_bytes()
     assert (
         await client.put(
             f"/api/editor/tasks/{task_id}/photos",
-            headers={"X-User-ID": "1"},
+            headers={"Authorization": "Bearer test-session-1"},
             json={"photo_ids": []},
         )
     ).status_code == 200
     assert (
-        await client.get(url, headers={"X-User-ID": "1", "If-None-Match": etag})
+        await client.get(
+            url,
+            headers={"Authorization": "Bearer test-session-1", "If-None-Match": etag},
+        )
     ).status_code == 404
 
 
@@ -136,13 +145,17 @@ async def test_draft_photo_owner_publication_and_cache_outage(
     url = draft["photos"][0]["url"]
     assert store.objects
     assert (await client.get(url)).content == image_bytes()
-    assert (await client.get(url, headers={"X-User-ID": "3"})).status_code == 404
-    assert (await client.get(url, headers={"X-User-ID": "2"})).status_code == 404
-    client.headers.pop("x-user-id")
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-3"})
+    ).status_code == 404
+    assert (
+        await client.get(url, headers={"Authorization": "Bearer test-session-2"})
+    ).status_code == 404
+    client.headers.pop("authorization")
     assert (await client.get(url)).status_code == 404
     published = await client.post(
         f"/api/editor/task-drafts/{draft['id']}/publish",
-        headers={"X-User-ID": "1"},
+        headers={"Authorization": "Bearer test-session-1"},
         json={"revision": draft["revision"]},
     )
     assert published.status_code == 201, published.text
@@ -150,10 +163,11 @@ async def test_draft_photo_owner_publication_and_cache_outage(
     assert (await client.get(url)).content == image_bytes()
     assert (
         await client.get(url.replace("/media/", "/editor/media/"))
-    ).status_code == 422
+    ).status_code == 401
     assert (
         await client.get(
-            url.replace("/media/", "/editor/media/"), headers={"X-User-ID": "2"}
+            url.replace("/media/", "/editor/media/"),
+            headers={"Authorization": "Bearer test-session-2"},
         )
     ).status_code == 403
 
@@ -178,7 +192,7 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
     assert link == {"url": url}
     detail = (await client.get(base)).json()["data"]["resources"][0]
     assert detail["url"] == url and "expires_in" not in detail
-    client.headers.pop("x-user-id")
+    client.headers.pop("authorization")
     first = await client.get(url)
     assert first.status_code == 200 and first.content == body
     assert first.headers["content-type"].startswith("text/plain")
@@ -203,7 +217,9 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
     assert conditional.status_code == 304 and conditional.content == b""
     for update in ({"status": "archived"}, {"status": "published", "is_hidden": True}):
         assert (
-            await client.patch(base, headers={"X-User-ID": "1"}, json=update)
+            await client.patch(
+                base, headers={"Authorization": "Bearer test-session-1"}, json=update
+            )
         ).status_code == 200
         denied = await client.get(url, headers={"If-None-Match": etag})
         assert (
@@ -211,15 +227,23 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
         )
         assert (await client.head(url)).status_code == 404
         editor = url.replace("/media/", "/editor/media/")
-        assert (await client.get(editor, headers={"X-User-ID": "1"})).content == body
-        assert (await client.get(editor, headers={"X-User-ID": "2"})).status_code == 403
+        assert (
+            await client.get(editor, headers={"Authorization": "Bearer test-session-1"})
+        ).content == body
+        assert (
+            await client.get(editor, headers={"Authorization": "Bearer test-session-2"})
+        ).status_code == 403
     assert (
         await client.delete(
-            base + f"/resources/{resource_id}", headers={"X-User-ID": "1"}
+            base + f"/resources/{resource_id}",
+            headers={"Authorization": "Bearer test-session-1"},
         )
     ).status_code == 200
     assert (
-        await client.get(url, headers={"X-User-ID": "1", "If-None-Match": etag})
+        await client.get(
+            url,
+            headers={"Authorization": "Bearer test-session-1", "If-None-Match": etag},
+        )
     ).status_code == 404
 
 
@@ -247,18 +271,24 @@ async def test_draft_resource_cache_owner_and_publication_or_deletion(
     etag = first.headers["etag"]
     for user in ("2", "3"):
         assert (
-            await client.get(url, headers={"X-User-ID": user, "If-None-Match": etag})
+            await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer test-session-{user}",
+                    "If-None-Match": etag,
+                },
+            )
         ).status_code == 404
-    client.headers.pop("x-user-id")
+    client.headers.pop("authorization")
     assert (await client.get(url, headers={"If-None-Match": etag})).status_code == 404
     editor = url.replace("/media/", "/editor/media/")
     assert (
-        await client.get(editor, headers={"X-User-ID": "1"})
+        await client.get(editor, headers={"Authorization": "Bearer test-session-1"})
     ).content == b"draft bytes"
     if publish:
         published = await client.post(
             base + "/publish",
-            headers={"X-User-ID": "1"},
+            headers={"Authorization": "Bearer test-session-1"},
             json={"revision": draft["revision"]},
         )
         assert published.status_code == 201, published.text
@@ -270,9 +300,15 @@ async def test_draft_resource_cache_owner_and_publication_or_deletion(
     else:
         deleted = await client.delete(
             base + f"/resources/{file['id']}?revision={draft['revision']}",
-            headers={"X-User-ID": "1"},
+            headers={"Authorization": "Bearer test-session-1"},
         )
         assert deleted.status_code == 200, deleted.text
         assert (
-            await client.get(editor, headers={"X-User-ID": "1", "If-None-Match": etag})
+            await client.get(
+                editor,
+                headers={
+                    "Authorization": "Bearer test-session-1",
+                    "If-None-Match": etag,
+                },
+            )
         ).status_code == 404

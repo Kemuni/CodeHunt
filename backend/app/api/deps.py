@@ -1,12 +1,14 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends, Header
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import async_session_maker
-from app.core.errors import AdminRequiredError, UnknownUserError
+from app.core.errors import AdminRequiredError, AuthenticationRequiredError
 from app.models import User
+from app.services.auth import authenticate
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:  # pragma: no cover
@@ -21,26 +23,24 @@ async def get_db() -> AsyncGenerator[AsyncSession]:  # pragma: no cover
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
-async def current_user(
-    db: SessionDep,
-    x_user_id: Annotated[int, Header(gt=0)],
-) -> User:
-    """Временный выбор пользователя для разработки. Перед публикацией нужна аутентификация."""
-    user: User | None = await db.get(User, x_user_id)
-    if user is None:
-        raise UnknownUserError()
-    return user
+BearerCredentials = Annotated[
+    HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))
+]
+
+
+async def current_user(db: SessionDep, credentials: BearerCredentials) -> User:
+    if credentials is None:
+        raise AuthenticationRequiredError()
+    return await authenticate(db, credentials.credentials)
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
-async def optional_user(
-    db: SessionDep, x_user_id: Annotated[int | None, Header(gt=0)] = None
-) -> User | None:
-    if x_user_id is None:
+async def optional_user(db: SessionDep, credentials: BearerCredentials) -> User | None:
+    if credentials is None:
         return None
-    return await current_user(db, x_user_id)
+    return await current_user(db, credentials)
 
 
 OptionalUser = Annotated[User | None, Depends(optional_user)]

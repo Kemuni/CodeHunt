@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    auth,
     contact_request,
     draft_files,
     drafts,
@@ -14,6 +15,7 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
+api_router.include_router(auth.router)
 api_router.include_router(utils.router)
 api_router.include_router(contact_request.router)
 api_router.include_router(library.router)

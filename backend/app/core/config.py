@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file="../.env",
+        env_file=("../.env", ".env"),
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     MAX_RESOURCE_BYTES: int = Field(default=50 * 1024 * 1024, gt=0)
     REDIS_URL: str | None = None
     MEDIA_CACHE_TTL: int = Field(default=300, ge=1, le=86400)
+    GITHUB_ID: str | None = None
+    GITHUB_SECRET: SecretStr | None = None
+    ADMIN_EMAILS: str = ""
+
+    @property
+    def admin_emails(self) -> frozenset[str]:
+        return frozenset(
+            email.strip().casefold()
+            for email in self.ADMIN_EMAILS.split(",")
+            if email.strip()
+        )
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

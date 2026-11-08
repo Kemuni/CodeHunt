@@ -240,7 +240,9 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
     )
     assert copied.status_code == 201 and copied.json()["data"]["group_id"] is None
     assert (
-        await client.put(url, json={"items": []}, headers={"X-User-ID": "2"})
+        await client.put(
+            url, json={"items": []}, headers={"Authorization": "Bearer test-session-2"}
+        )
     ).status_code == 403
     assert (await client.delete(base)).status_code == 200
 
@@ -374,7 +376,9 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
     assert admin_list.status_code == 200 and admin_list.json()["data"]["total"] == 1
     assert admin_list.json()["data"]["items"][0]["is_hidden"] is True
     assert (
-        await client.get("/api/editor/tasks/all", headers={"X-User-ID": "2"})
+        await client.get(
+            "/api/editor/tasks/all", headers={"Authorization": "Bearer test-session-2"}
+        )
     ).status_code == 403
     assert (await client.get(f"/api/editor/tasks/{tid}")).status_code == 200
     assert (
@@ -547,7 +551,7 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
         await client.post(
             base + "/photos",
             files={"files": ("x.png", content, "image/png")},
-            headers={"X-User-ID": "2"},
+            headers={"Authorization": "Bearer test-session-2"},
         )
     ).status_code == 403
 
