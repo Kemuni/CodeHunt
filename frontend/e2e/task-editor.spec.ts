@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import { test, expect } from "@playwright/test"
 
 // Запуск только с явным выбором локального API: тест создаёт свои данные и удаляет их в finally.
@@ -96,7 +97,7 @@ test("draft autosave, attachments, publication and explicit updates of an existi
     expect(savedDraft.photos).toHaveLength(1)
     expect(savedDraft.resources).toHaveLength(1)
     expect(savedDraft.payload.presets).toEqual([
-      { level: "easy", description: "Базовый результат", average_days_to_complete: 3 },
+      { level: TaskLevel.Easy, description: "Базовый результат", average_days_to_complete: 3 },
     ])
     expect(savedDraft.is_valid, JSON.stringify(savedDraft.validation_errors)).toBe(true)
     await page.getByRole("button", { name: "Сохранить задачу", exact: true }).click()
@@ -171,6 +172,15 @@ test("draft autosave, attachments, publication and explicit updates of an existi
     const attachment = (await api(`tasks/${taskId}`)).resources[0]
     const download = await api(`tasks/${taskId}/resources/${attachment.id}/download-url`)
     expect(await (await request.get(download.url)).text()).toBe("Immediate upload")
+    await page.getByRole("button", { name: "Вложения", exact: true }).click()
+    const downloadedFile = page.waitForEvent("download")
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: `Скачать ${attachment.title}`, exact: true })
+      .click()
+    const file = await downloadedFile
+    expect(file.suggestedFilename()).toBe(attachment.original_filename)
+    expect(await file.failure()).toBeNull()
     expect(errors).toEqual([])
   } finally {
     if (taskId) {

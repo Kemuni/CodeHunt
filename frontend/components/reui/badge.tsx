@@ -44,6 +44,9 @@ const badgeVariants = cva(
           "bg-background border-border text-destructive-foreground dark:bg-input/30",
         "invert-outline": "bg-background border-border text-invert-foreground dark:bg-input/30",
         "focus-outline": "bg-background border-border text-focus-foreground dark:bg-input/30",
+        "frontend": "text-[#0F766E] bg-[#CCFBF1]",
+        "fullstack": "text-[#EA580C] bg-[#FFEDD5]",
+        "free": "bg-[#A3E635] text-[#3F5212]",
       },
       size: {
         xs: "px-1 py-0.25 text-[0.6rem] leading-none h-4 min-w-4 gap-1",

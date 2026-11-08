@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend CodeHunt / Track Dev
 
-## Getting Started
+Краткий контекст для разработчиков и ИИ. Приложение содержит лендинг, публичный каталог учебных задач и административный редактор с черновиками. Перед изменениями прочитайте [AGENTS.md](AGENTS.md): документация установленного Next.js находится в `node_modules/next/dist/docs/`.
 
-First, run the development server:
+## Стек и запуск
+
+Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4. UI основан на Base UI, формы — React Hook Form + Zod, запросы и кэш — TanStack Query, уведомления — Sonner. Для сортировки используется dnd-kit, для карусели — Embla. Версии и команды: [package.json](package.json). Алиас `@/` указывает на корень frontend.
 
 ```bash
+npm ci
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Страница открывается на `http://localhost:3000`. В `.env.local`: `BACKEND_API_URL` — адрес backend (по умолчанию `http://127.0.0.1:8000`), `EDITOR_USER_ID` — ID администратора (по умолчанию `1`). Backend, PostgreSQL и MinIO запускаются отдельно; схема БД должна быть подготовлена. Frontend не выполняет миграции.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Маршруты и точки входа
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Маршрут                  | Назначение / компонент                                            |
+| ------------------------ | ----------------------------------------------------------------- |
+| `/`, `/for-company`      | Лендинги; `components/landing/`, формы связи в `contact-me.tsx`   |
+| `/tasks`                 | Публичный каталог — `components/tasks/task-catalog.tsx`           |
+| `/tasks/[id]`            | Просмотр — `components/tasks/task-details.tsx`                    |
+| `/admin/tasks`           | Управление задачами и черновиками — тот же каталог с `admin`      |
+| `/admin/tasks/editor`    | Новая задача; `?draftId=` открывает черновик, `?taskId=` — задачу |
+| `/api/backend/[...path]` | Серверный прокси запросов к `/api/...` backend                    |
 
-## Learn More
+Файлы `app/**/page.tsx` задают маршруты и проверяют параметры. UI находится в `components/`. Общие шапка, подвал и шрифты — в `app/layout.tsx`, QueryClient и toast — в `app/providers.tsx`, тема — в `app/globals.css`.
 
-To learn more about Next.js, take a look at the following resources:
+## Данные и редактор
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [task-contract.ts](lib/api/task-contract.ts) — типы ответов и запросов API. [task-request.ts](lib/api/task-request.ts) разбирает `{ success, data, errors }` и создаёт `TaskApiError` со статусом, кодом и ошибками полей. Операции задач — `lib/api/tasks.ts`, файлов — `lib/api/task-media.ts`.
+- Запросы задач идут через Next.js-прокси. Он добавляет `X-User-ID` для административных маршрутов. Это временный механизм выбора пользователя, полноценной авторизации во frontend пока нет. Контактные формы используют отдельные `lib/api/contact.ts` и `lib/config.ts`.
+- Единственный тип уровня — [TaskLevel](lib/tasks/task-level.ts): `Easy = "easy"`, `Medium = "medium"`, `High = "high"`. Русские подписи находятся в `lib/tasks/labels.ts`; `base` и `maximum` больше не используются как значения уровней.
+- Ответ задачи: `presets.easy`, `presets.medium`, `presets.high`. Каждый содержит `{ preset, complications }`; `preset` может быть `null`. `complications` содержит только собственные пункты уровня, включая вложенные и пустые группы. Не добавляйте наследование пунктов между уровнями.
+- Запись в API использует другой формат: массив `presets` и дерево `items`. Преобразования чтения/записи сосредоточены в [editor-model.ts](lib/tasks/editor-model.ts).
+- Внутренняя модель редактора: `TaskNode`, категория с `children` или пункт с `title`, `description`, `criteria`, `required`, `difficultyLevel`. Операции дерева — `task-tree.ts`, reducer — `task-items-state.ts`. Используйте `nodeKey`: числовой ID категории может совпадать с ID пункта. Глубина категорий ограничена тремя уровнями.
+- [use-task-editor.ts](hooks/tasks/use-task-editor.ts) управляет загрузкой, сохранением и файлами; компонент `editor/task-editor.tsx` собирает UI. Локальное редактирование дерева обслуживает `use-task-items.ts`.
+- [draft-coordinator.ts](lib/tasks/draft-coordinator.ts) последовательно выполняет автосохранение, операции файлов и публикацию с актуальной `revision`. Пустая нетронутая форма не создаёт черновик. Конфликт ревизии сохраняет локальные правки и требует явного разрешения; не обходите очередь параллельными запросами.
+- Для существующей задачи основная информация и пункты сохраняются явно; фотографии и вложения изменяются сразу. Удаление задачи/черновика подтверждается; опубликованная задача сначала архивируется, черновик удаляется с проверкой ревизии.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Общие UI-компоненты
 
-## Deploy on Vercel
+`components/ui/` содержит примитивы и layouts, `components/reui/` — дополнительные компоненты, включая sortable. Компоненты, нужные только одному экрану, остаются рядом с ним или внутри его файла.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `tasks/task-requirement-card.tsx` и `tasks/task-requirement-group.tsx` — общий UI пунктов и групп для просмотра и редактора. Редактор передаёт меню, сортировку и форму через props/slots. Содержимое свёрнутых групп остаётся смонтированным, чтобы не терять ввод.
+- `tasks/task-difficulty.tsx` — диапазон сложности с иконкой. `tasks/expandable-text.tsx` — сокращение длинного текста.
+- `ui/responsive-modal.tsx` — Dialog на широком экране, Drawer на телефоне. `ui/confirm-dialog.tsx` — подтверждение на базе AlertDialog; вызывающий компонент управляет выполнением действия и закрытием.
+- `ui/layouts/page.tsx` — оболочка страницы; `ui/layouts/section.tsx` — карточки разделов. Для ссылки возврата справа от заголовка:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```tsx
+<PageLayoutHeader backHref="/tasks">Обзор задачи</PageLayoutHeader>
+```
+
+Без `backHref` кнопки нет. Это переход по указанной ссылке, а не возврат по истории браузера. На странице задачи фото и основная информация расположены сверху, описание и три уровня — внутри ТЗ. По умолчанию видны четыре пункта каждого уровня; группы не считаются пунктами. Вложения открываются из ТЗ в адаптивном окне, перед скачиванием запрашивается актуальная временная ссылка.
+
+## Проверки и порядок работы
+
+```bash
+npm run lint
+npx tsc --noEmit --incremental false
+npm test
+npm run build
+```
+
+Unit-тесты лежат рядом с моделью редактора и компонентами. Для E2E нужен запущенный frontend и браузер Playwright. С установленным Chrome:
+
+```bash
+E2E_BASE_URL=http://localhost:3000 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
+```
+
+Без `E2E_LIVE_API=1` проверки с настоящим backend пропускаются. Добавьте эту переменную для полного прогона: нужны доступные backend, БД, MinIO и администратор. Live-тесты создают собственные записи и удаляют их в `finally`; остальные подменяют API-ответы. Playwright сам серверы не запускает. Конфигурация — `playwright.config.ts`, сценарии — `e2e/`.
+
+Для новой задачи: найдите маршрут и компонент → проверьте контракт и преобразования → используйте существующий общий UI → измените нужный слой → выполните соответствующие проверки. При изменении API обновляйте контракт, преобразования и фикстуры вместе; при изменении редактора проверяйте сохранение, конфликт ревизий и сохранность формы внутри свёрнутых групп.

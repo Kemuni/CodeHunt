@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { renderToStaticMarkup } from "react-dom/server"
@@ -72,7 +73,7 @@ test("Form uses the Zod resolver to reject empty fields and submit trimmed value
 test("item forms render shared fields with unique ids and matching labels", () => {
   const item: TaskItem = {
     id: "first",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     title: "Название",
     description: "Описание",
     criteria: "Критерии",
@@ -82,7 +83,7 @@ test("item forms render shared fields with unique ids and matching labels", () =
     <>
       <TaskItemForm item={item} onSave={() => {}} onCancel={() => {}} />
       <TaskItemForm
-        item={{ ...item, id: "second", difficultyLevel: "medium" }}
+        item={{ ...item, id: "second", difficultyLevel: TaskLevel.Medium }}
         onSave={() => {}}
         onCancel={() => {}}
       />

@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createTaskItemsState, taskItemsReducer as reduce, type TaskItem } from "./task-items-state"
@@ -23,13 +24,13 @@ const item = (id: string): TaskItem => ({
   description: "Описание",
   criteria: "Критерий",
   required: true,
-  difficultyLevel: "base",
+  difficultyLevel: TaskLevel.Easy,
 })
 const category = (id: string, children: TaskNode[]): TaskCategory => ({
   id,
   title: id,
   kind: "category",
-  difficultyLevel: "base",
+  difficultyLevel: TaskLevel.Easy,
   children,
 })
 const ids = (nodes: TaskNode[]) => nodes.map((node) => node.id)
@@ -40,46 +41,46 @@ test("grouping and ungrouping preserve contents, sibling order and clear stale s
   for (const nodeId of ["a", "b"])
     state = reduce(state, {
       type: "toggleSelection",
-      difficultyLevel: "base",
+      difficultyLevel: TaskLevel.Easy,
       nodeId,
       selected: true,
     })
   state = reduce(state, {
     type: "groupSelection",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     categoryId: "group",
     title: " Группа ",
   })
-  assert.deepEqual(ids(state.nodesByDifficultyLevel.base), ["group", "c"])
-  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.base, "group")!), ["a", "b"])
-  assert.equal(findNode(state.nodesByDifficultyLevel.base, "group")?.title, "Группа")
-  assert.equal(countTaskItems(state.nodesByDifficultyLevel.base), 3)
-  assert.deepEqual(state.selectedByDifficultyLevel.base, [])
-  state = reduce(state, { type: "ungroup", difficultyLevel: "base", categoryId: "group" })
-  assert.deepEqual(state.nodesByDifficultyLevel.base, nodes)
+  assert.deepEqual(ids(state.nodesByDifficultyLevel.easy), ["group", "c"])
+  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "group")!), ["a", "b"])
+  assert.equal(findNode(state.nodesByDifficultyLevel.easy, "group")?.title, "Группа")
+  assert.equal(countTaskItems(state.nodesByDifficultyLevel.easy), 3)
+  assert.deepEqual(state.selectedByDifficultyLevel.easy, [])
+  state = reduce(state, { type: "ungroup", difficultyLevel: TaskLevel.Easy, categoryId: "group" })
+  assert.deepEqual(state.nodesByDifficultyLevel.easy, nodes)
 })
 
 test("grouping across branches uses their common parent and never duplicates descendants", () => {
   const nodes = [
     category("outer", [category("left", [item("a"), item("b")]), category("right", [item("c")])]),
   ]
-  const grouped = groupNodes(nodes, ["a", "c"], "new", "Новая", "base")!
+  const grouped = groupNodes(nodes, ["a", "c"], "new", "Новая", TaskLevel.Easy)!
   assert.deepEqual(nodePath(grouped, "a"), ["outer", "new", "a"])
   assert.deepEqual(nodePath(grouped, "c"), ["outer", "new", "c"])
   assert.deepEqual(nodePath(grouped, "b"), ["outer", "left", "b"])
   assert.equal(countTaskItems(grouped), 3)
   assert.deepEqual(ids(selectedRoots(nodes, ["left", "a"])), ["left"])
-  assert.equal(countTaskItems(groupNodes(nodes, ["left", "a"], "new", "Новая", "base")!), 3)
+  assert.equal(countTaskItems(groupNodes(nodes, ["left", "a"], "new", "Новая", TaskLevel.Easy)!), 3)
   assert.deepEqual(nodePath(nodes, "a"), ["outer", "left", "a"])
 })
 
 test("grouping permits three category levels and rejects a fourth", () => {
   const nodes = [category("one", [category("two", [item("a")])])]
-  const grouped = groupNodes(nodes, ["a"], "three", "Третья", "base")!
+  const grouped = groupNodes(nodes, ["a"], "three", "Третья", TaskLevel.Easy)!
   assert.equal(categoryHeight(grouped[0]), 3)
-  assert.equal(groupNodes(grouped, ["a"], "four", "Четвёртая", "base"), null)
-  assert.equal(groupNodes(grouped, ["one"], "four", "Четвёртая", "base"), null)
-  assert.equal(groupNodes(nodes, [], "new", "Новая", "base"), null)
+  assert.equal(groupNodes(grouped, ["a"], "four", "Четвёртая", TaskLevel.Easy), null)
+  assert.equal(groupNodes(grouped, ["one"], "four", "Четвёртая", TaskLevel.Easy), null)
+  assert.equal(groupNodes(nodes, [], "new", "Новая", TaskLevel.Easy), null)
 })
 
 test("relocation rejects cycles and excessive depth but allows items within level three", () => {
@@ -96,7 +97,7 @@ test("relocation rejects cycles and excessive depth but allows items within leve
   assert.equal(
     reduce(state, {
       type: "relocateNode",
-      difficultyLevel: "base",
+      difficultyLevel: TaskLevel.Easy,
       nodeId: "one",
       parentCategoryId: "three",
     }),
@@ -104,19 +105,19 @@ test("relocation rejects cycles and excessive depth but allows items within leve
   )
   state = reduce(state, {
     type: "relocateNode",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "c",
     parentCategoryId: "three",
   })
-  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.base, "c"), ["one", "two", "three", "c"])
+  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.easy, "c"), ["one", "two", "three", "c"])
   state = reduce(state, {
     type: "relocateNode",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "two",
     parentCategoryId: null,
   })
-  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.base, "a"), ["two", "three", "a"])
-  assert.equal(countTaskItems(state.nodesByDifficultyLevel.base), 3)
+  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.easy, "a"), ["two", "three", "a"])
+  assert.equal(countTaskItems(state.nodesByDifficultyLevel.easy), 3)
 })
 
 test("moving a category between difficulties updates all descendants and clears source selection", () => {
@@ -126,20 +127,20 @@ test("moving a category between difficulties updates all descendants and clears 
   ])
   state = reduce(state, {
     type: "toggleSelection",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "a",
     selected: true,
   })
   state = reduce(state, {
     type: "moveNode",
-    difficultyLevel: "base",
-    targetDifficultyLevel: "maximum",
+    difficultyLevel: TaskLevel.Easy,
+    targetDifficultyLevel: TaskLevel.High,
     nodeId: "outer",
   })
-  assert.deepEqual(ids(state.nodesByDifficultyLevel.base), ["c"])
+  assert.deepEqual(ids(state.nodesByDifficultyLevel.easy), ["c"])
   for (const id of ["outer", "inner", "a", "b"])
-    assert.equal(findNode(state.nodesByDifficultyLevel.maximum, id)?.difficultyLevel, "maximum")
-  assert.deepEqual(state.selectedByDifficultyLevel.base, [])
+    assert.equal(findNode(state.nodesByDifficultyLevel.high, id)?.difficultyLevel, TaskLevel.High)
+  assert.deepEqual(state.selectedByDifficultyLevel.easy, [])
 })
 
 test("position and drag ordering affect only siblings and reject invalid replacement lists", () => {
@@ -149,42 +150,42 @@ test("position and drag ordering affect only siblings and reject invalid replace
   ])
   state = reduce(state, {
     type: "movePosition",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "inner",
     direction: "up",
   })
-  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.base, "outer")!), [
+  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "outer")!), [
     "inner",
     "a",
     "c",
   ])
   state = reduce(state, {
     type: "movePosition",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "inner",
     direction: "down",
   })
-  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.base, "outer")!), [
+  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "outer")!), [
     "a",
     "inner",
     "c",
   ])
   state = reduce(state, {
     type: "reorderItems",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     parentCategoryId: "outer",
-    items: [...childrenOf(state.nodesByDifficultyLevel.base, "outer")!].reverse(),
+    items: [...childrenOf(state.nodesByDifficultyLevel.easy, "outer")!].reverse(),
   })
-  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.base, "outer")!), [
+  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "outer")!), [
     "c",
     "inner",
     "a",
   ])
-  assert.deepEqual(ids(state.nodesByDifficultyLevel.base), ["outer", "d"])
+  assert.deepEqual(ids(state.nodesByDifficultyLevel.easy), ["outer", "d"])
   assert.equal(
     reduce(state, {
       type: "reorderItems",
-      difficultyLevel: "base",
+      difficultyLevel: TaskLevel.Easy,
       parentCategoryId: "outer",
       items: [item("a")],
     }),
@@ -194,31 +195,31 @@ test("position and drag ordering affect only siblings and reject invalid replace
 
 test("nested edit, create and delete keep the parent and do not restore deleted items", () => {
   let state = createTaskItemsState([category("outer", [item("a")])])
-  state = reduce(state, { type: "startEditing", difficultyLevel: "base", itemId: "a" })
+  state = reduce(state, { type: "startEditing", difficultyLevel: TaskLevel.Easy, itemId: "a" })
   state = reduce(state, {
     type: "saveDraft",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     values: { ...item("a"), title: "Изменён" },
   })
-  assert.equal(findNode(state.nodesByDifficultyLevel.base, "a")?.title, "Изменён")
+  assert.equal(findNode(state.nodesByDifficultyLevel.easy, "a")?.title, "Изменён")
   state = reduce(state, {
     type: "startCreating",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     itemId: "b",
     parentCategoryId: "outer",
   })
-  state = reduce(state, { type: "saveDraft", difficultyLevel: "base", values: item("b") })
-  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.base, "b"), ["outer", "b"])
-  state = reduce(state, { type: "deleteItem", difficultyLevel: "base", itemId: "a" })
-  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.base, "outer")!), ["b"])
+  state = reduce(state, { type: "saveDraft", difficultyLevel: TaskLevel.Easy, values: item("b") })
+  assert.deepEqual(nodePath(state.nodesByDifficultyLevel.easy, "b"), ["outer", "b"])
+  state = reduce(state, { type: "deleteItem", difficultyLevel: TaskLevel.Easy, itemId: "a" })
+  assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "outer")!), ["b"])
 })
 
 test("library import flattens selected leaves in tree order and creates independent ids on every import", () => {
   let id = 0
   const source = taskItemLibrary[0].nodes
   const selected = new Set(["fe-responsive", "fe-keyboard"])
-  const first = importLibrarySelection(source, selected, "medium", () => `copy-${++id}`)
-  const second = importLibrarySelection(source, selected, "medium", () => `copy-${++id}`)
+  const first = importLibrarySelection(source, selected, TaskLevel.Medium, () => `copy-${++id}`)
+  const second = importLibrarySelection(source, selected, TaskLevel.Medium, () => `copy-${++id}`)
   assert.equal(countTaskItems(first), 2)
   assert.equal(first.length, 2)
   assert.ok(first.every((node) => !isCategory(node)))
@@ -226,15 +227,15 @@ test("library import flattens selected leaves in tree order and creates independ
     first.map((node) => node.title),
     ["Адаптивная вёрстка", "Управление с клавиатуры"],
   )
-  assert.ok(first.every((node) => node.difficultyLevel === "medium"))
+  assert.ok(first.every((node) => node.difficultyLevel === TaskLevel.Medium))
   assert.equal(libraryItemIds(source).length, 5)
   const allIds = (nodes: TaskNode[]): Array<string | number> =>
     nodes.flatMap((node) => [node.id, ...(isCategory(node) ? allIds(node.children) : [])])
   assert.equal(new Set([...allIds(first), ...allIds(second)]).size, 4)
-  assert.deepEqual(importLibrarySelection(source, new Set(), "base"), [])
+  assert.deepEqual(importLibrarySelection(source, new Set(), TaskLevel.Easy), [])
   let state = createTaskItemsState([])
-  state = reduce(state, { type: "importNodes", difficultyLevel: "medium", nodes: first })
-  state = reduce(state, { type: "importNodes", difficultyLevel: "medium", nodes: second })
+  state = reduce(state, { type: "importNodes", difficultyLevel: TaskLevel.Medium, nodes: first })
+  state = reduce(state, { type: "importNodes", difficultyLevel: TaskLevel.Medium, nodes: second })
   assert.equal(countTaskItems(state.nodesByDifficultyLevel.medium), 4)
 })
 
@@ -246,7 +247,10 @@ test("imports reject excessive nesting, duplicate ids and invalid fields", () =>
     [item("existing")],
     [{ ...item("a"), description: " " }],
   ])
-    assert.equal(reduce(state, { type: "importNodes", difficultyLevel: "base", nodes }), state)
+    assert.equal(
+      reduce(state, { type: "importNodes", difficultyLevel: TaskLevel.Easy, nodes }),
+      state,
+    )
 })
 
 test("item numbers run through nested categories without numbering categories themselves", () => {
@@ -269,12 +273,12 @@ test("item numbers run through nested categories without numbering categories th
   let state = createTaskItemsState(nodes)
   state = reduce(state, {
     type: "movePosition",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     nodeId: "outer",
     direction: "up",
   })
   assert.deepEqual(
-    [...taskItemNumbers(state.nodesByDifficultyLevel.base)],
+    [...taskItemNumbers(state.nodesByDifficultyLevel.easy)],
     [
       ["b", 1],
       ["c", 2],
@@ -283,9 +287,9 @@ test("item numbers run through nested categories without numbering categories th
       ["e", 5],
     ],
   )
-  state = reduce(state, { type: "ungroup", difficultyLevel: "base", categoryId: "outer" })
+  state = reduce(state, { type: "ungroup", difficultyLevel: TaskLevel.Easy, categoryId: "outer" })
   assert.deepEqual(
-    [...taskItemNumbers(state.nodesByDifficultyLevel.base)],
+    [...taskItemNumbers(state.nodesByDifficultyLevel.easy)],
     [
       ["b", 1],
       ["c", 2],

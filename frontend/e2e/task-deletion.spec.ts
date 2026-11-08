@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import { test, expect, type Page } from "@playwright/test"
 import type { DraftRead, TaskRead } from "../lib/api/task-contract"
 
@@ -180,7 +181,8 @@ test("failed deletion preserves the task and explains its archive status", async
     "используется в решениях",
   )
   await page.getByRole("button", { name: "Отмена", exact: true }).click()
-  await expect(page.getByText("В архиве", { exact: true })).toBeVisible()
+  await expect(page.getByRole("alertdialog")).toHaveCount(0)
+  await expect(page.getByText("Задача 1", { exact: true })).toBeVisible()
   expect(state.writes).toEqual(["PATCH editor/tasks/1", "DELETE editor/tasks/1"])
   await page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true }).click()
   await confirmDeletion(page)
@@ -248,10 +250,10 @@ test("live catalog deletes its own draft and published task", async ({ page, req
             title: "Пункт",
             description: "Описание",
             acceptance_criteria: "Работает",
-            level: "easy",
+            level: TaskLevel.Easy,
           },
         ],
-        presets: [{ level: "easy", description: "Базовый уровень" }],
+        presets: [{ level: TaskLevel.Easy, description: "Базовый уровень" }],
       },
     })
     expect(taskResponse.ok()).toBeTruthy()

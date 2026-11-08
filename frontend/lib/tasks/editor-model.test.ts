@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import {
@@ -17,7 +18,6 @@ import type {
   ComplicationGroupRead,
   ComplicationItem,
   TaskDetail,
-  Level,
 } from "../api/task-contract"
 import { isCategory } from "./task-tree"
 
@@ -33,26 +33,32 @@ const leaf = (id: number, level: CompositionLink["level"]): CompositionLink => (
 })
 test("level-specific groups round-trip with empty nested groups and stable IDs", () => {
   const tree: CompositionGroup[] = [
-    { kind: "group", level: "easy", id: 1, title: "Базовая", items: [leaf(1, "easy")] },
     {
       kind: "group",
-      level: "medium",
+      level: TaskLevel.Easy,
+      id: 1,
+      title: "Базовая",
+      items: [leaf(1, TaskLevel.Easy)],
+    },
+    {
+      kind: "group",
+      level: TaskLevel.Medium,
       id: 2,
       title: "Продвинутая",
-      items: [{ kind: "group", level: "medium", id: 3, title: "Пустая", items: [] }],
+      items: [{ kind: "group", level: TaskLevel.Medium, id: 3, title: "Пустая", items: [] }],
     },
-    { kind: "group", level: "high", id: 4, title: "Максимальная", items: [] },
+    { kind: "group", level: TaskLevel.High, id: 4, title: "Максимальная", items: [] },
   ]
   const nodes = fromComposition(tree)
   assert.deepEqual(
     nodes.map((node) => node.difficultyLevel),
-    ["base", "medium", "maximum"],
+    [TaskLevel.Easy, TaskLevel.Medium, TaskLevel.High],
   )
   assert.deepEqual(toComposition(nodes), tree)
   assert.ok(nodes.every(isCategory))
 })
 test("local node ids are never sent as server ids and draft payload keeps unsupported fields for validation", () => {
-  const nodes = fromComposition([{ ...leaf(1, "easy"), id: undefined }])
+  const nodes = fromComposition([{ ...leaf(1, TaskLevel.Easy), id: undefined }])
   const result = toComposition(nodes)
   assert.equal(result[0].id, undefined)
   const payload = toPayload(emptyInfo, nodes, { parent_task_id: 42 })
@@ -69,13 +75,13 @@ test("empty levels are excluded and descriptions alone enable a level", () => {
     short_description: "Кратко",
     full_description: "Полностью",
     developer_type: "frontend",
-    presets: [{ level: "easy", description: "Базовый" }],
+    presets: [{ level: TaskLevel.Easy, description: "Базовый" }],
   })
   info.presets.medium.description = ""
   info.presets.high.description = ""
   assert.equal(taskInfoSchema.safeParse(info).success, true)
   assert.deepEqual(toPayload(info, []).presets, [
-    { level: "easy", description: "Базовый", average_days_to_complete: null },
+    { level: TaskLevel.Easy, description: "Базовый", average_days_to_complete: null },
   ])
   info.presets.easy.description = " "
   assert.deepEqual(toPayload(info, []).presets, [])
@@ -84,27 +90,33 @@ test("empty levels are excluded and descriptions alone enable a level", () => {
 
 test("renaming and nesting a group preserves its identity and level", () => {
   const nodes = fromComposition([
-    { kind: "group", level: "medium", id: 7, title: "Группа", items: [leaf(2, "medium")] },
+    {
+      kind: "group",
+      level: TaskLevel.Medium,
+      id: 7,
+      title: "Группа",
+      items: [leaf(2, TaskLevel.Medium)],
+    },
   ])
   const renamed = toComposition([{ ...nodes[0], title: "Переименована" }])
   assert.equal(renamed[0].id, 7)
-  assert.equal(renamed[0].level, "medium")
+  assert.equal(renamed[0].level, TaskLevel.Medium)
   const relocated = toComposition([
     {
       kind: "category",
       id: "new",
       title: "Новая",
-      difficultyLevel: "medium",
+      difficultyLevel: TaskLevel.Medium,
       children: nodes,
     },
   ]) as CompositionGroup[]
   assert.equal(relocated[0].id, undefined)
-  assert.equal(relocated[0].level, "medium")
+  assert.equal(relocated[0].level, TaskLevel.Medium)
   assert.equal(relocated[0].items?.[0].id, 7)
 })
 
 test("items enable their level, require its description and preserve plain server IDs", () => {
-  const nodes = fromComposition([leaf(14, "high")])
+  const nodes = fromComposition([leaf(14, TaskLevel.High)])
   assert.equal(nodes[0].id, 14)
   assert.equal("apiId" in nodes[0], false)
   assert.equal(toComposition(nodes)[0].id, 14)
@@ -118,12 +130,12 @@ test("items enable their level, require its description and preserve plain serve
   })
   const schema = createTaskInfoSchema(nodes)
   assert.deepEqual(toPayload(info, nodes).presets, [
-    { level: "high", description: "", average_days_to_complete: null },
+    { level: TaskLevel.High, description: "", average_days_to_complete: null },
   ])
   const invalid = schema.safeParse(info)
   assert.equal(invalid.success, false)
   if (!invalid.success)
-    assert.deepEqual(invalid.error.issues[0].path, ["presets", "high", "description"])
+    assert.deepEqual(invalid.error.issues[0].path, ["presets", TaskLevel.High, "description"])
   info.presets.high.description = "Результат"
   info.presets.high.averageDays = "5"
   assert.equal(schema.safeParse(info).success, true)
@@ -137,8 +149,14 @@ test("equal numeric IDs of an item and category never collide in tree operations
   const { nodeKey, findNode } = await import("./task-tree")
   const { createTaskItemsState, taskItemsReducer } = await import("./task-items-state")
   const nodes = fromComposition([
-    { kind: "group", level: "easy", id: 1, title: "Группа", items: [leaf(2, "easy")] },
-    leaf(1, "easy"),
+    {
+      kind: "group",
+      level: TaskLevel.Easy,
+      id: 1,
+      title: "Группа",
+      items: [leaf(2, TaskLevel.Easy)],
+    },
+    leaf(1, TaskLevel.Easy),
   ])
   assert.equal(nodes[0].id, 1)
   assert.equal(nodes[1].id, 1)
@@ -146,23 +164,23 @@ test("equal numeric IDs of an item and category never collide in tree operations
   let state = createTaskItemsState(nodes)
   state = taskItemsReducer(state, {
     type: "startEditing",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     itemId: nodeKey(nodes[1]),
   })
   state = taskItemsReducer(state, {
     type: "saveDraft",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     values: { title: "Изменён", description: "Описание", criteria: "Критерий", required: true },
   })
-  assert.equal(state.nodesByDifficultyLevel.base[0].title, "Группа")
-  assert.equal(state.nodesByDifficultyLevel.base[1].title, "Изменён")
+  assert.equal(state.nodesByDifficultyLevel.easy[0].title, "Группа")
+  assert.equal(state.nodesByDifficultyLevel.easy[1].title, "Изменён")
   state = taskItemsReducer(state, {
     type: "deleteItem",
-    difficultyLevel: "base",
+    difficultyLevel: TaskLevel.Easy,
     itemId: nodeKey(nodes[1]),
   })
-  assert.equal(findNode(state.nodesByDifficultyLevel.base, nodeKey(nodes[1])), undefined)
-  assert.equal(findNode(state.nodesByDifficultyLevel.base, nodeKey(nodes[0]))?.title, "Группа")
+  assert.equal(findNode(state.nodesByDifficultyLevel.easy, nodeKey(nodes[1])), undefined)
+  assert.equal(findNode(state.nodesByDifficultyLevel.easy, nodeKey(nodes[0]))?.title, "Группа")
 })
 
 test("moving a group between levels updates its descendants and preserves all IDs", async () => {
@@ -171,36 +189,36 @@ test("moving a group between levels updates its descendants and preserves all ID
   const nodes = fromComposition([
     {
       kind: "group",
-      level: "easy",
+      level: TaskLevel.Easy,
       id: 7,
       title: "Группа",
-      items: [leaf(1, "easy"), leaf(2, "easy")],
+      items: [leaf(1, TaskLevel.Easy), leaf(2, TaskLevel.Easy)],
     },
   ])
   const state = taskItemsReducer(createTaskItemsState(nodes), {
     type: "moveNode",
-    difficultyLevel: "base",
-    targetDifficultyLevel: "medium",
+    difficultyLevel: TaskLevel.Easy,
+    targetDifficultyLevel: TaskLevel.Medium,
     nodeId: nodeKey(nodes[0]),
   })
-  assert.equal(state.nodesByDifficultyLevel.base.length, 0)
+  assert.equal(state.nodesByDifficultyLevel.easy.length, 0)
   assert.equal(new Set(state.nodesByDifficultyLevel.medium.map(nodeKey)).size, 1)
   const composition = toComposition(state.nodesByDifficultyLevel.medium)
   assert.equal(composition.length, 1)
   assert.equal(composition[0].id, 7)
-  assert.equal(composition[0].level, "medium")
+  assert.equal(composition[0].level, TaskLevel.Medium)
   assert.deepEqual(
     (composition[0] as CompositionGroup).items?.map((item) => [item.id, item.level]),
     [
-      [1, "medium"],
-      [2, "medium"],
+      [1, TaskLevel.Medium],
+      [2, TaskLevel.Medium],
     ],
   )
 })
 
 test("nested presets restore fields and all editor branches without inherited duplicates", () => {
   const stamp = "2026-01-01T00:00:00Z"
-  const readLeaf = (id: number, level: Level): ComplicationItem => ({
+  const readLeaf = (id: number, level: TaskLevel): ComplicationItem => ({
     ...leaf(id, level),
     id,
     task_id: 1,
@@ -209,7 +227,7 @@ test("nested presets restore fields and all editor branches without inherited du
   })
   const group = (
     items: ComplicationGroupRead["items"],
-    level: Level = "easy",
+    level: TaskLevel = TaskLevel.Easy,
     id = 10,
   ): ComplicationGroupRead => ({
     kind: "group",
@@ -248,16 +266,19 @@ test("nested presets restore fields and all editor branches without inherited du
         preset: {
           id: 20,
           task_id: 1,
-          level: "easy",
+          level: TaskLevel.Easy,
           description: "Базовое описание",
           average_days_to_complete: 3,
           created_at: stamp,
           updated_at: stamp,
         },
-        complications: [group([readLeaf(1, "easy"), emptyGroup])],
+        complications: [group([readLeaf(1, TaskLevel.Easy), emptyGroup])],
       },
       medium: { preset: null, complications: [] },
-      high: { preset: null, complications: [group([readLeaf(2, "high")], "high", 12)] },
+      high: {
+        preset: null,
+        complications: [group([readLeaf(2, TaskLevel.High)], TaskLevel.High, 12)],
+      },
     },
   }
   const info = infoFromTask(task)
@@ -266,7 +287,7 @@ test("nested presets restore fields and all editor branches without inherited du
   const nodes = fromPresets(task.presets)
   assert.deepEqual(
     nodes.map((node) => node.difficultyLevel),
-    ["base", "maximum"],
+    [TaskLevel.Easy, TaskLevel.High],
   )
   const restored = toComposition(nodes) as CompositionGroup[]
   assert.equal(restored.length, 2)
@@ -276,19 +297,23 @@ test("nested presets restore fields and all editor branches without inherited du
     [1, 11],
   )
   assert.deepEqual((restored[0].items?.[1] as CompositionGroup).items, [])
-  assert.equal(restored[1].level, "high")
+  assert.equal(restored[1].level, TaskLevel.High)
   assert.equal(restored[1].items?.[0].id, 2)
 })
 
 test("an empty high group survives draft serialization and enables its preset", () => {
-  const nodes = fromComposition([{ kind: "group", level: "high", title: "Пустая", items: [] }])
+  const nodes = fromComposition([
+    { kind: "group", level: TaskLevel.High, title: "Пустая", items: [] },
+  ])
   const info = structuredClone(emptyInfo)
   const payload = toPayload(info, nodes)
-  assert.deepEqual(payload.items, [{ kind: "group", level: "high", title: "Пустая", items: [] }])
+  assert.deepEqual(payload.items, [
+    { kind: "group", level: TaskLevel.High, title: "Пустая", items: [] },
+  ])
   assert.deepEqual(payload.presets, [
-    { level: "high", description: "", average_days_to_complete: null },
+    { level: TaskLevel.High, description: "", average_days_to_complete: null },
   ])
   const restored = fromComposition(payload.items as CompositionGroup[])
-  assert.equal(restored[0].difficultyLevel, "maximum")
+  assert.equal(restored[0].difficultyLevel, TaskLevel.High)
   assert.deepEqual(toComposition(restored), payload.items)
 })

@@ -1,11 +1,11 @@
 "use client"
 
+import type { TaskLevel } from "@/lib/tasks/task-level"
 import { useEffect, useState, type ReactNode } from "react"
-import { ChevronDownIcon, FolderIcon, GripVerticalIcon, GroupIcon, PlusIcon } from "lucide-react"
+import { GripVerticalIcon, GroupIcon, PlusIcon } from "lucide-react"
 import { Sortable, SortableItem, SortableItemHandle } from "@/components/reui/sortable"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   SectionLayout,
   SectionLayoutActions,
@@ -18,7 +18,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   formatItemCount,
   taskDifficultyLevels,
-  type TaskDifficultyLevel,
   type TaskItemDraft,
 } from "@/lib/tasks/task-items-state"
 import {
@@ -35,16 +34,15 @@ import { useTaskItems, type TaskItemsActions } from "@/hooks/tasks/use-task-item
 import TaskItemCard from "./task-item-card"
 import TaskNodeMenu from "./task-node-menu"
 import TaskItemLibrary from "@/components/tasks/editor/library/task-item-library"
-import ExpandableText from "@/components/tasks/expandable-text"
+import TaskRequirementGroup from "@/components/tasks/task-requirement-group"
 import TaskCategoryForm from "./task-category-form"
 import { shiftSelectionProps } from "./shift-selection"
-import { cn } from "cn"
 
 interface TaskTreeProps {
   nodes: TaskNode[]
   roots: TaskNode[]
   numbers: Map<string, number>
-  difficultyLevel: TaskDifficultyLevel
+  difficultyLevel: TaskLevel
   parentId?: string | null
   selected: string[]
   ancestorSelected?: boolean
@@ -112,14 +110,11 @@ function TaskTree({
             )}
           >
             {isCategory(node) ? (
-              <Collapsible
-                defaultOpen
-                className={cn(
-                  "rounded-xl border p-2 sm:p-3",
-                  checked ? "border-primary bg-primary/5" : "bg-muted/20",
-                )}
-              >
-                <div className="flex items-center gap-2">
+              <TaskRequirementGroup
+                title={node.title}
+                count={countTaskItems(node.children)}
+                selected={checked}
+                leading={
                   <SortableItemHandle
                     render={
                       <Button type="button" variant="ghost" size="icon-sm" disabled={!!draft} />
@@ -128,44 +123,24 @@ function TaskTree({
                   >
                     <GripVerticalIcon />
                   </SortableItemHandle>
-                  <FolderIcon className="size-4 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <ExpandableText text={node.title} maxLength={100} className="font-semibold" />
-                    <span className="text-xs text-muted-foreground">
-                      {formatItemCount(countTaskItems(node.children))}
-                    </span>
-                  </div>
-                  <CollapsibleTrigger
-                    render={<Button type="button" variant="ghost" size="icon-sm" />}
-                    className="group"
-                    aria-label={`Свернуть или раскрыть категорию «${node.title}»`}
-                  >
-                    <ChevronDownIcon className="transition-transform group-aria-expanded:rotate-180" />
-                  </CollapsibleTrigger>
-                  {menu}
-                </div>
-                <CollapsibleContent keepMounted>
-                  <div className="mt-3 border-l pl-2 sm:pl-4">
-                    <TaskTree
-                      nodes={node.children}
-                      roots={roots}
-                      numbers={numbers}
-                      difficultyLevel={difficultyLevel}
-                      parentId={nodeKey(node)}
-                      selected={selected}
-                      ancestorSelected={checked}
-                      draft={draft}
-                      actions={actions}
-                      onRename={onRename}
-                    />
-                    {!node.children.length && (
-                      <p className="p-3 text-sm text-muted-foreground">
-                        В категории пока нет пунктов.
-                      </p>
-                    )}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                }
+                actions={menu}
+              >
+                {node.children.length ? (
+                  <TaskTree
+                    nodes={node.children}
+                    roots={roots}
+                    numbers={numbers}
+                    difficultyLevel={difficultyLevel}
+                    parentId={nodeKey(node)}
+                    selected={selected}
+                    ancestorSelected={checked}
+                    draft={draft}
+                    actions={actions}
+                    onRename={onRename}
+                  />
+                ) : null}
+              </TaskRequirementGroup>
             ) : (
               <TaskItemCard
                 item={editing ? draft.item : node}
@@ -195,7 +170,7 @@ export default function TaskItemsEditor({
   initialItems: TaskNode[]
   onChange?: (nodes: TaskNode[]) => void
   onEditingChange?: (editing: boolean) => void
-  renderLevelFields?: (level: TaskDifficultyLevel) => ReactNode
+  renderLevelFields?: (level: TaskLevel) => ReactNode
 }) {
   const { state, actions } = useTaskItems(initialItems)
   useEffect(() => {

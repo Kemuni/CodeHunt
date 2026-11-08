@@ -1,9 +1,11 @@
 "use client"
 
+import TaskDifficulty from "@/components/tasks/task-difficulty"
+
 import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import {ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon, BugIcon} from "lucide-react"
+import { ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon } from "lucide-react"
 import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
 import { TaskApiError } from "@/lib/api/task-request"
@@ -21,9 +23,10 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card"
-import Image from "next/image";
-import {Badge} from "@/components/reui/badge";
-import {cn} from "cn";
+import Image from "next/image"
+import { Badge } from "@/components/reui/badge"
+import { cn } from "cn"
+import {developerTypeLabels} from "@/lib/tasks/labels";
 
 const PAGE_SIZE = 20
 
@@ -68,7 +71,7 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
 
   return (
     <PageLayout>
-      <TaskCatalogHeader admin={admin} />
+      <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
       <PageLayoutContent>
         {admin ? (
           <TaskCatalogTabs value={tab} onValueChange={handleTabChange} />
@@ -116,20 +119,6 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
   )
 }
 
-function TaskCatalogHeader({ admin }: { admin: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
-      {admin && (
-        <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
-          <PlusIcon />
-          Добавить задачу
-        </Button>
-      )}
-    </div>
-  )
-}
-
 interface TaskCatalogTabsProps {
   value: string
   onValueChange: (value: string) => void
@@ -137,12 +126,18 @@ interface TaskCatalogTabsProps {
 
 function TaskCatalogTabs({ value, onValueChange }: TaskCatalogTabsProps) {
   return (
-    <Tabs value={value} onValueChange={(value) => onValueChange(String(value))}>
-      <TabsList>
-        <TabsTrigger value="tasks">Все задачи</TabsTrigger>
-        <TabsTrigger value="drafts">Мои черновики</TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <div className="flex justify-between">
+      <Tabs value={value} onValueChange={(value) => onValueChange(String(value))}>
+        <TabsList>
+          <TabsTrigger value="tasks">Все задачи</TabsTrigger>
+          <TabsTrigger value="drafts">Мои черновики</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
+        <PlusIcon />
+        Создать задачу
+      </Button>
+    </div>
   )
 }
 
@@ -220,16 +215,12 @@ function draftTitle(draft: DraftRead) {
 
 function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void }) {
   const title = draftTitle(draft)
-  const href = `/admin/tasks/editor?draftId=${draft.id}`;
-  let shortDescription;
-  if (
-    draft.payload?.short_description
-    && typeof draft.payload.short_description === "string"
-  ) {
+  const href = `/admin/tasks/editor?draftId=${draft.id}`
+  let shortDescription
+  if (draft.payload?.short_description && typeof draft.payload.short_description === "string") {
     shortDescription = draft.payload.short_description
-  }
-  else {
-    shortDescription = `Черновик #${draft.id}`;
+  } else {
+    shortDescription = `Черновик #${draft.id}`
   }
   const coverPhoto = draft.photos.find((i) => i.is_cover)
 
@@ -237,26 +228,29 @@ function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void
     <Card className="relative pt-0 gap-4 pb-4">
       <div className="relative w-full aspect-video bg-black/15" />
       <div className="absolute inset-0 w-full aspect-video">
-        {
-          coverPhoto
-            ? (
-              <Image src={coverPhoto.url} alt="taskImage" fill sizes="20vw"
-                     loading="eager" className="aspect-video object-cover"
-              />
-            )
-            : (
-                <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
-                  <ImageOffIcon className="size-14" />
-                  <p className="text-md">Нет изображения</p>
-                </div>
-            )
-        }
+        {coverPhoto ? (
+          <Image
+            src={coverPhoto.url}
+            alt="taskImage"
+            fill
+            sizes="20vw"
+            loading="eager"
+            className="aspect-video object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
+            <ImageOffIcon className="size-14" />
+            <p className="text-md">Нет изображения</p>
+          </div>
+        )}
       </div>
       <CardHeader className="flex flex-col gap-0.5 px-3">
-        <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
-          <Link href={href}>{title}</Link>
-        </CardTitle>
-        <CardDescription className='w-full line-clamp-3 wrap-break-word'>
+        <Link href={href}>
+          <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
+            {title}
+          </CardTitle>
+        </Link>
+        <CardDescription className="w-full line-clamp-3 wrap-break-word">
           {shortDescription}
         </CardDescription>
       </CardHeader>
@@ -267,17 +261,14 @@ function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void
             : `Проблем с валидацией: ${draft.validation_errors.length}`}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Фото: {draft.photos.length}<br/>Вложения: {draft.resources.length}
+          Фото: {draft.photos.length}
+          <br />
+          Вложения: {draft.resources.length}
         </p>
       </CardContent>
       <CardFooter className="flex flex-wrap justify-end gap-2">
         <DeleteCatalogItemButton label={`Удалить черновик «${title}»`} onClick={onDelete} />
-        <Button
-          render={<Link href={href} />}
-          nativeButton={false}
-          size="icon"
-          variant="outline"
-        >
+        <Button render={<Link href={href} />} nativeButton={false} size="icon" variant="outline">
           <ArrowRightIcon />
         </Button>
       </CardFooter>
@@ -294,65 +285,52 @@ function TaskCard({
   admin: boolean
   onDelete: () => void
 }) {
-  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`;
+  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`
 
   return (
     <Card className="relative pt-0 rounded-xl gap-4 pb-4">
       <Badge
-          className={cn(
-              "absolute inset-3 z-11",
-              task.is_hidden ? "bg-gray-200 text-black" : "bg-[#A3E635] text-[#3F5212]"
-          )}
+        className={cn("absolute inset-3 z-11", task.is_hidden && "bg-gray-200 text-black")}
+        variant="free"
       >
-          {task.is_hidden ? "Скрыто" : "Бесплатно"}
+        {task.is_hidden ? "Скрыто" : "Бесплатно"}
       </Badge>
-      <Badge
-          className={cn(
-              "absolute right-3 top-3 z-11",
-              task.developer_type === "frontend" && "text-[#0F766E] bg-[#CCFBF1]",
-              task.developer_type === "fullstack" && "text-[#EA580C] bg-[#FFEDD5]",
-          )}
-      >
-        {task.developer_type === "frontend" ? "Фронтенд" : "Фуллстек"}
+      <Badge className="absolute right-3 top-3 z-11" variant={task.developer_type}>
+        {developerTypeLabels[task.developer_type]}
       </Badge>
 
       <div className="relative w-full z-9 aspect-video" />
       <div className="absolute inset-0 w-full z-10 aspect-video bg-black/15">
-        {
-          task.cover_photo
-            ? (
-              <Image src={task.cover_photo.url} alt="taskImage" fill sizes="20vw"
-                     loading="eager" className="aspect-video object-cover"
-              />
-            )
-            : (
-                <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
-                  <ImageOffIcon className="size-14" />
-                  <p className="text-md">Нет изображения</p>
-                </div>
-            )
-        }
+        {task.cover_photo ? (
+          <Image
+            src={task.cover_photo.url}
+            alt="taskImage"
+            fill
+            sizes="20vw"
+            loading="eager"
+            className="aspect-video object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col justify-center items-center gap-2 text-muted-foreground">
+            <ImageOffIcon className="size-14" />
+            <p className="text-md">Нет изображения</p>
+          </div>
+        )}
       </div>
 
       <CardHeader className="flex flex-col gap-0.5 px-3">
-        <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
-          <Link href={href}>{task.title}</Link>
-        </CardTitle>
-        <CardDescription className='w-full min-h-15 line-clamp-3 wrap-break-word'>
+        <Link href={href}>
+          <CardTitle className="w-full text-xl line-clamp-1 wrap-break-word hover:underline cursor-pointer">
+            {task.title}
+          </CardTitle>
+        </Link>
+        <CardDescription className="w-full min-h-15 line-clamp-3 wrap-break-word">
           {task.short_description}
         </CardDescription>
       </CardHeader>
       <CardContent />
       <CardFooter className="mt-auto flex justify-between">
-        <div className="flex gap-1 font-heading text-muted-foreground tracking-wide items-baseline">
-          <div className="flex items-center gap-0.5">
-            <h5 className="font-semibold text-2xl text-primary">
-              {task.difficulty_from}-{task.difficulty_to}
-            </h5>
-            <BugIcon className="text-primary" />
-          </div>
-          /10
-        </div>
+        <TaskDifficulty from={task.difficulty_from} to={task.difficulty_to} />
         <div className="flex gap-2">
           {admin && (
             <DeleteCatalogItemButton label={`Удалить задачу «${task.title}»`} onClick={onDelete} />

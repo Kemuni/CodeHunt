@@ -1,4 +1,5 @@
-import type { TaskDifficultyLevel, TaskItem } from "./task-items-state"
+import type { TaskLevel } from "@/lib/tasks/task-level"
+import type { TaskItem } from "./task-items-state"
 
 export const MAX_CATEGORY_DEPTH = 3
 
@@ -6,7 +7,7 @@ export interface TaskCategory {
   kind: "category"
   id: string | number
   title: string
-  difficultyLevel: TaskDifficultyLevel
+  difficultyLevel: TaskLevel
   children: TaskNode[]
 }
 
@@ -103,7 +104,7 @@ export function categoryHeight(node: TaskNode): number {
 
 export function changeDifficulty(
   nodes: TaskNode[],
-  difficultyLevel: TaskDifficultyLevel,
+  difficultyLevel: TaskLevel,
   destination: TaskNode[] = [],
 ): TaskNode[] {
   return nodes.map((node) => {
@@ -142,7 +143,7 @@ export function groupNodes(
   ids: string[],
   categoryId: string,
   title: string,
-  difficultyLevel: TaskDifficultyLevel,
+  difficultyLevel: TaskLevel,
 ): TaskNode[] | null {
   const selected = selectedRoots(nodes, ids)
   if (!selected.length || !title.trim() || findNode(nodes, categoryId)) return null

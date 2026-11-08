@@ -1,6 +1,9 @@
 import React, { HTMLAttributes } from "react"
 import { cn } from "cn"
 import Image from "next/image"
+import Link from "next/link"
+import { ArrowLeftIcon } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
 
 export type PageLayoutProps = HTMLAttributes<HTMLDivElement>
 
@@ -13,29 +16,45 @@ export const PageLayout: React.FC<PageLayoutProps> = ({ children, className, ...
   )
 }
 
-export type PageLayoutHeaderProps = HTMLAttributes<HTMLDivElement>
+export type PageLayoutHeaderProps = HTMLAttributes<HTMLDivElement> & {
+  /** Адрес страницы, на которую ведёт кнопка «Вернуться назад». */
+  backHref?: string
+}
 
-/** Оформляет главный заголовок страницы с декоративным элементом. */
+/** Заголовок с декором и необязательной ссылкой возврата справа. */
 export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
   className,
   children,
+  backHref,
   ...props
 }) => {
   return (
     <div
       className={cn(
-        "w-full inline-flex",
-        "text-5xl font-heading font-medium tracking-wide",
+        "flex w-full items-center justify-between gap-4",
+        "text-3xl sm:text-5xl font-heading font-medium tracking-wide",
         className,
       )}
       {...props}
     >
-      <h2>{children}</h2>
-      <div className="relative hidden sm:block">
-        <div className="absolute left-15 -bottom-1 size-20">
-          <Image src="/figma/Asterisk 2.svg" alt="decoration" fill/>
+      <div className="flex min-w-0 items-center gap-6">
+        <h2 className="min-w-0 wrap-anywhere">{children}</h2>
+        <div aria-hidden="true" className="relative hidden size-20 shrink-0 xl:block">
+          <Image src="/figma/Asterisk 2.svg" alt="" fill sizes="80px" />
         </div>
       </div>
+      {backHref && (
+        <Link
+          href={backHref}
+          className={cn(
+            buttonVariants({ variant: "link" }),
+            "ml-auto shrink-0 font-sans tracking-normal",
+          )}
+        >
+          <ArrowLeftIcon aria-hidden="true" />
+          Вернуться назад
+        </Link>
+      )}
     </div>
   )
 }

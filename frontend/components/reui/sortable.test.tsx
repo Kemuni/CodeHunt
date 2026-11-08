@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { renderToString } from "react-dom/server"
@@ -7,7 +8,7 @@ function Lists() {
   const items = [{ id: "first" }, { id: "second" }]
   return (
     <>
-      {["base", "medium", "maximum"].map((level) => (
+      {[TaskLevel.Easy, TaskLevel.Medium, TaskLevel.High].map((level) => (
         <Sortable
           key={level}
           value={items}

@@ -1,5 +1,6 @@
 "use client"
 
+import type { TaskLevel } from "@/lib/tasks/task-level"
 import { useState } from "react"
 import { ChevronDownIcon, ImportIcon } from "lucide-react"
 import ResponsiveModal from "@/components/ui/responsive-modal"
@@ -7,11 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import {
-  taskDifficultyLevels,
-  formatItemCount,
-  type TaskDifficultyLevel,
-} from "@/lib/tasks/task-items-state"
+import { taskDifficultyLevels, formatItemCount } from "@/lib/tasks/task-items-state"
 import type { TaskNode } from "@/lib/tasks/task-tree"
 import {
   taskItemLibrary,
@@ -118,7 +115,7 @@ export default function TaskItemLibrary({
   disabled,
   onImport,
 }: {
-  difficultyLevel: TaskDifficultyLevel
+  difficultyLevel: TaskLevel
   disabled: boolean
   onImport: (nodes: TaskNode[]) => void
 }) {

@@ -1,5 +1,6 @@
 "use client"
 
+import type { TaskLevel } from "@/lib/tasks/task-level"
 import { ArrowDownIcon, ArrowUpIcon, EllipsisIcon, Trash2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { taskDifficultyLevels, type TaskDifficultyLevel } from "@/lib/tasks/task-items-state"
+import { taskDifficultyLevels } from "@/lib/tasks/task-items-state"
 import {
   canRelocate,
   categoryDestinations,
@@ -26,7 +27,7 @@ import type { TaskItemsActions } from "@/hooks/tasks/use-task-items"
 interface TaskNodeMenuProps {
   node: TaskNode
   roots: TaskNode[]
-  difficultyLevel: TaskDifficultyLevel
+  difficultyLevel: TaskLevel
   index: number
   total: number
   parentId: string | null

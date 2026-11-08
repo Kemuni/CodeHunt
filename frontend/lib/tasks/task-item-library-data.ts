@@ -1,4 +1,5 @@
-import type { TaskItem, TaskItemFields, TaskDifficultyLevel } from "./task-items-state"
+import type { TaskLevel } from "@/lib/tasks/task-level"
+import type { TaskItem, TaskItemFields } from "./task-items-state"
 
 export type LibraryItem = TaskItemFields & { id: string }
 export interface LibraryCategory {
@@ -163,7 +164,7 @@ export function libraryItemIds(nodes: LibraryNode[]): string[] {
 export function importLibrarySelection(
   nodes: LibraryNode[],
   selected: Set<string>,
-  difficultyLevel: TaskDifficultyLevel,
+  difficultyLevel: TaskLevel,
   newId: () => string = () => crypto.randomUUID(),
 ): TaskItem[] {
   return nodes.flatMap((node): TaskItem[] => {

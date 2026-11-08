@@ -1,18 +1,13 @@
 "use client"
 
+import type { TaskLevel } from "@/lib/tasks/task-level"
 import FormField from "@/components/ui/form/form-field"
 import FormInput from "@/components/ui/form/input"
 import FormTextarea from "@/components/ui/form/textarea"
-import { levelToApi } from "@/lib/tasks/editor-model"
-import type { TaskDifficultyLevel } from "@/lib/tasks/task-items-state"
 
 /** Данные активного уровня входят в общий react-hook-form редактора и сохраняются вместе с задачей. */
-export default function TaskLevelFields({
-  difficultyLevel,
-}: {
-  difficultyLevel: TaskDifficultyLevel
-}) {
-  const name = `presets.${levelToApi[difficultyLevel]}`
+export default function TaskLevelFields({ difficultyLevel }: { difficultyLevel: TaskLevel }) {
+  const name = `presets.${difficultyLevel}`
   return (
     <div className="mb-4 grid grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] items-start gap-4">
       <FormField name={`${name}.description`} label="Описание уровня">

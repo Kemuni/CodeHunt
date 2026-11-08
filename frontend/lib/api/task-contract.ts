@@ -1,3 +1,5 @@
+import type { TaskLevel } from "@/lib/tasks/task-level"
+
 /** Контракт задач из предоставленного OpenAPI 3.1. UI-модели и преобразования находятся в lib/tasks. */
 export type TaskPublication = {
   parent_task_id?: number | null
@@ -52,7 +54,7 @@ export type TaskDetail = {
 }
 
 /** Все уровни присутствуют; каждый содержит только собственные пункты. */
-export type TaskPresets = Record<Level, TaskPresetRead>
+export type TaskPresets = Record<TaskLevel, TaskPresetRead>
 
 export type TaskPresetRead = {
   preset: PresetRead | null
@@ -166,7 +168,7 @@ export type GalleryUpdate = {
 }
 
 export type PresetUpdate = {
-  level?: Level | null
+  level?: TaskLevel | null
   description?: string | null
   average_days_to_complete?: number | null
 }
@@ -203,14 +205,14 @@ export type CompositionLink = {
   title: string
   description: string
   acceptance_criteria: string
-  level: Level
+  level: TaskLevel
   is_required?: boolean
   kind?: "complication"
   id?: number | null
 }
 
 export type CompositionGroup = {
-  level: Level
+  level: TaskLevel
   kind?: "group"
   id?: number | null
   title: string
@@ -218,7 +220,7 @@ export type CompositionGroup = {
 }
 
 export type PresetCreate = {
-  level: Level
+  level: TaskLevel
   description: string
   average_days_to_complete?: number | null
 }
@@ -230,7 +232,7 @@ export type ComplicationItem = {
   title: string
   description: string
   acceptance_criteria: string
-  level: Level
+  level: TaskLevel
   is_required?: boolean
   group_id?: number | null
   order_number?: number
@@ -242,7 +244,7 @@ export type ComplicationItem = {
 }
 
 export type ComplicationGroupRead = {
-  level: Level
+  level: TaskLevel
   created_at: string
   updated_at: string
   id: number
@@ -255,7 +257,7 @@ export type ComplicationGroupRead = {
 }
 
 export type PresetRead = {
-  level: Level
+  level: TaskLevel
   description: string
   average_days_to_complete?: number | null
   created_at: string
@@ -274,8 +276,6 @@ export type ValidationIssue = {
 }
 
 export type ResourceType = "design" | "specification" | "asset" | "other"
-
-export type Level = "easy" | "medium" | "high"
 
 export type ErrorDetail = {
   code: string

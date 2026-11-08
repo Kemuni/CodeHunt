@@ -1,4 +1,6 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import { z } from "zod"
+import { levelLabels } from "./labels"
 import {
   type TaskNode,
   MAX_CATEGORY_DEPTH,
@@ -15,13 +17,10 @@ import {
   canRelocate,
 } from "./task-tree"
 
-export const taskDifficultyLevels = [
-  { value: "base", label: "Базовый" },
-  { value: "medium", label: "Продвинутый" },
-  { value: "maximum", label: "Максимальный" },
-] as const
-
-export type TaskDifficultyLevel = (typeof taskDifficultyLevels)[number]["value"]
+export const taskDifficultyLevels = Object.values(TaskLevel).map((value) => ({
+  value,
+  label: levelLabels[value],
+}))
 
 export const taskItemFieldsSchema = z.object({
   title: z.string().trim().min(1, "Введите название пункта"),
@@ -36,7 +35,7 @@ export interface TaskItem extends TaskItemFields {
   complicationId?: number | null
   /** Серверный номер либо временный UUID до первого сохранения. */
   id: string | number
-  difficultyLevel: TaskDifficultyLevel
+  difficultyLevel: TaskLevel
 }
 
 /** Снимок пункта при открытии редактора; текущий ввод хранится отдельно в react-hook-form. */
@@ -47,75 +46,75 @@ export interface TaskItemDraft {
 }
 
 export interface TaskItemsState {
-  activeDifficultyLevel: TaskDifficultyLevel
-  nodesByDifficultyLevel: Record<TaskDifficultyLevel, TaskNode[]>
-  selectedByDifficultyLevel: Record<TaskDifficultyLevel, string[]>
-  draftsByDifficultyLevel: Record<TaskDifficultyLevel, TaskItemDraft | null>
+  activeDifficultyLevel: TaskLevel
+  nodesByDifficultyLevel: Record<TaskLevel, TaskNode[]>
+  selectedByDifficultyLevel: Record<TaskLevel, string[]>
+  draftsByDifficultyLevel: Record<TaskLevel, TaskItemDraft | null>
 }
 
 // Интерфейс описанных необходимых полей данных для каждой операции
 export interface TaskItemsActionPayloads {
-  selectDifficultyLevel: { difficultyLevel: TaskDifficultyLevel }
+  selectDifficultyLevel: { difficultyLevel: TaskLevel }
   startCreating: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     itemId: string
     parentCategoryId?: string | null
   }
   startEditing: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     itemId: string
   }
-  cancelDraft: { difficultyLevel: TaskDifficultyLevel }
+  cancelDraft: { difficultyLevel: TaskLevel }
   saveDraft: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     values: TaskItemFields
   }
   deleteItem: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     itemId: string
   }
   moveNode: {
-    difficultyLevel: TaskDifficultyLevel
-    targetDifficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
+    targetDifficultyLevel: TaskLevel
     nodeId: string
   }
   reorderItems: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     items: TaskNode[]
     parentCategoryId?: string | null
   }
   toggleSelection: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     nodeId: string
     selected: boolean
   }
-  clearSelection: { difficultyLevel: TaskDifficultyLevel }
+  clearSelection: { difficultyLevel: TaskLevel }
   groupSelection: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     categoryId: string
     title: string
   }
   renameCategory: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     categoryId: string
     title: string
   }
   ungroup: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     categoryId: string
   }
   movePosition: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     nodeId: string
     direction: "up" | "down"
   }
   relocateNode: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     nodeId: string
     parentCategoryId: string | null
   }
   importNodes: {
-    difficultyLevel: TaskDifficultyLevel
+    difficultyLevel: TaskLevel
     nodes: TaskNode[]
   }
 }
@@ -126,14 +125,14 @@ export type TaskItemsAction = {
 
 export function createTaskItemsState(items: TaskNode[]): TaskItemsState {
   return {
-    activeDifficultyLevel: "base",
+    activeDifficultyLevel: TaskLevel.Easy,
     nodesByDifficultyLevel: {
-      base: items.filter((item) => item.difficultyLevel === "base"),
-      medium: items.filter((item) => item.difficultyLevel === "medium"),
-      maximum: items.filter((item) => item.difficultyLevel === "maximum"),
+      easy: items.filter((item) => item.difficultyLevel === TaskLevel.Easy),
+      medium: items.filter((item) => item.difficultyLevel === TaskLevel.Medium),
+      high: items.filter((item) => item.difficultyLevel === TaskLevel.High),
     },
-    draftsByDifficultyLevel: { base: null, medium: null, maximum: null },
-    selectedByDifficultyLevel: { base: [], medium: [], maximum: [] },
+    draftsByDifficultyLevel: { easy: null, medium: null, high: null },
+    selectedByDifficultyLevel: { easy: [], medium: [], high: [] },
   }
 }
 

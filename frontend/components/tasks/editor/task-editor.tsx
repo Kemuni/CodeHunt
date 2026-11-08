@@ -61,16 +61,9 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
     >
       <PageLayout>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageLayoutHeader>
+          <PageLayoutHeader backHref="/admin/tasks">
             {mode.kind === "task" ? "Редактирование задачи" : "Новая задача"}
           </PageLayoutHeader>
-          <div className="flex items-center gap-3">
-            <Link href="/admin/tasks" className="text-sm text-primary underline">
-              <Button variant="ghost">
-                <ArrowLeftIcon /> Все задачи
-              </Button>
-            </Link>
-          </div>
         </div>
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           {status}

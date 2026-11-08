@@ -1,3 +1,4 @@
+import { TaskLevel } from "@/lib/tasks/task-level"
 import { z } from "zod"
 import type {
   TaskDetail,
@@ -7,24 +8,19 @@ import type {
   CompositionGroup,
   ComplicationItem,
   ComplicationGroupRead,
-  Level,
   PresetCreate,
 } from "@/lib/api/task-contract"
 import type { DraftPayload } from "@/lib/api/tasks"
 import { isCategory, type TaskNode } from "./task-tree"
-import type { TaskDifficultyLevel } from "./task-items-state"
 
-export const levelToApi: Record<TaskDifficultyLevel, Level> = {
-  base: "easy",
-  medium: "medium",
-  maximum: "high",
-}
 const nonempty = (name: string, max: number) =>
   z.string().trim().min(1, `Заполните ${name}`).max(max, `Максимум ${max} символов`)
 const presetSchema = z.object({
   description: z.string().trim().max(100000, "Максимум 100000 символов"),
   averageDays: z.string(),
 })
+
+
 /** Zod проверяет заполненную форму при сохранении задачи; для автосохранения допустим неполный ввод. */
 export const taskInfoSchema = z.object({
   title: nonempty("название задачи", 255),
@@ -71,23 +67,22 @@ export const emptyInfo: TaskInfo = {
   },
 }
 /** Уровень появляется по содержимому; одно только время выполнения не включает пустой уровень. */
-export function hasLevelContent(info: TaskInfo, nodes: TaskNode[], level: Level) {
+export function hasLevelContent(info: TaskInfo, nodes: TaskNode[], level: TaskLevel) {
   return (
-    !!info.presets[level].description.trim() ||
-    nodes.some((node) => levelToApi[node.difficultyLevel] === level)
+    !!info.presets[level].description.trim() || nodes.some((node) => node.difficultyLevel === level)
   )
 }
 
 /** Проверяет уровни по текущему дереву: для непустого уровня backend требует описание. */
 export function createTaskInfoSchema(nodes: TaskNode[]) {
   return taskInfoSchema.superRefine((info, context) => {
-    const levels = (Object.keys(info.presets) as Level[]).filter((level) =>
+    const levels = (Object.keys(info.presets) as TaskLevel[]).filter((level) =>
       hasLevelContent(info, nodes, level),
     )
     if (!levels.length)
       context.addIssue({
         code: "custom",
-        path: ["presets", "easy", "description"],
+        path: ["presets", TaskLevel.Easy, "description"],
         message: "Добавьте пункты или описание хотя бы одного уровня",
       })
     for (const level of levels) {
@@ -113,19 +108,13 @@ type ApiNode = CompositionLink | CompositionGroup | ComplicationItem | Complicat
 const isGroup = (node: ApiNode): node is CompositionGroup | ComplicationGroupRead =>
   node.kind === "group"
 
-const levelFromApi: Record<Level, TaskDifficultyLevel> = {
-  easy: "base",
-  medium: "medium",
-  high: "maximum",
-}
-
 /** Каждый узел, включая пустую группу, имеет собственный уровень и серверный ID. */
 export function fromComposition(items: ApiNode[]): TaskNode[] {
   return compositionNodes(items, "root")
 }
 
 export function fromPresets(presets: TaskPresets): TaskNode[] {
-  return (["easy", "medium", "high"] as const).flatMap((level) =>
+  return Object.values(TaskLevel).flatMap((level) =>
     compositionNodes(presets[level].complications, level),
   )
 }
@@ -133,7 +122,7 @@ export function fromPresets(presets: TaskPresets): TaskNode[] {
 function compositionNodes(nodes: ApiNode[], path: string): TaskNode[] {
   return nodes.map((node, index): TaskNode => {
     const key = `${path}-${index}`
-    const difficultyLevel = levelFromApi[node.level]
+    const difficultyLevel = node.level
     if (isGroup(node)) {
       return {
         kind: "category",
@@ -164,7 +153,7 @@ export function toComposition(nodes: TaskNode[]): Array<CompositionLink | Compos
         kind: "group",
         ...identity,
         title: node.title,
-        level: levelToApi[node.difficultyLevel],
+        level: node.difficultyLevel,
         items: toComposition(node.children),
       }
     }
@@ -175,7 +164,7 @@ export function toComposition(nodes: TaskNode[]): Array<CompositionLink | Compos
       title: node.title,
       description: node.description,
       acceptance_criteria: node.criteria,
-      level: levelToApi[node.difficultyLevel],
+      level: node.difficultyLevel,
       is_required: node.required,
     }
   })
@@ -194,7 +183,7 @@ export function infoFromPayload(data: DraftPayload): TaskInfo {
 
 function infoFromData(
   data: DraftPayload | TaskDetail,
-  presetForLevel: (level: Level) => PresetCreate | null | undefined,
+  presetForLevel: (level: TaskLevel) => PresetCreate | null | undefined,
 ): TaskInfo {
   const text = (key: string) =>
     typeof (data as DraftPayload)[key] === "string" ? ((data as DraftPayload)[key] as string) : ""
@@ -216,7 +205,7 @@ function infoFromData(
     isHidden: data.is_hidden === true,
     presets: Object.fromEntries(
       Object.entries(emptyInfo.presets).map(([key, value]) => {
-        const preset = presetForLevel(key as Level)
+        const preset = presetForLevel(key as TaskLevel)
         return [
           key,
           preset
@@ -252,7 +241,7 @@ export function toPayload(
     is_hidden: info.isHidden,
     items: toComposition(nodes),
     presets: Object.entries(info.presets)
-      .filter(([level]) => hasLevelContent(info, nodes, level as Level))
+      .filter(([level]) => hasLevelContent(info, nodes, level as TaskLevel))
       .map(([level, value]) => ({
         level,
         description: value.description,
