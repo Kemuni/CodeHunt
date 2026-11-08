@@ -5,6 +5,7 @@ from app.api.routes import (
     draft_files,
     drafts,
     library,
+    media,
     photos,
     resources,
     solutions,
@@ -24,3 +25,4 @@ api_router.include_router(resources.router)
 api_router.include_router(photos.router)
 
 api_router.include_router(draft_files.router)
+api_router.include_router(media.router)

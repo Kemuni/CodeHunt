@@ -2,7 +2,6 @@ import asyncio
 import threading
 from io import BytesIO
 
-import httpx
 import pytest
 from PIL import Image
 from pydantic import SecretStr
@@ -12,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.main import app
 from app.models import Task, TaskDraft, TaskPhoto, TaskResource
-from app.services import drafts, photos, resources
+from app.services import drafts, media
 from app.services.storage import S3Storage, get_storage
 from tests.conftest import task_data
 from tests.test_failures import SimulatedFailure
@@ -25,8 +24,7 @@ pytestmark = pytest.mark.anyio
 def store(monkeypatch):
     storage = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: storage
-    monkeypatch.setattr(photos, "get_storage", lambda: storage)
-    monkeypatch.setattr(resources, "get_storage", lambda: storage)
+    monkeypatch.setattr(media, "get_storage", lambda: storage)
     return storage
 
 
@@ -417,24 +415,21 @@ async def test_real_minio_draft_files_survive_publication(
     store = S3Storage()
     store.client.create_bucket(Bucket=settings.S3_BUCKET)
     app.dependency_overrides[get_storage] = lambda: store
-    monkeypatch.setattr(photos, "get_storage", lambda: store)
-    monkeypatch.setattr(resources, "get_storage", lambda: store)
+    monkeypatch.setattr(media, "get_storage", lambda: store)
     draft = await attach(client, await create_draft(client, task_data()))
     keys = {
         item["Key"]
         for item in store.client.list_objects_v2(Bucket=settings.S3_BUCKET)["Contents"]
     }
-    async with httpx.AsyncClient() as http:
-        assert (await http.get(draft["resources"][0]["url"])).content == b"project spec"
-        assert (await http.get(draft["photos"][0]["url"])).content == picture()
+    assert (await client.get(draft["resources"][0]["url"])).content == b"project spec"
+    assert (await client.get(draft["photos"][0]["url"])).content == picture()
     reply = await client.post(
         f"/api/editor/task-drafts/{draft['id']}/publish", json={"revision": 3}
     )
     assert reply.status_code == 201, reply.text
     task = reply.json()["data"]
-    async with httpx.AsyncClient() as http:
-        assert (await http.get(task["resources"][0]["url"])).content == b"project spec"
-        assert (await http.get(task["photos"][0]["url"])).content == picture()
+    assert (await client.get(task["resources"][0]["url"])).content == b"project spec"
+    assert (await client.get(task["photos"][0]["url"])).content == picture()
     assert {
         item["Key"]
         for item in store.client.list_objects_v2(Bucket=settings.S3_BUCKET)["Contents"]

@@ -1,7 +1,7 @@
 .PHONY: up-dev-env down-dev-env up-all down-all fastapi-dev sync-all migrate seed test test-cov ruff-fix ruff-check ty precommit-check logs
 
 COMPOSE = docker compose -f compose.yml
-DEV_SERVICES = db minio minio-init adminer
+DEV_SERVICES = db minio minio-init adminer redis
 UV_COMMAND = uv --directory backend
 
 # Окружение для локального backend: БД, файлы и интерфейсы управления.

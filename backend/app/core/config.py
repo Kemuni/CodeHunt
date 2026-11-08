@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     S3_URL_TTL: int = Field(default=900, ge=1, le=604800)
     MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
     MAX_RESOURCE_BYTES: int = Field(default=50 * 1024 * 1024, gt=0)
+    REDIS_URL: str | None = None
+    MEDIA_CACHE_TTL: int = Field(default=300, ge=1, le=86400)
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

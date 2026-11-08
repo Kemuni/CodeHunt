@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   db:
     image: postgres:18-alpine
     ports:
@@ -55,6 +66,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
+      redis:
+        condition: service_started
       db:
         condition: service_healthy
       minio-init:
@@ -68,6 +81,7 @@ services:
     env_file:
       - .env
     environment:
+      REDIS_URL: redis://redis:6379/0
       PROJECT_NAME: ${PROJECT_NAME:-CodeHunt}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Variable not set}@db:5432/${POSTGRES_DB:-CodeHuntDB}
       S3_ENDPOINT_URL: http://minio:9000

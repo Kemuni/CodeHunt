@@ -13,15 +13,18 @@ from app.core.errors import (
 )
 from app.models import TaskResource
 from app.models.enums import ResourceType
+from app.schemas.common import DownloadURL
 from app.schemas.domain import ResourceDownloadRead, ResourceRead
 from app.services.common import assign, commit, flush, get
 from app.services.media import MediaOwner, discard_upload
-from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
+from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
 
 
-async def read(
-    session: AsyncSession, owner: MediaOwner, storage: Storage | None = None
-) -> list[ResourceDownloadRead]:
+def download_url(resource: TaskResource) -> DownloadURL:
+    return DownloadURL(url=f"/api/media/resources/{resource.id}")
+
+
+async def read(session: AsyncSession, owner: MediaOwner) -> list[ResourceDownloadRead]:
     objects = (
         await session.scalars(
             select(TaskResource)
@@ -29,23 +32,13 @@ async def read(
             .order_by(TaskResource.id)
         )
     ).all()
-    if not objects:
-        return []
-    store = storage or get_storage()
-    result = []
-    for obj in objects:
-        try:
-            url = await run_in_threadpool(store.get_download_url, obj.object_key)
-        except STORAGE_EXCEPTIONS as exc:
-            raise storage_error(exc) from exc
-        result.append(
-            ResourceDownloadRead(
-                **ResourceRead.model_validate(obj).model_dump(),
-                url=url,
-                expires_in=settings.S3_URL_TTL,
-            )
+    return [
+        ResourceDownloadRead(
+            **ResourceRead.model_validate(obj).model_dump(),
+            url=download_url(obj).url,
         )
-    return result
+        for obj in objects
+    ]
 
 
 async def upload(

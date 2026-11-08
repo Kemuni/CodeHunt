@@ -1,11 +1,9 @@
 from typing import Annotated
 
 from fastapi import Depends, File, Form, Query, UploadFile
-from starlette.concurrency import run_in_threadpool
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
-from app.core.config import settings
 from app.models import TaskDraft, TaskResource
 from app.models.enums import ResourceType
 from app.schemas import SuccessResponse
@@ -14,7 +12,7 @@ from app.schemas.domain import DraftGalleryUpdate, DraftRead, DraftResourceUpdat
 from app.services import drafts, photos, resources
 from app.services.common import get
 from app.services.media import MediaOwner
-from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
+from app.services.storage import Storage, get_storage
 
 router = APIResponseRouter(
     prefix="/editor/task-drafts/{draft_id}", tags=["task-draft-files"]
@@ -127,21 +125,15 @@ async def delete_resource(
 @router.get(
     "/resources/{resource_id}/download-url",
     response_model=SuccessResponse[DownloadURL],
-    summary="Получить временную ссылку на вложение собственного черновика.",
+    summary="Получить постоянную ссылку на вложение собственного черновика.",
 )
 async def download_resource(
     draft_id: PositiveID,
     resource_id: PositiveID,
     db: SessionDep,
     admin: CurrentAdmin,
-    storage: StorageDep,
 ):
     owner = MediaOwner(draft_id=draft_id, user_id=admin.id)
     await owner.get(db)
     obj = await get(db, TaskResource, resource_id, **owner.values())
-    try:
-        await run_in_threadpool(storage.stat, obj.object_key)
-        url = await run_in_threadpool(storage.get_download_url, obj.object_key)
-    except STORAGE_EXCEPTIONS as exc:
-        raise storage_error(exc) from exc
-    return SuccessResponse(data=DownloadURL(url=url, expires_in=settings.S3_URL_TTL))
+    return SuccessResponse(data=resources.download_url(obj))

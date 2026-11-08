@@ -101,4 +101,3 @@ class ValidationIssue(BaseModel):
 
 class DownloadURL(BaseModel):
     url: str
-    expires_in: int

@@ -8,6 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.exception_handlers import register_exception_handlers
+from app.services.media_cache import MediaCache
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting application...")
-    yield
+    cache = MediaCache(settings.REDIS_URL)
+    _app.state.media_cache = cache
+    try:
+        yield
+    finally:
+        await cache.close()
     logger.info("Shutting down application...")
 
 

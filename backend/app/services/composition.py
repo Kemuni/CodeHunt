@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 
 from sqlalchemy import delete, func, select
@@ -24,6 +24,7 @@ from app.schemas.domain import (
     CompositionGroup,
     CompositionItem,
     CompositionUpdate,
+    LinkRead,
 )
 from app.services.common import assign, commit, flush, get
 
@@ -58,19 +59,31 @@ async def read(
         children[group.parent_group_id].append(group)
     for link in links:
         children[link.group_id].append(link)
+    numbers: Counter[Level] = Counter()
 
     def branch(parent_id: int | None) -> list[CompositionItem]:
         result: list[CompositionItem] = []
         for obj in sorted(
             children[parent_id],
             key=lambda item: (
-                item.order_number,
+                LEVELS.index(item.level),
+                item.position,
                 isinstance(item, TaskComplicationLink),
                 item.id,
             ),
         ):
             if isinstance(obj, TaskComplicationLink):
-                result.append(ComplicationItem.model_validate(obj))
+                numbers[obj.level] += 1
+                result.append(
+                    ComplicationItem(
+                        **{
+                            key: getattr(obj, key)
+                            for key in LinkRead.model_fields
+                            if key != "order_number"
+                        },
+                        order_number=numbers[obj.level],
+                    )
+                )
             else:
                 nested = branch(obj.id)
                 # В редакторе пустые группы видны, в пресете пустые ветки не показываем.
@@ -83,6 +96,13 @@ async def read(
     return branch(None)
 
 
+async def read_link(session: AsyncSession, task_id: int, link_id: int) -> LinkRead:
+    for link in flatten(await read(session, task_id)):
+        if link.id == link_id:
+            return link
+    raise NotFoundError("Пункт задания не найден")
+
+
 def flatten(items: Sequence[CompositionItem]) -> list[ComplicationItem]:
     result: list[ComplicationItem] = []
     for item in items:
@@ -91,6 +111,45 @@ def flatten(items: Sequence[CompositionItem]) -> list[ComplicationItem]:
         else:
             result.append(item)
     return result
+
+
+async def place_link(
+    session: AsyncSession, obj: TaskComplicationLink, position: int | None
+) -> None:
+    """Вставляет пункт между соседями, сохраняя взаимный порядок остальных веток."""
+    await flush(session)
+    groups = (
+        await session.scalars(
+            select(TaskComplicationLinkGroup).where(
+                TaskComplicationLinkGroup.task_id == obj.task_id,
+                TaskComplicationLinkGroup.level == obj.level,
+                TaskComplicationLinkGroup.parent_group_id == obj.group_id,
+            )
+        )
+    ).all()
+    links = (
+        await session.scalars(
+            select(TaskComplicationLink).where(
+                TaskComplicationLink.task_id == obj.task_id,
+                TaskComplicationLink.level == obj.level,
+                TaskComplicationLink.group_id == obj.group_id,
+                TaskComplicationLink.id != obj.id,
+            )
+        )
+    ).all()
+    siblings = sorted(
+        [*groups, *links],
+        key=lambda item: (
+            item.position,
+            isinstance(item, TaskComplicationLink),
+            item.id,
+        ),
+    )
+    siblings.insert(
+        len(siblings) if position is None else min(position, len(siblings)), obj
+    )
+    for index, sibling in enumerate(siblings):
+        sibling.position = index
 
 
 def by_level(items: Sequence[CompositionItem]) -> dict[Level, list[CompositionItem]]:
@@ -162,7 +221,10 @@ async def save(session: AsyncSession, parent: Task, data: CompositionUpdate):
     entries = []
 
     def collect(items, parent_node=None):
-        for position, item in enumerate(items):
+        positions = Counter()
+        for item in items:
+            position = positions[item.level]
+            positions[item.level] += 1
             entries.append((item, parent_node, position))
             if isinstance(item, CompositionGroup):
                 collect(item.items, item)
@@ -199,7 +261,7 @@ async def save(session: AsyncSession, parent: Task, data: CompositionUpdate):
                 if item.id is not None
                 else TaskComplicationLinkGroup(task_id=task_id)
             )
-            obj.title, obj.level, obj.order_number = item.title, item.level, position
+            obj.title, obj.level, obj.position = item.title, item.level, position
             session.add(obj)
             group_nodes[id(item)] = obj
             if item.id is not None:
@@ -223,7 +285,7 @@ async def save(session: AsyncSession, parent: Task, data: CompositionUpdate):
             obj = TaskComplicationLink(task_id=task_id)
             session.add(obj)
         assign(obj, values)
-        obj.group_id, obj.order_number = parent_group_id, position
+        obj.group_id, obj.position = parent_group_id, position
     for link_id, obj in links.items():
         if link_id not in retained_links:
             await session.delete(obj)

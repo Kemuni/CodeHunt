@@ -134,14 +134,16 @@ class TaskComplicationLinkGroup(IdentityMixin, Timestamps, Base):
             initially="DEFERRED",
         ),
         CheckConstraint("parent_group_id <> id", name="ck_link_group_parent"),
-        CheckConstraint("order_number >= 0", name="ck_link_group_order"),
-        Index("ix_link_groups_tree", "task_id", "parent_group_id", "order_number"),
+        CheckConstraint("position >= 0", name="ck_link_group_position"),
+        Index("ix_link_groups_tree", "task_id", "parent_group_id", "position"),
     )
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
     parent_group_id: Mapped[int | None] = mapped_column(BigInteger)
     title: Mapped[str] = mapped_column(String(255))
     level: Mapped[Level] = mapped_column(choice(Level, "task_link_group_level"))
-    order_number: Mapped[int] = mapped_column(Integer, server_default="0")
+
+    # Порядок среди соседей
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
 class TaskComplicationLink(IdentityMixin, Timestamps, Base):
@@ -159,8 +161,8 @@ class TaskComplicationLink(IdentityMixin, Timestamps, Base):
             deferrable=True,
             initially="DEFERRED",
         ),
-        CheckConstraint("order_number >= 0", name="ck_task_link_order"),
-        Index("ix_task_links_composition", "task_id", "level", "order_number", "id"),
+        CheckConstraint("position >= 0", name="ck_task_link_position"),
+        Index("ix_task_links_composition", "task_id", "level", "position", "id"),
     )
     task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
     group_id: Mapped[int | None] = mapped_column(BigInteger, index=True)
@@ -172,7 +174,7 @@ class TaskComplicationLink(IdentityMixin, Timestamps, Base):
     acceptance_criteria: Mapped[str] = mapped_column(Text)
     level: Mapped[Level] = mapped_column(choice(Level, "task_link_level"))
     is_required: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    order_number: Mapped[int] = mapped_column(Integer, server_default="0")
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
 class TaskLevelPreset(IdentityMixin, Timestamps, Base):

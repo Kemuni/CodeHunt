@@ -11,7 +11,7 @@ from app.schemas.domain import (
     SolutionLinkRead,
     SolutionRead,
 )
-from app.services import catalog
+from app.services import catalog, composition
 from app.services.common import commit, flush, get
 from app.services.composition import flatten
 
@@ -46,7 +46,9 @@ async def create(
     if data.author_id != user_id:
         raise SolutionAuthorMismatchError()
     parent = await catalog.task(session, task_id, public=True, lock=True)
-    config = await catalog.configuration(session, task_id, data.task_level_preset_id)
+    config = await composition.configuration(
+        session, task_id, data.task_level_preset_id
+    )
     preset, links = config["preset"], flatten(config["complications"])
     excluded = set(data.excluded_complication_link_ids)
     if not excluded.issubset({link.id for link in links}):

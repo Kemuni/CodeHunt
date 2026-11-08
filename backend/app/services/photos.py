@@ -20,7 +20,7 @@ from app.models import TaskPhoto
 from app.schemas.domain import PhotoRead
 from app.services.common import commit, flush
 from app.services.media import MediaOwner, discard_upload
-from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
+from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
 
 IMAGE_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
@@ -52,9 +52,7 @@ def image_type(content: bytes) -> str:
         raise InvalidPhotoError() from exc
 
 
-async def read(
-    session: AsyncSession, owner: MediaOwner, storage: Storage | None = None
-) -> list[PhotoRead]:
+async def read(session: AsyncSession, owner: MediaOwner) -> list[PhotoRead]:
     photos = (
         await session.scalars(
             select(TaskPhoto)
@@ -64,8 +62,7 @@ async def read(
     ).all()
     if not photos:
         return []
-    store = storage or get_storage()
-    return [await photo_response(photo, store) for photo in photos]
+    return [photo_response(photo) for photo in photos]
 
 
 async def covers(session: AsyncSession, task_ids: list[int]) -> dict[int, PhotoRead]:
@@ -81,19 +78,14 @@ async def covers(session: AsyncSession, task_ids: list[int]) -> dict[int, PhotoR
     ).all()
     if not photos:
         return {}
-    store = get_storage()
     return {
-        photo.task_id: await photo_response(photo, store)
+        photo.task_id: photo_response(photo)
         for photo in photos
         if photo.task_id is not None
     }
 
 
-async def photo_response(photo: TaskPhoto, storage: Storage) -> PhotoRead:
-    try:
-        url = await run_in_threadpool(storage.get_download_url, photo.object_key)
-    except STORAGE_EXCEPTIONS as exc:
-        raise storage_error(exc) from exc
+def photo_response(photo: TaskPhoto) -> PhotoRead:
     return PhotoRead(
         id=photo.id,
         task_id=photo.task_id,
@@ -105,8 +97,7 @@ async def photo_response(photo: TaskPhoto, storage: Storage) -> PhotoRead:
         size_bytes=photo.size_bytes,
         created_at=photo.created_at,
         updated_at=photo.updated_at,
-        url=url,
-        expires_in=settings.S3_URL_TTL,
+        url=f"/api/media/photos/{photo.id}",
     )
 
 
@@ -166,7 +157,7 @@ async def upload(
             )
         owner.touch(parent)
         await flush(session)
-        result = await read(session, owner, storage)
+        result = await read(session, owner)
         await commit(session)
         return result
     except Exception as exc:

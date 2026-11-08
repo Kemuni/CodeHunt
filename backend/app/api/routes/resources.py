@@ -3,11 +3,9 @@ from typing import Annotated
 
 from fastapi import Depends, File, Form, UploadFile
 from sqlalchemy import select
-from starlette.concurrency import run_in_threadpool
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
-from app.core.config import settings
 from app.models import TaskResource
 from app.models.enums import ResourceType
 from app.schemas import SuccessResponse
@@ -16,7 +14,7 @@ from app.schemas.domain import ResourcePatch, ResourceRead
 from app.services import catalog, resources
 from app.services.common import assign, commit, get
 from app.services.media import MediaOwner
-from app.services.storage import STORAGE_EXCEPTIONS, Storage, get_storage, storage_error
+from app.services.storage import Storage, get_storage
 
 router = APIResponseRouter(tags=["resources"])
 StorageDep = Annotated[Storage, Depends(get_storage)]
@@ -108,41 +106,31 @@ async def delete(
     return SuccessResponse()
 
 
-async def download(
-    db: SessionDep, task_id: PositiveID, resource_id: PositiveID, storage: Storage
-):
+async def download(db: SessionDep, task_id: PositiveID, resource_id: PositiveID):
     obj = await get(db, TaskResource, resource_id, task_id=task_id)
-    try:
-        await run_in_threadpool(storage.stat, obj.object_key)
-        url = await run_in_threadpool(storage.get_download_url, obj.object_key)
-    except STORAGE_EXCEPTIONS as exc:
-        raise storage_error(exc) from exc
-    return {"url": url, "expires_in": settings.S3_URL_TTL}
+    return resources.download_url(obj)
 
 
 @router.get(
     "/tasks/{task_id}/resources/{resource_id}/download-url",
     response_model=SuccessResponse[DownloadURL],
-    summary="Получить временную ссылку на файл опубликованного задания.",
+    summary="Получить постоянную ссылку на файл опубликованного задания.",
 )
-async def public_download(
-    task_id: PositiveID, resource_id: PositiveID, db: SessionDep, storage: StorageDep
-):
+async def public_download(task_id: PositiveID, resource_id: PositiveID, db: SessionDep):
     await catalog.task(db, task_id, public=True)
-    return SuccessResponse(data=await download(db, task_id, resource_id, storage))
+    return SuccessResponse(data=await download(db, task_id, resource_id))
 
 
 @router.get(
     "/editor/tasks/{task_id}/resources/{resource_id}/download-url",
     response_model=SuccessResponse[DownloadURL],
-    summary="Получить временную ссылку на файл из редактора.",
+    summary="Получить постоянную ссылку на файл из редактора.",
 )
 async def editor_download(
     task_id: PositiveID,
     resource_id: PositiveID,
     db: SessionDep,
-    storage: StorageDep,
     _admin: CurrentAdmin,
 ):
     await catalog.task(db, task_id)
-    return SuccessResponse(data=await download(db, task_id, resource_id, storage))
+    return SuccessResponse(data=await download(db, task_id, resource_id))

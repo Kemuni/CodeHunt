@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.main import app
 from app.models import Task, TaskComplicationLink, TaskPhoto
-from app.services import catalog, composition, library
+from app.services import catalog, composition, library, media
 from app.services.storage import get_storage
 from tests.conftest import make_project, task_data
 from tests.test_resources import MemoryStorage
@@ -384,11 +384,10 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
 
 
 async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch):
-    from app.services import photos
 
     store = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: store
-    monkeypatch.setattr(photos, "get_storage", lambda: store)
+    monkeypatch.setattr(media, "get_storage", lambda: store)
     task, _, _ = await make_project(client)
     empty, _, _ = await make_project(client, slug="without-photos")
     assert task["cover_photo"] is None and empty["cover_photo"] is None
@@ -474,9 +473,8 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
     store = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: store
     # Сервис чтения также получает тот же адаптер при выдаче агрегированного задания.
-    from app.services import photos
 
-    monkeypatch.setattr(photos, "get_storage", lambda: store)
+    monkeypatch.setattr(media, "get_storage", lambda: store)
     task, _, _ = await make_project(client)
     base = f"/api/editor/tasks/{task['id']}"
     content = image_bytes()
@@ -555,11 +553,10 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
 
 
 async def test_concurrent_photo_uploads_keep_maximum_four(client, monkeypatch):
-    from app.services import photos
 
     store = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: store
-    monkeypatch.setattr(photos, "get_storage", lambda: store)
+    monkeypatch.setattr(media, "get_storage", lambda: store)
     task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
     base = f"/api/editor/tasks/{task['id']}"
     content = image_bytes()
@@ -693,9 +690,9 @@ async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(clien
     assert "complications" not in detail
     assert all(level["preset"] is None for level in detail["presets"].values())
     assert detail["presets"]["medium"]["complications"] == []
-    assert detail["presets"]["easy"]["complications"] == [tree[1]]
-    assert detail["presets"]["high"]["complications"] == [tree[0]]
-    assert tree[0]["items"][1]["level"] == "high"
+    assert detail["presets"]["easy"]["complications"] == [tree[0]]
+    assert detail["presets"]["high"]["complications"] == [tree[1]]
+    assert tree[1]["items"][1]["level"] == "high"
 
     # Дерево читается один раз: количество SQL-запросов не зависит от числа пресетов.
     async with db() as session:

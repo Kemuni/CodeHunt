@@ -109,7 +109,7 @@ async def seed():
                             acceptance_criteria="Результат сохраняется при обновлении страницы.",
                             level=level,
                             is_required=True,
-                            order_number=index,
+                            position=index,
                         )
                     )
             parent_id = task.id

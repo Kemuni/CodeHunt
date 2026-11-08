@@ -37,7 +37,7 @@ async def test_database_constraints_and_generated_status(client, sync_engine):
         "UPDATE tasks SET parent_task_id=id",
         "UPDATE task_solutions SET difficulty_rating=11",
         "UPDATE task_solutions SET task_id=9999",
-        "UPDATE task_complication_links SET order_number=-1",
+        "UPDATE task_complication_links SET position=-1",
     ]:
         with pytest.raises(IntegrityError), sync_engine.begin() as conn:
             conn.execute(text(sql))

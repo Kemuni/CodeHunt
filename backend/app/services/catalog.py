@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Sequence
 
 from pydantic import ValidationError
@@ -117,6 +118,10 @@ async def save_child(
     object_id: int | None = None,
 ):
     parent = await task(session, task_id, lock=True)
+    requested_position = (
+        values.pop("position", None) if model is TaskComplicationLink else None
+    )
+    relocated = object_id is None
     if object_id is None:
         obj = model(task_id=task_id, **values)
         session.add(obj)
@@ -124,6 +129,10 @@ async def save_child(
         obj = await get(session, model, object_id, task_id=task_id)
         if model is TaskComplicationLink:
             confirm_template(obj, values)
+            relocated = any(
+                key in values and values[key] != getattr(obj, key)
+                for key in ("group_id", "level")
+            )
         assign(obj, values)
     if model is TaskComplicationLink:
         with session.no_autoflush:
@@ -136,6 +145,8 @@ async def save_child(
                     raise ConstraintViolationError(
                         "Уровень пункта должен совпадать с уровнем группы"
                     )
+        if relocated or requested_position is not None:
+            await composition.place_link(session, obj, requested_position)
     parent.updated_at = func.clock_timestamp()
     await ensure_publishable(session, parent)
     return await commit(session, obj)
@@ -161,6 +172,7 @@ async def copy_link(
     values = {key: getattr(source, key) for key in LinkCreate.model_fields}
     # Группа относится к исходному заданию, копия создаётся в корне назначения.
     values["group_id"] = None
+    values["position"] = None
     values.update({key: value for key, value in overrides.items() if value is not None})
     return await save_child(session, task_id, TaskComplicationLink, values)
 
@@ -176,6 +188,40 @@ async def reorder(
     if len(set(ids)) != len(ids) or set(ids) != {obj.id for obj in objects}:
         raise InvalidOrderError()
     positions = {object_id: index for index, object_id in enumerate(ids)}
+    if model is TaskComplicationLink:
+        # Меняем порядок листьев только в их контейнере, сохраняя места групп.
+        siblings = defaultdict(list)
+        for obj in objects:
+            siblings[(obj.level, obj.group_id)].append(obj)
+        groups = (
+            await session.scalars(
+                select(TaskComplicationLinkGroup).where(
+                    TaskComplicationLinkGroup.task_id == owner_id
+                )
+            )
+        ).all()
+        for group in groups:
+            siblings[(group.level, group.parent_group_id)].append(group)
+        for items in siblings.values():
+            ordered = sorted(
+                items,
+                key=lambda item: (
+                    item.position,
+                    isinstance(item, TaskComplicationLink),
+                    item.id,
+                ),
+            )
+            links = iter(
+                sorted(
+                    (item for item in items if isinstance(item, TaskComplicationLink)),
+                    key=lambda item: positions[item.id],
+                )
+            )
+            for position, item in enumerate(ordered):
+                if isinstance(item, TaskComplicationLink):
+                    item = next(links)
+                item.position = position
+        return
     for obj in objects:
         obj.order_number = positions[obj.id]
 

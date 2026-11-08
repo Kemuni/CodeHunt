@@ -141,7 +141,7 @@ async def public_configuration(
     task_id: PositiveID, preset_id: PositiveID, db: SessionDep
 ):
     await catalog.task(db, task_id, public=True)
-    return SuccessResponse(data=await catalog.configuration(db, task_id, preset_id))
+    return SuccessResponse(data=await composition.configuration(db, task_id, preset_id))
 
 
 @router.get(
@@ -224,13 +224,7 @@ async def delete_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin)
 async def links(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
     await catalog.task(db, task_id)
     return SuccessResponse(
-        data=(
-            await db.scalars(
-                select(TaskComplicationLink)
-                .where(TaskComplicationLink.task_id == task_id)
-                .order_by(TaskComplicationLink.order_number, TaskComplicationLink.id)
-            )
-        ).all()
+        data=composition.flatten(await composition.read(db, task_id))
     )
 
 
@@ -243,11 +237,8 @@ async def links(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
 async def create_link(
     task_id: PositiveID, data: LinkCreate, db: SessionDep, _admin: CurrentAdmin
 ):
-    return SuccessResponse(
-        data=await catalog.save_child(
-            db, task_id, TaskComplicationLink, data.model_dump()
-        )
-    )
+    obj = await catalog.save_child(db, task_id, TaskComplicationLink, data.model_dump())
+    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
 
 
 @router.post(
@@ -259,14 +250,13 @@ async def create_link(
 async def copy_link(
     task_id: PositiveID, data: LinkCopy, db: SessionDep, _admin: CurrentAdmin
 ):
-    return SuccessResponse(
-        data=await catalog.copy_link(
-            db,
-            task_id,
-            data.source_link_id,
-            data.model_dump(exclude={"source_link_id"}),
-        )
+    obj = await catalog.copy_link(
+        db,
+        task_id,
+        data.source_link_id,
+        data.model_dump(exclude={"source_link_id"}),
     )
+    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
 
 
 @router.put(
@@ -292,9 +282,7 @@ async def order_links(
 async def link(
     task_id: PositiveID, link_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
 ):
-    return SuccessResponse(
-        data=await get(db, TaskComplicationLink, link_id, task_id=task_id)
-    )
+    return SuccessResponse(data=await composition.read_link(db, task_id, link_id))
 
 
 @router.patch(
@@ -309,15 +297,14 @@ async def update_link(
     db: SessionDep,
     _admin: CurrentAdmin,
 ):
-    return SuccessResponse(
-        data=await catalog.save_child(
-            db,
-            task_id,
-            TaskComplicationLink,
-            data.model_dump(exclude_unset=True),
-            link_id,
-        )
+    obj = await catalog.save_child(
+        db,
+        task_id,
+        TaskComplicationLink,
+        data.model_dump(exclude_unset=True),
+        link_id,
     )
+    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
 
 
 @router.delete(
@@ -417,7 +404,7 @@ async def editor_configuration(
     task_id: PositiveID, preset_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
 ):
     await catalog.task(db, task_id)
-    return SuccessResponse(data=await catalog.configuration(db, task_id, preset_id))
+    return SuccessResponse(data=await composition.configuration(db, task_id, preset_id))
 
 
 @router.get(

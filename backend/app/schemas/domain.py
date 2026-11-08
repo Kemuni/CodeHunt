@@ -76,7 +76,7 @@ class LinkContent(Input):
 
 class LinkCreate(LinkContent):
     group_id: PositiveID | None = None
-    order_number: Annotated[int, Field(ge=0, le=2_147_483_647)] = 0
+    position: Annotated[int, Field(ge=0, le=2_147_483_647)] | None = None
 
 
 class PresetCreate(Input):
@@ -166,7 +166,7 @@ class LinkUpdate(PatchInput):
     acceptance_criteria: Content | None = None
     level: Level | None = None
     is_required: bool | None = None
-    order_number: Annotated[int, Field(ge=0, le=2_147_483_647)] | None = None
+    position: Annotated[int, Field(ge=0, le=2_147_483_647)] | None = None
 
 
 class PresetUpdate(PatchInput):
@@ -201,7 +201,7 @@ class LinkCopy(Input):
     source_link_id: PositiveID
     title: Title | None = None
     level: Level | None = None
-    order_number: Annotated[int, Field(ge=0)] | None = None
+    position: Annotated[int, Field(ge=0)] | None = None
 
 
 class CategoryRead(Read, CategoryCreate):
@@ -221,19 +221,24 @@ class PhotoRead(Read, Dates):
     content_type: str
     size_bytes: int
     url: str
-    expires_in: int
 
 
 class TaskRead(Read, Dates, TaskCreate):
     status: TaskStatus
     cover_photo: PhotoRead | None = Field(
         default=None,
-        description="Титульное фото с временной ссылкой, null при отсутствии",
+        description="Титульное фото со стабильным URL медиапрокси, null при отсутствии",
     )
 
 
-class LinkRead(Read, Dates, LinkCreate):
+class LinkRead(Read, Dates, LinkContent):
     task_id: int
+    group_id: int | None
+    position: int
+    order_number: int = Field(
+        ge=1,
+        description="Вычисляемый номер пункта внутри уровня, начиная с 1, в порядке обхода дерева",
+    )
 
 
 class PresetRead(Read, Dates, PresetCreate):
@@ -273,7 +278,6 @@ class ResourceRead(Read, Dates):
 
 class ResourceDownloadRead(ResourceRead):
     url: str
-    expires_in: int
 
 
 class ComplicationItem(LinkRead):
@@ -286,7 +290,7 @@ class ComplicationGroupRead(Read, Dates):
     parent_group_id: int | None
     title: str
     level: Level
-    order_number: int
+    position: int
     items: list["CompositionItem"] = Field(default_factory=list)
 
 

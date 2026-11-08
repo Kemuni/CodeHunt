@@ -25,7 +25,7 @@ def error_response(
     return JSONResponse(
         status_code=status_code,
         content=payload.model_dump(mode="json"),
-        headers=headers,
+        headers={"Cache-Control": "no-store", **(headers or {})},
     )
 
 
@@ -40,6 +40,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status,
             content=payload.model_dump(mode="json"),
+            headers={"Cache-Control": "no-store"},
         )
 
     @app.exception_handler(IntegrityError)

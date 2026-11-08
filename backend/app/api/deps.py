@@ -35,6 +35,17 @@ async def current_user(
 CurrentUser = Annotated[User, Depends(current_user)]
 
 
+async def optional_user(
+    db: SessionDep, x_user_id: Annotated[int | None, Header(gt=0)] = None
+) -> User | None:
+    if x_user_id is None:
+        return None
+    return await current_user(db, x_user_id)
+
+
+OptionalUser = Annotated[User | None, Depends(optional_user)]
+
+
 async def current_admin(user: CurrentUser) -> User:
     if not user.is_admin:
         raise AdminRequiredError()

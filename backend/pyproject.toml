@@ -10,6 +10,7 @@ dependencies = [
     "boto3>=1.43.123",
     "fastapi[standard]>=0.143.3",
     "pillow>=13.0.0",
+    "redis>=5,<8",
     "sqlalchemy[asyncio]>=2.1.4",
 ]
 
