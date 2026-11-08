@@ -42,7 +42,6 @@ class CategoryCreate(Input):
 class TemplateCreate(Input):
     category_id: PositiveID
     title: Annotated[str, StringConstraints(min_length=1, max_length=150)]
-    slug: Slug
     description: Content
 
 
@@ -132,7 +131,6 @@ class CategoryUpdate(PatchInput):
 class TemplateUpdate(PatchInput):
     category_id: PositiveID | None = None
     title: Annotated[str, StringConstraints(min_length=1, max_length=150)] | None = None
-    slug: Slug | None = None
     description: Content | None = None
 
 

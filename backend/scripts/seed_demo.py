@@ -33,19 +33,34 @@ async def seed():
             logger.info(
                 "Demo user %s: X-User-ID=%s, is_admin=%s", email, user.id, user.is_admin
             )
-        template = await db.scalar(
-            select(TaskComplication).where(TaskComplication.slug == "demo-pagination")
+        category = await db.scalar(
+            select(TaskComplicationCategory)
+            .where(
+                TaskComplicationCategory.title == "Списки и навигация",
+                TaskComplicationCategory.developer_type == "frontend",
+            )
+            .order_by(TaskComplicationCategory.id)
+            .limit(1)
         )
-        if template is None:
+        if category is None:
             category = TaskComplicationCategory(
                 title="Списки и навигация",
                 developer_type="frontend",
             )
             db.add(category)
             await db.flush()
+        template = await db.scalar(
+            select(TaskComplication)
+            .where(
+                TaskComplication.category_id == category.id,
+                TaskComplication.title == "Пагинация",
+            )
+            .order_by(TaskComplication.id)
+            .limit(1)
+        )
+        if template is None:
             template = TaskComplication(
                 category_id=category.id,
-                slug="demo-pagination",
                 title="Пагинация",
                 description="Разделение длинных списков на страницы; адаптируйте требования под проект.",
             )

@@ -144,7 +144,6 @@ async def test_nested_errors_and_deleted_templates_remain_visible(client):
             "/api/task-complications",
             json={
                 "title": "Пагинация",
-                "slug": "pagination",
                 "description": "Общая идея",
                 "category_id": category["id"],
             },

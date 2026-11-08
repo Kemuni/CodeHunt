@@ -69,16 +69,27 @@ async def test_category_tree_and_template_lifecycle(client):
     ).status_code == 200
     template_data = {
         "category_id": child["id"],
-        "slug": "pagination",
         "title": "Пагинация",
         "description": "Общая идея для автора",
     }
     template = (
         await client.post("/api/task-complications", json=template_data)
     ).json()["data"]
+    assert "slug" not in template
+    duplicate = await client.post("/api/task-complications", json=template_data)
+    assert duplicate.status_code == 201
+    assert duplicate.json()["data"]["id"] != template["id"]
+    await client.delete(f"/api/task-complications/{duplicate.json()['data']['id']}")
     assert (
-        await client.post("/api/task-complications", json=template_data)
-    ).status_code == 409
+        await client.post(
+            "/api/task-complications", json={**template_data, "slug": "obsolete"}
+        )
+    ).status_code == 422
+    assert (
+        await client.patch(
+            f"/api/task-complications/{template['id']}", json={"slug": "obsolete"}
+        )
+    ).status_code == 422
     assert (
         await client.get(f"/api/task-complications/{template['id']}")
     ).status_code == 200

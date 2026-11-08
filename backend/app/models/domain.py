@@ -83,7 +83,6 @@ class TaskComplication(IdentityMixin, Timestamps, Base):
     category_id: Mapped[int] = mapped_column(
         ForeignKey("task_complication_categories.id", ondelete="RESTRICT"), index=True
     )
-    slug: Mapped[str] = mapped_column(String(255), unique=True)
     title: Mapped[str] = mapped_column(String(150))
     description: Mapped[str] = mapped_column(Text)
 

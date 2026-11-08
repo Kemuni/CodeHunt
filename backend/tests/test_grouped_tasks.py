@@ -289,7 +289,6 @@ async def test_library_tree_and_removed_category_group(client, db):
             json={
                 "title": "Пагинация",
                 "description": "Общая идея",
-                "slug": "pagination",
                 "category_id": leaf["id"],
             },
         )
@@ -602,7 +601,6 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
             json={
                 "category_id": category["id"],
                 "title": "Пагинация",
-                "slug": "pagination",
                 "description": "Общая идея",
             },
         )
