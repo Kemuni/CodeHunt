@@ -42,7 +42,6 @@ from app.services.common import (
     lock_hierarchy,
     page,
 )
-from app.services.composition import configuration as configuration
 from app.services.composition import confirm_template
 from app.services.composition import ensure_publishable as ensure_publishable
 from app.services.media import MediaOwner
