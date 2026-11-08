@@ -16,7 +16,7 @@ import {
   type TaskCategory,
   type TaskNode,
 } from "./task-tree"
-import { importLibrarySelection, libraryItemIds, taskItemLibrary } from "./task-item-library-data"
+import { importLibraryTemplates } from "./task-library"
 
 const item = (id: string): TaskItem => ({
   id,
@@ -214,12 +214,18 @@ test("nested edit, create and delete keep the parent and do not restore deleted 
   assert.deepEqual(ids(childrenOf(state.nodesByDifficultyLevel.easy, "outer")!), ["b"])
 })
 
-test("library import flattens selected leaves in tree order and creates independent ids on every import", () => {
-  let id = 0
-  const source = taskItemLibrary[0].nodes
-  const selected = new Set(["fe-responsive", "fe-keyboard"])
-  const first = importLibrarySelection(source, selected, TaskLevel.Medium, () => `copy-${++id}`)
-  const second = importLibrarySelection(source, selected, TaskLevel.Medium, () => `copy-${++id}`)
+test("library imports preserve template references and create independent item ids", () => {
+  const source = ["Адаптивная вёрстка", "Управление с клавиатуры"].map((title, index) => ({
+    id: index + 1,
+    title,
+    description: "Описание",
+    category_id: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+  }))
+  const selected = new Set([1, 2])
+  const first = importLibraryTemplates(source, selected, TaskLevel.Medium)
+  const second = importLibraryTemplates(source, selected, TaskLevel.Medium)
   assert.equal(countTaskItems(first), 2)
   assert.equal(first.length, 2)
   assert.ok(first.every((node) => !isCategory(node)))
@@ -228,11 +234,15 @@ test("library import flattens selected leaves in tree order and creates independ
     ["Адаптивная вёрстка", "Управление с клавиатуры"],
   )
   assert.ok(first.every((node) => node.difficultyLevel === TaskLevel.Medium))
-  assert.equal(libraryItemIds(source).length, 5)
+  assert.deepEqual(
+    first.map((node) => node.complicationId),
+    [1, 2],
+  )
+  assert.ok(first.every((node) => node.criteria === ""))
   const allIds = (nodes: TaskNode[]): Array<string | number> =>
     nodes.flatMap((node) => [node.id, ...(isCategory(node) ? allIds(node.children) : [])])
   assert.equal(new Set([...allIds(first), ...allIds(second)]).size, 4)
-  assert.deepEqual(importLibrarySelection(source, new Set(), TaskLevel.Easy), [])
+  assert.deepEqual(importLibraryTemplates(source, new Set(), TaskLevel.Easy), [])
   let state = createTaskItemsState([])
   state = reduce(state, { type: "importNodes", difficultyLevel: TaskLevel.Medium, nodes: first })
   state = reduce(state, { type: "importNodes", difficultyLevel: TaskLevel.Medium, nodes: second })

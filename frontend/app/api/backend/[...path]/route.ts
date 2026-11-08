@@ -9,7 +9,11 @@ async function proxy(request: Request, context: { params: Promise<{ path: string
   const headers = new Headers()
   const contentType = request.headers.get("content-type")
   if (contentType) headers.set("content-type", contentType)
-  if (path[0] === "editor") headers.set("x-user-id", process.env.EDITOR_USER_ID ?? "1")
+  const libraryWrite =
+    ["task-complications", "task-complication-categories"].includes(path[0]) &&
+    ["POST", "PATCH", "DELETE"].includes(request.method)
+  if (path[0] === "editor" || libraryWrite)
+    headers.set("x-user-id", process.env.EDITOR_USER_ID ?? "1")
   try {
     const response = await fetch(url, {
       method: request.method,

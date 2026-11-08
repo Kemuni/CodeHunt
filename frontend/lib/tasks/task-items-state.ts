@@ -29,6 +29,9 @@ export const taskItemFieldsSchema = z.object({
   required: z.boolean(),
 })
 
+// В библиотеке API нет критериев проверки: после импорта их дополняют в задаче.
+const importedItemFieldsSchema = taskItemFieldsSchema.extend({ criteria: z.string() })
+
 export type TaskItemFields = z.infer<typeof taskItemFieldsSchema>
 
 export interface TaskItem extends TaskItemFields {
@@ -347,7 +350,7 @@ export function taskItemsReducer(state: TaskItemsState, action: TaskItemsAction)
           ids.add(nodeKey(node))
           return isCategory(node)
             ? !!node.title.trim() && valid(node.children)
-            : taskItemFieldsSchema.safeParse(node).success
+            : importedItemFieldsSchema.safeParse(node).success
         })
       if (!valid(action.nodes)) return state
       return replaceNodes([...items, ...changeDifficulty(action.nodes, difficultyLevel)])

@@ -26,14 +26,20 @@ import {
 import Image from "next/image"
 import { Badge } from "@/components/reui/badge"
 import { cn } from "cn"
-import {developerTypeLabels} from "@/lib/tasks/labels";
+import { developerTypeLabels } from "@/lib/tasks/labels"
 
 const PAGE_SIZE = 20
 
 type DeleteTarget = { kind: "task"; task: TaskRead } | { kind: "draft"; draft: DraftRead }
 
 /** Публичный каталог и административный список. Собственные черновики запрашиваются отдельным API только в административном режиме. */
-export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
+export default function TaskCatalog({
+  admin = false,
+  adminActions,
+}: {
+  admin?: boolean
+  adminActions?: ReactNode
+}) {
   const [tab, setTab] = useState("tasks")
   const [offset, setOffset] = useState(0)
   const [search, setSearch] = useState("")
@@ -74,7 +80,7 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
       <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
       <PageLayoutContent>
         {admin ? (
-          <TaskCatalogTabs value={tab} onValueChange={handleTabChange} />
+          <TaskCatalogTabs value={tab} onValueChange={handleTabChange} actions={adminActions} />
         ) : (
           <TaskCatalogSearch value={search} onValueChange={setSearch} onSearch={handleSearch} />
         )}
@@ -122,21 +128,25 @@ export default function TaskCatalog({ admin = false }: { admin?: boolean }) {
 interface TaskCatalogTabsProps {
   value: string
   onValueChange: (value: string) => void
+  actions?: ReactNode
 }
 
-function TaskCatalogTabs({ value, onValueChange }: TaskCatalogTabsProps) {
+function TaskCatalogTabs({ value, onValueChange, actions }: TaskCatalogTabsProps) {
   return (
-    <div className="flex justify-between">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <Tabs value={value} onValueChange={(value) => onValueChange(String(value))}>
         <TabsList>
           <TabsTrigger value="tasks">Все задачи</TabsTrigger>
           <TabsTrigger value="drafts">Мои черновики</TabsTrigger>
         </TabsList>
       </Tabs>
-      <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
-        <PlusIcon />
-        Создать задачу
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        {actions}
+        <Button render={<Link href="/admin/tasks/editor" />} nativeButton={false}>
+          <PlusIcon />
+          Создать задачу
+        </Button>
+      </div>
     </div>
   )
 }
