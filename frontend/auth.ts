@@ -1,4 +1,5 @@
 import type { NextAuthOptions } from "next-auth"
+import { cache } from "react"
 import { getServerSession } from "next-auth"
 import GitHubProvider from "next-auth/providers/github"
 import { backendOrigin } from "./lib/backend-origin"
@@ -79,6 +80,4 @@ export const config: NextAuthOptions = {
   },
 }
 
-export function auth() {
-  return getServerSession(config)
-}
+export const auth = cache(() => getServerSession(config))

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { auth } from "@/auth"
 
 import "./globals.css"
 import { Tektur, Roboto } from "next/font/google"
@@ -19,11 +20,13 @@ const tektur = Tektur({
   variable: "--font-tektur",
 })
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await auth()
+
   return (
     <html
       data-scroll-behavior="smooth"
@@ -31,11 +34,11 @@ export default function RootLayout({
       className={cn("scroll-smooth", "font-sans", tektur.variable, roboto.variable)}
     >
       <body className="m-0 w-full bg-background">
-          <Provider>
-            <SiteHeader />
-            {children}
-            <SiteFooter />
-          </Provider>
+        <Provider session={session}>
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </Provider>
       </body>
     </html>
   )

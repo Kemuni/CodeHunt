@@ -9,7 +9,7 @@ import FormTextarea from "@/components/ui/form/textarea"
 export default function TaskLevelFields({ difficultyLevel }: { difficultyLevel: TaskLevel }) {
   const name = `presets.${difficultyLevel}`
   return (
-    <div className="mb-4 grid grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] items-start gap-4">
+    <div className="mb-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] items-start gap-4">
       <FormField name={`${name}.description`} label="Описание уровня">
         <FormTextarea
           name={`${name}.description`}

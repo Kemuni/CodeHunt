@@ -10,6 +10,7 @@ export async function sessionCookie(role: "admin" | "member" | "expired" = "admi
       secret,
       token: {
         name: "GitHub Test User",
+        picture: "/figma/our-logo.svg",
         backendToken: `e2e-${role}`,
         backendExpiresAt: new Date(
           Date.now() + (role === "expired" ? -1000 : 3600_000),

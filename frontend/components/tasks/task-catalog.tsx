@@ -93,7 +93,7 @@ export default function TaskCatalog({
           total={total}
           isDrafts={isDrafts}
         >
-          <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {isDrafts
               ? draftsQuery.data?.items.map((draft) => (
                   <DraftCard
