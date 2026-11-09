@@ -1,4 +1,4 @@
-import type { ValidationProblem } from "@/lib/api/task-request"
+import type { ValidationProblem } from "@/lib/api/request"
 
 const fields: Record<string, string> = {
   slug: "Адрес задачи",

@@ -1,6 +1,6 @@
 "use client"
 
-import { taskPhotoUrl } from "@/lib/api/task-media"
+import { taskPhotoUrl, taskMediaUrl } from "@/lib/api/task-media"
 import { downloadFile } from "@/lib/tasks/download-file"
 
 import { TaskLevel } from "@/lib/tasks/task-level"
@@ -26,7 +26,7 @@ import type {
   ComplicationItem,
   ComplicationGroupRead,
   PhotoRead,
-  ResourceRead,
+  ResourceDownloadRead,
   TaskDetail,
   TaskPresetRead,
 } from "@/lib/api/task-contract"
@@ -306,7 +306,7 @@ function TaskOverview({ task }: { task: TaskDetail }) {
   )
 }
 
-function AttachmentIcon({ file }: { file: ResourceRead }) {
+function AttachmentIcon({ file }: { file: ResourceDownloadRead }) {
   const props = { "aria-hidden": true as const, className: "size-6 shrink-0 text-primary" }
   const name = file.original_filename.toLowerCase()
   if (file.content_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|fig|psd)$/.test(name))
@@ -318,14 +318,13 @@ function AttachmentIcon({ file }: { file: ResourceRead }) {
   return <FileIcon {...props} />
 }
 
-function Attachment({ taskId, file }: { taskId: number; file: ResourceRead }) {
+function Attachment({ file }: { file: ResourceDownloadRead }) {
   const [pending, setPending] = useState(false)
   const download = async () => {
     if (pending) return
     setPending(true)
     try {
-      const { url } = await tasksApi.resourceUrl("task", taskId, file.id, false)
-      await downloadFile(url, file.original_filename)
+      await downloadFile(taskMediaUrl(file.url), file.original_filename)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось скачать файл")
     } finally {
@@ -381,7 +380,7 @@ function TaskSpecification({ task }: { task: TaskDetail }) {
           {task.resources.length ? (
             <ul className="space-y-3">
               {task.resources.map((file) => (
-                <Attachment key={file.id} taskId={task.id} file={file} />
+                <Attachment key={file.id} file={file} />
               ))}
             </ul>
           ) : (
@@ -423,10 +422,10 @@ function TaskDetailsContent({ task }: { task: TaskDetail }) {
   )
 }
 
-export default function TaskDetails({ id }: { id: number }) {
+export default function TaskDetails({ slug }: { slug: string }) {
   const taskQuery = useQuery({
-    queryKey: ["public-task", id],
-    queryFn: () => tasksApi.task(id, false),
+    queryKey: ["public-task", slug],
+    queryFn: () => tasksApi.publicTask(slug),
     retry: false,
   })
   if (taskQuery.isPending)
@@ -445,7 +444,7 @@ export default function TaskDetails({ id }: { id: number }) {
   return (
     <PageLayout>
       <PageLayoutHeader text="Обзор задачи" backHref="/tasks" />
-      <TaskDetailsContent key={id} task={taskQuery.data} />
+      <TaskDetailsContent key={slug} task={taskQuery.data} />
     </PageLayout>
   )
 }

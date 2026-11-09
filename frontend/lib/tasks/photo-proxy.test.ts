@@ -3,13 +3,11 @@ import { test } from "node:test"
 import { proxyBackend } from "../backend-proxy"
 import { sessionCookie } from "../../tests/proxy-session"
 import { taskMediaUrl, taskPhotoUrl } from "../api/task-media"
-import { tasksApi } from "../api/tasks"
 import type { PhotoRead } from "../api/task-contract"
 
 test("stable photo URLs and conditional proxy requests preserve public and editor access", async (context) => {
   const photo = { id: 42, url: "/api/media/photos/42" } as PhotoRead
   assert.equal(taskPhotoUrl(photo), "/api/backend/media/photos/42")
-  assert.equal(taskPhotoUrl(photo, true), "/api/backend/editor/media/photos/42")
   const seen: { path: string; user: string | null; etag: string | null }[] = []
   context.mock.method(globalThis, "fetch", async (url: URL, init: RequestInit) => {
     const headers = new Headers(init.headers)
@@ -23,11 +21,15 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
       headers: { etag: '"image"', "cache-control": "private, no-cache" },
     })
   })
-  for (const admin of [false, true]) {
-    const path = [...(admin ? ["editor"] : []), "media", "photos", "42"]
+  for (const signedIn of [false, true]) {
+    const path = ["media", "photos", "42"]
     const response = await proxyBackend(
-      new Request(`http://localhost${taskPhotoUrl(photo, admin)}`, {
-        headers: { "If-None-Match": '"image"', "X-User-ID": "999", Cookie: await sessionCookie() },
+      new Request(`http://localhost${taskPhotoUrl(photo)}`, {
+        headers: {
+          "If-None-Match": '"image"',
+          "X-User-ID": "999",
+          Cookie: signedIn ? await sessionCookie() : "",
+        },
       }),
       path,
     )
@@ -38,7 +40,7 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
   }
   assert.deepEqual(
     seen.map((item) => item.user),
-    ["Bearer session-token", "Bearer session-token"],
+    [null, "Bearer session-token"],
   )
   assert.ok(seen.every((item) => item.etag === '"image"'))
   const response = await proxyBackend(
@@ -63,12 +65,14 @@ test("resource downloads preserve bytes, filename, cache headers and editor rout
       },
     })
   })
-  for (const admin of [false, true]) {
-    const path = [...(admin ? ["editor"] : []), "media", "resources", "42"]
-    const url = taskMediaUrl("/api/media/resources/42", admin)
+  for (const signedIn of [false, true]) {
+    const path = ["media", "resources", "42"]
+    const url = taskMediaUrl("/api/media/resources/42")
     assert.equal(url, `/api/backend/${path.join("/")}`)
     const response = await proxyBackend(
-      new Request(`http://localhost${url}`, { headers: { Cookie: await sessionCookie() } }),
+      new Request(`http://localhost${url}`, {
+        headers: { Cookie: signedIn ? await sessionCookie() : "" },
+      }),
       path,
     )
     assert.deepEqual(new Uint8Array(await response.arrayBuffer()), new Uint8Array([0, 128, 255]))
@@ -80,29 +84,10 @@ test("resource downloads preserve bytes, filename, cache headers and editor rout
   }
   assert.deepEqual(
     seen.map((item) => item.user),
-    ["Bearer session-token", "Bearer session-token"],
+    [null, "Bearer session-token"],
   )
 })
 
-test("download-url maps public tasks and editor drafts to the media proxy", async (context) => {
-  const requested: string[] = []
-  context.mock.method(globalThis, "fetch", async (url: string) => {
-    requested.push(url)
-    return Response.json({ success: true, data: { url: "/api/media/resources/42" } })
-  })
-  assert.equal(
-    (await tasksApi.resourceUrl("task", 1, 42, false)).url,
-    "/api/backend/media/resources/42",
-  )
-  assert.equal(
-    (await tasksApi.resourceUrl("draft", 2, 42)).url,
-    "/api/backend/editor/media/resources/42",
-  )
-  assert.equal(
-    (await tasksApi.resourceUrl("task", 3, 42)).url,
-    "/api/backend/editor/media/resources/42",
-  )
-  assert.ok(requested[0].endsWith("/tasks/1/resources/42/download-url"))
-  assert.ok(requested[1].endsWith("/editor/task-drafts/2/resources/42/download-url"))
-  assert.ok(requested[2].endsWith("/editor/tasks/3/resources/42/download-url"))
+test("media URLs are taken directly from the response without an extra request", () => {
+  assert.equal(taskMediaUrl("/api/media/resources/42"), "/api/backend/media/resources/42")
 })

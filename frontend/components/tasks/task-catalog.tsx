@@ -10,8 +10,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon } from "lucide-react"
 import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
-import { TaskApiError } from "@/lib/api/task-request"
-import type { DraftRead, TaskRead } from "@/lib/api/task-contract"
+import { ApiError } from "@/lib/api/request"
+import type { DraftSummary, TaskRead } from "@/lib/api/task-contract"
 import { PageLayout, PageLayoutHeader, PageLayoutContent } from "@/components/ui/layouts/page"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,7 +32,7 @@ import { developerTypeLabels } from "@/lib/tasks/labels"
 
 const PAGE_SIZE = 20
 
-type DeleteTarget = { kind: "task"; task: TaskRead } | { kind: "draft"; draft: DraftRead }
+type DeleteTarget = { kind: "task"; task: TaskRead } | { kind: "draft"; draft: DraftSummary }
 
 /** Публичный каталог и административный список. Собственные черновики запрашиваются отдельным API только в административном режиме. */
 export default function TaskCatalog({
@@ -219,22 +219,11 @@ function TaskCatalogResults({
   )
 }
 
-function draftTitle(draft: DraftRead) {
-  return typeof draft.payload.title === "string" && draft.payload.title
-    ? draft.payload.title
-    : "Без названия"
-}
-
-function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void }) {
-  const title = draftTitle(draft)
+function DraftCard({ draft, onDelete }: { draft: DraftSummary; onDelete: () => void }) {
+  const title = draft.title || "Без названия"
   const href = `/admin/tasks/editor?draftId=${draft.id}`
-  let shortDescription
-  if (draft.payload?.short_description && typeof draft.payload.short_description === "string") {
-    shortDescription = draft.payload.short_description
-  } else {
-    shortDescription = `Черновик #${draft.id}`
-  }
-  const coverPhoto = draft.photos.find((i) => i.is_cover)
+  const shortDescription = draft.short_description || `Черновик #${draft.id}`
+  const coverPhoto = draft.cover_photo
 
   return (
     <Card className="relative pt-0 gap-4 pb-4">
@@ -242,7 +231,7 @@ function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void
       <div className="absolute inset-0 w-full aspect-video">
         {coverPhoto ? (
           <Image
-            src={taskPhotoUrl(coverPhoto, true)}
+            src={taskPhotoUrl(coverPhoto)}
             unoptimized
             alt="taskImage"
             fill
@@ -267,17 +256,8 @@ function DraftCard({ draft, onDelete }: { draft: DraftRead; onDelete: () => void
           {shortDescription}
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-3">
-        <p>
-          {draft.is_valid
-            ? "Готов к публикации!"
-            : `Проблем с валидацией: ${draft.validation_errors.length}`}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Фото: {draft.photos.length}
-          <br />
-          Вложения: {draft.resources.length}
-        </p>
+      <CardContent className="px-3 text-sm text-muted-foreground">
+        Продолжите редактирование, чтобы проверить и опубликовать задачу.
       </CardContent>
       <CardFooter className="flex flex-wrap justify-end gap-2">
         <DeleteCatalogItemButton label={`Удалить черновик «${title}»`} onClick={onDelete} />
@@ -298,7 +278,7 @@ function TaskCard({
   admin: boolean
   onDelete: () => void
 }) {
-  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.id}`
+  const href = admin ? `/admin/tasks/editor?taskId=${task.id}` : `/tasks/${task.slug}`
 
   return (
     <Card className="relative pt-0 rounded-xl gap-4 pb-4">
@@ -316,7 +296,7 @@ function TaskCard({
       <div className="absolute inset-0 w-full z-10 aspect-video bg-black/15">
         {task.cover_photo ? (
           <Image
-            src={taskPhotoUrl(task.cover_photo, admin)}
+            src={taskPhotoUrl(task.cover_photo)}
             unoptimized
             alt="taskImage"
             fill
@@ -387,7 +367,7 @@ function useCatalogDeletion(onDeleted: () => void) {
         await tasksApi.deleteTask(selected.task.id)
       } catch (error) {
         const message =
-          error instanceof TaskApiError && error.code === "reference_conflict"
+          error instanceof ApiError && error.code === "reference_conflict"
             ? "Задача используется в решениях или связана с другими задачами. Удаление недоступно."
             : error instanceof Error
               ? error.message
@@ -401,7 +381,7 @@ function useCatalogDeletion(onDeleted: () => void) {
       toast.success(selected.kind === "draft" ? "Черновик удалён" : "Задача удалена")
     },
     onError: (error) => {
-      if (error instanceof TaskApiError && error.code === "draft_revision_conflict") {
+      if (error instanceof ApiError && error.code === "draft_revision_conflict") {
         setTarget(null)
         toast.error(
           "Черновик изменился в другом окне. Проверьте обновлённый список и подтвердите удаление заново.",
@@ -454,7 +434,7 @@ function DeleteCatalogItemDialog({
   onConfirm,
 }: DeleteCatalogItemDialogProps) {
   const isDraft = target.kind === "draft"
-  const title = isDraft ? draftTitle(target.draft) : target.task.title
+  const title = isDraft ? target.draft.title || "Без названия" : target.task.title
   const needsArchive = target.kind === "task" && target.task.status !== "archived"
 
   return (

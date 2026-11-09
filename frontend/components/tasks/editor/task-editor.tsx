@@ -103,7 +103,7 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
                       id: photo.id,
                       name: photo.original_filename,
                       size: photo.size_bytes,
-                      url: taskPhotoUrl(photo, true),
+                      url: taskPhotoUrl(photo),
                       isCover: photo.is_cover,
                     }))}
                     busy={mediaDisabled}

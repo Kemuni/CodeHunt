@@ -6,14 +6,13 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { z } from "zod"
 import { tasksApi, type DraftPayload } from "@/lib/api/tasks"
-import { TaskApiError, type ValidationProblem } from "@/lib/api/task-request"
-import { draftMediaApi, taskMediaApi } from "@/lib/api/task-media"
+import { ApiError, type ValidationProblem } from "@/lib/api/request"
+import { draftMediaApi, taskMediaApi, taskMediaUrl } from "@/lib/api/task-media"
 import type {
   DraftRead,
   TaskDetail,
   PhotoRead,
-  ResourceRead,
-  PresetRead,
+  ResourceDownloadRead,
   CompositionLink,
   CompositionGroup,
 } from "@/lib/api/task-contract"
@@ -95,7 +94,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
     coordinator?.getSnapshot ?? noDraftSnapshot,
   )
   const [task, setTask] = useState(initialTask)
-  // Подтверждённые шаги сохраняем даже при частичном сбое, чтобы повторный запрос не создавал дубликаты.
+  // Последний ответ сервера доступен обработчикам сохранения и файлов без ожидания рендера.
   const persistedTaskRef = useRef(initialTask)
   const [saving, setSaving] = useState(false)
   const [mediaBusy, setMediaBusy] = useState(false)
@@ -103,7 +102,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
   const [itemEditing, setItemEditing] = useState(false)
   const [problems, setProblems] = useState<ValidationProblem[]>([])
   const photos = draftSnapshot.draft?.photos ?? task?.photos ?? []
-  const resources: ResourceRead[] = draftSnapshot.draft?.resources ?? task?.resources ?? []
+  const resources: ResourceDownloadRead[] = draftSnapshot.draft?.resources ?? task?.resources ?? []
 
   const contentChanged = useCallback(() => {
     const payload = toPayload(contentRef.current.info, contentRef.current.nodes, originalPayload)
@@ -148,12 +147,11 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
     [coordinator],
   )
 
-  /** Публикует валидный черновик либо последовательно сохраняет данные, дерево и уровни готовой задачи. */
+  /** Публикует черновик либо атомарно сохраняет готовую задачу. */
   const saveTask = async (values: z.infer<typeof taskInfoSchema>) => {
     if (saving || mediaBusy || itemEditing) return
     setSaving(true)
     setProblems([])
-    let partial = false
     try {
       contentRef.current.info = values
       if (coordinator) {
@@ -165,44 +163,15 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
         return
       }
       const existing = persistedTaskRef.current!
-      const { items, presets, ...info } = publication(values, contentRef.current.nodes)
-      const updatedInfo = await tasksApi.updateTask(existing.id, {
-        ...info,
+      const body = publication(values, contentRef.current.nodes)
+      persistedTaskRef.current = await tasksApi.saveTask(existing.id, {
+        ...body,
+        items: body.items ?? [],
         parent_task_id: existing.parent_task_id,
       })
-      partial = true
-      persistedTaskRef.current = { ...existing, ...updatedInfo }
-      const composition = await tasksApi.composition(existing.id, { items: items ?? [] })
-      const savedNodes = fromComposition(composition)
-      contentRef.current.nodes = savedNodes
-      setTree(savedNodes)
+      contentRef.current.nodes = fromPresets(persistedTaskRef.current.presets)
+      setTree(contentRef.current.nodes)
       setTreeVersion((v) => v + 1)
-      for (const preset of presets) {
-        const previous = persistedTaskRef.current.presets[preset.level].preset
-        const saved: PresetRead = previous
-          ? await tasksApi.updatePreset(existing.id, previous.id, preset)
-          : await tasksApi.createPreset(existing.id, preset)
-        persistedTaskRef.current = {
-          ...persistedTaskRef.current,
-          presets: {
-            ...persistedTaskRef.current.presets,
-            [saved.level]: { ...persistedTaskRef.current.presets[saved.level], preset: saved },
-          },
-        }
-      }
-      for (const { preset: previous } of Object.values(persistedTaskRef.current.presets)) {
-        if (!previous) continue
-        if (presets.some((preset) => preset.level === previous.level)) continue
-        await tasksApi.deletePreset(existing.id, previous.id)
-        persistedTaskRef.current = {
-          ...persistedTaskRef.current,
-          presets: {
-            ...persistedTaskRef.current.presets,
-            [previous.level]: { ...persistedTaskRef.current.presets[previous.level], preset: null },
-          },
-        }
-      }
-      persistedTaskRef.current = await tasksApi.task(existing.id)
       setTask(persistedTaskRef.current)
       savedPayload.current = JSON.stringify(
         toPayload(contentRef.current.info, contentRef.current.nodes, originalPayload),
@@ -211,11 +180,9 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
       toast.success("Основная информация и пункты задачи сохранены")
       void queryClient.invalidateQueries({ queryKey: ["task-catalog"] })
     } catch (error) {
-      if (error instanceof TaskApiError) setProblems(error.issues)
+      if (error instanceof ApiError) setProblems(error.issues)
       if (!coordinator)
-        toast.error(
-          `${partial ? "Сохранение выполнено частично. Повторите сохранение. " : ""}${error instanceof Error ? error.message : "Не удалось сохранить задачу"}`,
-        )
+        toast.error(`${error instanceof Error ? error.message : "Не удалось сохранить задачу"}`)
     } finally {
       setSaving(false)
     }
@@ -292,10 +259,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
           const resource = await taskMediaApi.uploadResource(persistedTaskRef.current!.id, file)
           persistedTaskRef.current = {
             ...persistedTaskRef.current!,
-            resources: [
-              ...persistedTaskRef.current!.resources,
-              { ...resource, url: `/api/media/resources/${resource.id}` },
-            ],
+            resources: [...persistedTaskRef.current!.resources, resource],
           }
           setTask(persistedTaskRef.current)
         }
@@ -316,17 +280,12 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
         setTask(persistedTaskRef.current)
       }
     }, "Файл удалён")
-  // Получаем постоянный адрес через API с проверкой принадлежности вложения.
+  // URL уже получен с данными владельца; доступ проверяется при скачивании.
   const downloadResource = async (id: number) => {
     try {
       const resource = resources.find((file) => file.id === id)
       if (!resource) throw new Error("Файл не найден")
-      const url = await tasksApi.resourceUrl(
-        coordinator ? "draft" : "task",
-        coordinator ? coordinator.getSnapshot().draft!.id : persistedTaskRef.current!.id,
-        id,
-      )
-      await downloadFile(url.url, resource.original_filename)
+      await downloadFile(taskMediaUrl(resource.url), resource.original_filename)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Не удалось скачать файл")
     }

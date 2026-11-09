@@ -1,7 +1,7 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
 import type { Page } from "@playwright/test"
 import { test, expect } from "./auth-fixture"
-import type { DraftRead, TaskRead } from "../lib/api/task-contract"
+import type { DraftSummary, TaskRead } from "../lib/api/task-contract"
 
 const stamp = "2026-01-01T00:00:00Z"
 const taskFixture = (id = 1, status: TaskRead["status"] = "published"): TaskRead => ({
@@ -17,17 +17,14 @@ const taskFixture = (id = 1, status: TaskRead["status"] = "published"): TaskRead
   created_at: stamp,
   updated_at: stamp,
 })
-const draftFixture = (): DraftRead => ({
+const draftFixture = (): DraftSummary => ({
   id: 7,
-  owner_id: 1,
   revision: 3,
-  payload: { title: "Мой черновик" },
+  title: "Мой черновик",
+  short_description: "",
+  cover_photo: null,
   created_at: stamp,
   updated_at: stamp,
-  is_valid: false,
-  validation_errors: [],
-  photos: [],
-  resources: [],
 })
 
 async function mockCatalog(page: Page, tasks = [taskFixture()]) {
@@ -45,7 +42,7 @@ async function mockCatalog(page: Page, tasks = [taskFixture()]) {
     const method = request.method()
     if (method !== "GET") state.writes.push(`${method} ${path}${url.search}`)
     const reply = (data: unknown) => route.fulfill({ json: { success: true, data } })
-    if (method === "GET" && ["tasks", "editor/tasks/all", "editor/task-drafts"].includes(path)) {
+    if (method === "GET" && ["tasks", "editor/tasks", "editor/task-drafts"].includes(path)) {
       const items = path === "editor/task-drafts" ? state.drafts : state.tasks
       const offset = Number(url.searchParams.get("offset") ?? 0)
       return reply({
@@ -60,7 +57,7 @@ async function mockCatalog(page: Page, tasks = [taskFixture()]) {
       if (state.conflictDraft) {
         state.conflictDraft = false
         state.drafts[0].revision++
-        state.drafts[0].payload.title = "Обновлённый черновик"
+        state.drafts[0].title = "Обновлённый черновик"
         return route.fulfill({
           status: 409,
           json: {
@@ -223,76 +220,89 @@ test("pending deletion disables repeat submission and dismissal", async ({ page 
   }
 })
 
-test("live catalog deletes its own draft and published task", async ({ page, request }) => {
-  test.skip(process.env.E2E_LIVE_API !== "1", "Нужен локальный backend и E2E_LIVE_API=1")
-  const unique = Date.now()
-  const taskTitle = `Удаление задачи ${unique}`
-  const draftTitle = `Удаление черновика ${unique}`
-  let taskId: number | undefined
-  let draftId: number | undefined
-  try {
-    const draftResponse = await request.post("/api/backend/editor/task-drafts", {
-      data: { payload: { title: draftTitle } },
-    })
-    expect(draftResponse.ok()).toBeTruthy()
-    draftId = (await draftResponse.json()).data.id
-    const taskResponse = await request.post("/api/backend/editor/tasks", {
-      data: {
-        title: taskTitle,
-        slug: `delete-test-${unique}`,
-        short_description: "Тест удаления",
-        full_description: "Задача для проверки удаления",
-        developer_type: "frontend",
-        difficulty_from: 1,
-        difficulty_to: 3,
-        items: [
-          {
-            kind: "complication",
-            title: "Пункт",
-            description: "Описание",
-            acceptance_criteria: "Работает",
-            level: TaskLevel.Easy,
+test(
+  "live catalog deletes its own draft and published task",
+  { tag: "@live" },
+  async ({ page, request }) => {
+    test.skip(process.env.E2E_LIVE_API !== "1", "Нужен локальный backend и E2E_LIVE_API=1")
+    const unique = Date.now()
+    const taskTitle = `Удаление задачи ${unique}`
+    const draftTitle = `Удаление черновика ${unique}`
+    let taskId: number | undefined
+    let draftId: number | undefined
+    let publicationDraftId: number | undefined
+    try {
+      const draftResponse = await request.post("/api/backend/editor/task-drafts", {
+        data: { payload: { title: draftTitle } },
+      })
+      expect(draftResponse.ok()).toBeTruthy()
+      draftId = (await draftResponse.json()).data.id
+      const publicationDraftResponse = await request.post("/api/backend/editor/task-drafts", {
+        data: {
+          payload: {
+            title: taskTitle,
+            slug: `delete-test-${unique}`,
+            short_description: "Тест удаления",
+            full_description: "Задача для проверки удаления",
+            developer_type: "frontend",
+            difficulty_from: 1,
+            difficulty_to: 3,
+            items: [
+              {
+                kind: "complication",
+                title: "Пункт",
+                description: "Описание",
+                acceptance_criteria: "Работает",
+                level: TaskLevel.Easy,
+              },
+            ],
+            presets: [{ level: TaskLevel.Easy, description: "Базовый уровень" }],
           },
-        ],
-        presets: [{ level: TaskLevel.Easy, description: "Базовый уровень" }],
-      },
-    })
-    expect(taskResponse.ok()).toBeTruthy()
-    taskId = (await taskResponse.json()).data.id
-    await page.goto("/admin/tasks")
-    await page.getByRole("tab", { name: "Мои черновики", exact: true }).click()
-    await page
-      .getByRole("button", { name: `Удалить черновик «${draftTitle}»`, exact: true })
-      .click()
-    await confirmDeletion(page)
-    await expect(page.getByText("Черновик удалён", { exact: true })).toBeVisible()
-    expect((await request.get(`/api/backend/editor/task-drafts/${draftId}`)).status()).toBe(404)
-    draftId = undefined
-    await page.getByRole("tab", { name: "Все задачи", exact: true }).click()
-    await expect(page.getByText(/Всего:/)).toBeVisible()
-    const next = page.getByRole("button", { name: "Далее", exact: true })
-    while ((await next.isVisible()) && (await next.isEnabled())) {
-      await next.click()
+        },
+      })
+      expect(publicationDraftResponse.ok()).toBeTruthy()
+      const publicationDraft = (await publicationDraftResponse.json()).data
+      publicationDraftId = publicationDraft.id
+      const taskResponse = await request.post(
+        `/api/backend/editor/task-drafts/${publicationDraftId}/publish`,
+        { data: { revision: publicationDraft.revision } },
+      )
+      expect(taskResponse.ok()).toBeTruthy()
+      taskId = (await taskResponse.json()).data.id
+      publicationDraftId = undefined
+      await page.goto("/admin/tasks")
+      await page.getByRole("tab", { name: "Мои черновики", exact: true }).click()
+      await page
+        .getByRole("button", { name: `Удалить черновик «${draftTitle}»`, exact: true })
+        .click()
+      await confirmDeletion(page)
+      await expect(page.getByText("Черновик удалён", { exact: true })).toBeVisible()
+      expect((await request.get(`/api/backend/editor/task-drafts/${draftId}`)).status()).toBe(404)
+      draftId = undefined
+      await page.getByRole("tab", { name: "Все задачи", exact: true }).click()
       await expect(page.getByText(/Всего:/)).toBeVisible()
-    }
-    await page.getByRole("button", { name: `Удалить задачу «${taskTitle}»`, exact: true }).click()
-    await confirmDeletion(page)
-    await expect(page.getByText("Задача удалена", { exact: true })).toBeVisible()
-    expect((await request.get(`/api/backend/editor/tasks/${taskId}`)).status()).toBe(404)
-    taskId = undefined
-  } finally {
-    if (draftId) {
-      const response = await request.get(`/api/backend/editor/task-drafts/${draftId}`)
-      if (response.ok()) {
-        const draft = (await response.json()).data
-        await request.delete(
-          `/api/backend/editor/task-drafts/${draftId}?revision=${draft.revision}`,
-        )
+      const next = page.getByRole("button", { name: "Далее", exact: true })
+      while ((await next.isVisible()) && (await next.isEnabled())) {
+        await next.click()
+        await expect(page.getByText(/Всего:/)).toBeVisible()
+      }
+      await page.getByRole("button", { name: `Удалить задачу «${taskTitle}»`, exact: true }).click()
+      await confirmDeletion(page)
+      await expect(page.getByText("Задача удалена", { exact: true })).toBeVisible()
+      expect((await request.get(`/api/backend/editor/tasks/${taskId}`)).status()).toBe(404)
+      taskId = undefined
+    } finally {
+      for (const id of [draftId, publicationDraftId].filter((id) => id !== undefined)) {
+        const response = await request.get(`/api/backend/editor/task-drafts/${id}`)
+        if (response.ok()) {
+          const draft = (await response.json()).data
+          await request.delete(`/api/backend/editor/task-drafts/${id}?revision=${draft.revision}`)
+        }
+      }
+      if (taskId) {
+        await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { status: "archived" } })
+        await request.delete(`/api/backend/editor/tasks/${taskId}`)
       }
     }
-    if (taskId) {
-      await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { status: "archived" } })
-      await request.delete(`/api/backend/editor/tasks/${taskId}`)
-    }
-  }
-})
+  },
+)

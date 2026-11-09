@@ -3,7 +3,7 @@ import { test, expect } from "./auth-fixture"
 import { readFile } from "node:fs/promises"
 import type {
   TaskDetail,
-  CompositionUpdate,
+  TaskSave,
   ComplicationItem,
   DraftRead,
   ResourceDownloadRead,
@@ -101,9 +101,7 @@ for (const kind of ["task", "draft"] as const) {
       const path = new URL(route.request().url()).pathname
       if (path === base) {
         await route.fulfill({ json: { success: true, data: kind === "draft" ? draft : task } })
-      } else if (path === `${base}/resources/42/download-url`) {
-        await route.fulfill({ json: { success: true, data: { url: resource.url } } })
-      } else if (path === "/api/backend/editor/media/resources/42") {
+      } else if (path === "/api/backend/media/resources/42") {
         mediaRequests++
         await route.fulfill({
           contentType: "application/zip",
@@ -136,7 +134,7 @@ test("public task shows all own-level sections without configuration requests", 
     requests.push(path)
     await route.fulfill({ json: { success: true, data: task } })
   })
-  await page.goto(`/tasks/${task.id}`)
+  await page.goto(`/tasks/${task.slug}`)
   const specification = page.getByRole("region", { name: "Техническое задание", exact: true })
   await expect(specification.getByRole("article")).toHaveCount(3)
   for (const [level, title] of [
@@ -161,32 +159,35 @@ test("public task shows all own-level sections without configuration requests", 
   await expect(page.getByRole("region", { name: "Техническое задание" })).toContainText(
     task.full_description,
   )
-  expect(requests).toEqual([`/api/backend/tasks/${task.id}`])
+  expect(requests).toEqual([`/api/backend/tasks/by-slug/${task.slug}`])
 })
 
 test("editor loads keyed presets and saves existing IDs without creating duplicates", async ({
   page,
 }) => {
   const task = taskFixture()
-  let savedComposition: CompositionUpdate | undefined
+  let savedComposition: TaskSave | undefined
   const updatedLevels: TaskLevel[] = []
   const unexpected: string[] = []
+  const methods: string[] = []
   await page.route("**/api/backend/**", async (route) => {
     const request = route.request()
+    methods.push(request.method())
     const path = new URL(request.url()).pathname
-    let data: unknown = task
+    const data: unknown = task
     if (path === `/api/backend/editor/tasks/${task.id}`) {
-      if (request.method() === "PATCH") Object.assign(task, request.postDataJSON())
-    } else if (path.endsWith("/composition") && request.method() === "PUT") {
-      savedComposition = request.postDataJSON() as CompositionUpdate
-      data = Object.values(task.presets).flatMap((value) => value.complications)
-    } else if (path.includes("/presets/") && request.method() === "PATCH") {
-      const values = request.postDataJSON()
-      updatedLevels.push(values.level)
-      const preset = task.presets[values.level as TaskLevel].preset!
-      expect(path.endsWith(`/presets/${preset.id}`)).toBe(true)
-      Object.assign(preset, values)
-      data = preset
+      if (request.method() === "PUT") {
+        savedComposition = request.postDataJSON() as TaskSave
+        const { items, presets, ...info } = savedComposition
+        Object.assign(task, info)
+        for (const values of presets) {
+          updatedLevels.push(values.level)
+          Object.assign(task.presets[values.level].preset!, values)
+          task.presets[values.level].complications = items.filter(
+            (item) => item.level === values.level,
+          ) as ComplicationItem[]
+        }
+      }
     } else {
       unexpected.push(`${request.method()} ${path}`)
       await route.abort()
@@ -212,6 +213,7 @@ test("editor loads keyed presets and saves existing IDs without creating duplica
   expect(savedComposition?.items.map((item) => item.id)).toEqual([1, 2, 3])
   expect(updatedLevels).toEqual([TaskLevel.Easy, TaskLevel.Medium, TaskLevel.High])
   expect(unexpected).toEqual([])
+  expect(methods).toEqual(["GET", "PUT"])
   await page.reload()
   await page.getByRole("tab", { name: "Продвинутый (1 пункт)", exact: true }).click()
   await expect(page.locator('[id="presets.medium.description"]')).toHaveValue(
@@ -259,7 +261,7 @@ test("each level previews four numbered leaves across nested collapsible categor
   await page.route("**/api/backend/**", (route) =>
     route.fulfill({ json: { success: true, data: task } }),
   )
-  await page.goto(`/tasks/${task.id}`)
+  await page.goto(`/tasks/${task.slug}`)
   for (const title of ["Базовый", "Продвинутый", "Максимальный"]) {
     const section = page.getByRole("region", { name: `${title} функционал`, exact: true })
     await expect(section.getByRole("article")).toHaveCount(4)
@@ -356,20 +358,8 @@ for (const width of [1440, 390]) {
     let downloads = 0
     await page.route("**/api/backend/**", async (route) => {
       const path = new URL(route.request().url()).pathname
-      if (path.endsWith("/resources/1/download-url")) {
+      if (path === "/api/backend/media/resources/1") {
         downloads++
-        await route.fulfill({
-          json: { success: true, data: { url: "/api/media/resources/1" } },
-        })
-      } else if (path.endsWith("/resources/2/download-url")) {
-        await route.fulfill({
-          status: 503,
-          json: {
-            success: false,
-            errors: { code: "storage_unavailable", message: "Хранилище временно недоступно" },
-          },
-        })
-      } else if (path === "/api/backend/media/resources/1") {
         await route.fulfill({
           contentType: "application/pdf",
           body: "test attachment",
@@ -379,11 +369,18 @@ for (const width of [1440, 390]) {
             "Content-Disposition": 'attachment; filename="specification.pdf"',
           },
         })
+      } else if (path === "/api/backend/media/resources/2") {
+        await route.fulfill({
+          status: 503,
+          json: { success: false, errors: { message: "Хранилище временно недоступно" } },
+        })
+      } else if (path.includes("download-url")) {
+        throw new Error("Лишний запрос URL")
       } else {
         await route.fulfill({ json: { success: true, data: task } })
       }
     })
-    await page.goto(`/tasks/${task.id}`)
+    await page.goto(`/tasks/${task.slug}`)
     const back = page.getByRole("link", { name: "Вернуться назад", exact: true })
     await expect(back).toHaveAttribute("href", "/tasks")
     const headingBounds = await page
@@ -423,7 +420,9 @@ for (const width of [1440, 390]) {
     expect(await readFile((await download.path())!, "utf8")).toBe("test attachment")
     expect(downloads).toBe(1)
     await modal.getByRole("button", { name: "Скачать Материалы проекта" }).click()
-    await expect(page.getByText("Хранилище временно недоступно", { exact: true })).toBeVisible()
+    await expect(
+      page.getByText("Не удалось скачать файл. Попробуйте ещё раз.", { exact: true }),
+    ).toBeVisible()
     await expect(modal).toBeVisible()
     const bounds = await modal.boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
@@ -470,7 +469,7 @@ test("empty media and categories have clear states and absent levels are omitted
   await page.route("**/api/backend/**", (route) =>
     route.fulfill({ json: { success: true, data: task } }),
   )
-  await page.goto(`/tasks/${task.id}`)
+  await page.goto(`/tasks/${task.slug}`)
   await expect(page.getByText("Фотографии пока не добавлены")).toBeVisible()
   await expect(page.getByText("Пункты пока не добавлены.")).toBeVisible()
   await expect(page.getByText("В категории пока нет пунктов.")).toBeVisible()

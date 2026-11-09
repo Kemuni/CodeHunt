@@ -29,7 +29,7 @@ async function mockLibrary(page: Page) {
           errors: { code: "reference_conflict", message: "Запись используется в задачах" },
         },
       })
-    if (path === "editor/tasks/all") return reply({ items: [], total: 0, limit: 20, offset: 0 })
+    if (path === "editor/tasks") return reply({ items: [], total: 0, limit: 20, offset: 0 })
     if (path === "editor/tasks/91") {
       const task: TaskDetail = {
         id: 91,

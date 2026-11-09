@@ -151,10 +151,6 @@ export type ResourceDownloadRead = {
   url: string
 }
 
-export type DownloadURL = {
-  url: string
-}
-
 export type DraftGalleryUpdate = {
   photo_ids: Array<number>
   revision: number
@@ -162,12 +158,6 @@ export type DraftGalleryUpdate = {
 
 export type GalleryUpdate = {
   photo_ids: Array<number>
-}
-
-export type PresetUpdate = {
-  level?: TaskLevel | null
-  description?: string | null
-  average_days_to_complete?: number | null
 }
 
 export type ErrorResponse = {
@@ -183,8 +173,8 @@ export type Page_TaskRead_ = {
   offset: number
 }
 
-export type Page_DraftRead_ = {
-  items: Array<DraftRead>
+export type Page_DraftSummary_ = {
+  items: Array<DraftSummary>
   total: number
   limit: number
   offset: number
@@ -299,7 +289,17 @@ export type TemplateRead = {
   id: number
 }
 
-export type Configuration = {
-  preset: PresetRead
-  complications: Array<ComplicationItem | ComplicationGroupRead>
+/** Полная запись готовой задачи; уровни сохраняют ID существующих пресетов. */
+export type TaskSave = Omit<TaskPublication, "items"> & {
+  items: Array<CompositionLink | CompositionGroup>
+}
+
+export type DraftSummary = {
+  id: number
+  title: string
+  short_description: string
+  revision: number
+  created_at: string
+  updated_at: string
+  cover_photo: PhotoRead | null
 }

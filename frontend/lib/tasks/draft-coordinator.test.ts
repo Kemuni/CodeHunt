@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { DraftCoordinator } from "./draft-coordinator"
 import type { DraftPayload } from "../api/tasks"
-import { TaskApiError } from "../api/task-request"
-import type { DraftRead, TaskRead } from "../api/task-contract"
+import { ApiError } from "../api/request"
+import type { DraftRead, TaskDetail } from "../api/task-contract"
 
 const makeDraft = (payload: DraftPayload, revision = 1): DraftRead => ({
   id: 1,
@@ -17,7 +17,7 @@ const makeDraft = (payload: DraftPayload, revision = 1): DraftRead => ({
   photos: [],
   resources: [],
 })
-const published = { id: 99 } as TaskRead
+const published = { id: 99 } as TaskDetail
 
 test("opening and flushing an untouched new editor does not create a draft", async () => {
   let creates = 0
@@ -118,7 +118,7 @@ test("revision conflicts preserve local edits, report immediately and block blin
       createDraft: async (payload) => makeDraft(payload),
       updateDraft: async () => {
         requests++
-        throw new TaskApiError("Конфликт ревизии", 409, "revision_conflict")
+        throw new ApiError("Конфликт ревизии", 409, "revision_conflict")
       },
       publish: async () => published,
     },
@@ -165,7 +165,7 @@ test("failed saves can be retried and invalid drafts are not published", async (
   await manager.flush()
   await assert.rejects(
     manager.publish(),
-    (error) => error instanceof TaskApiError && error.issues.length === 1,
+    (error) => error instanceof ApiError && error.issues.length === 1,
   )
   assert.equal(publishes, 0)
   assert.equal(manager.getSnapshot().draft?.payload.title, "")

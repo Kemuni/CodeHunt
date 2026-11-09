@@ -64,7 +64,6 @@ test("guest can start GitHub login from the mobile menu", async ({ page, context
   await page.getByRole("button", { name: "Открыть меню" }).click()
   const menu = page.getByRole("dialog", { name: "Меню" })
   await expect(menu.getByRole("link", { name: "Админка" })).toHaveCount(0)
-  await expect(menu.getByRole("button", { name: "Регистрация" })).toBeVisible()
-  await menu.getByRole("button", { name: "Войти", exact: true }).click()
+  await menu.getByRole("button", { name: "Войти с помощью GitHub", exact: true }).click()
   await expect(page).toHaveURL(/^https:\/\/github.com\/login\/oauth\/authorize/)
 })

@@ -18,7 +18,9 @@ test.describe("server-rendered session", () => {
     await context.clearCookies()
     await page.goto("/login")
     const header = page.getByRole("banner")
-    await expect(header.getByRole("button", { name: "Войти", exact: true })).toBeVisible()
+    await expect(
+      header.getByRole("button", { name: "Войти с помощью GitHub", exact: true }),
+    ).toBeVisible()
     await expect(header.getByText("Загрузка...")).toHaveCount(0)
   })
 })

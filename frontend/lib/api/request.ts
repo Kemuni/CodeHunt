@@ -4,14 +4,14 @@ export interface ValidationProblem {
   code?: string
 }
 
-interface TaskRequestOptions {
+interface ApiRequestOptions {
   method?: string
   body?: unknown
   signal?: AbortSignal
 }
 
 /** Сохраняет HTTP-статус, код и ошибки полей для toast, формы и обработки конфликта revision. */
-export class TaskApiError extends Error {
+export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -23,7 +23,7 @@ export class TaskApiError extends Error {
 }
 
 /** Обёртка fetch: отправляет JSON или FormData через Next.js-прокси и разбирает единый ответ backend. */
-export async function taskRequest<T>(path: string, options: TaskRequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const multipart = options.body instanceof FormData
   const response = await fetch(`/api/backend/${path}`, {
     method: options.method ?? "GET",
@@ -38,11 +38,7 @@ export async function taskRequest<T>(path: string, options: TaskRequestOptions =
     signal: options.signal,
   }).catch((cause) => {
     if (cause instanceof Error && cause.name === "AbortError") throw cause
-    throw new TaskApiError(
-      "Не удалось связаться с сервером. Повторите попытку.",
-      0,
-      "network_error",
-    )
+    throw new ApiError("Не удалось связаться с сервером. Повторите попытку.", 0, "network_error")
   })
   const json = await response.json().catch(() => null)
   if (!response.ok || !json?.success) {
@@ -67,7 +63,7 @@ export async function taskRequest<T>(path: string, options: TaskRequestOptions =
             : "Проверьте значение",
       code: typeof detail.code === "string" ? detail.code : undefined,
     }))
-    throw new TaskApiError(
+    throw new ApiError(
       error?.message ?? `Ошибка сервера (${response.status})`,
       response.status,
       error?.code ?? "request_failed",

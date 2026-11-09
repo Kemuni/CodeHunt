@@ -5,7 +5,7 @@ import { useFormContext, useWatch } from "react-hook-form"
 import { z } from "zod"
 import type { CategoryLibrary, DeveloperType, TemplateRead } from "@/lib/api/task-contract"
 import type { CategoryPayload, TemplatePayload } from "@/lib/api/task-library"
-import { TaskApiError } from "@/lib/api/task-request"
+import { ApiError } from "@/lib/api/request"
 import { developerTypeLabels } from "@/lib/tasks/labels"
 import { libraryParentOptions } from "@/lib/tasks/task-library"
 import Form from "@/components/ui/form/form"
@@ -72,7 +72,7 @@ function LibraryFormModal({
         {error && (
           <div role="alert" className="space-y-1 text-sm text-destructive">
             <p>{error.message}</p>
-            {error instanceof TaskApiError &&
+            {error instanceof ApiError &&
               error.issues.map((issue, index) => <p key={index}>{issue.message}</p>)}
           </div>
         )}

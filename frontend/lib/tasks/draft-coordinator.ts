@@ -1,5 +1,5 @@
 import { tasksApi, type DraftPayload } from "@/lib/api/tasks"
-import { TaskApiError } from "@/lib/api/task-request"
+import { ApiError } from "@/lib/api/request"
 import type { DraftRead, TaskRead } from "@/lib/api/task-contract"
 
 type DraftApi = Pick<typeof tasksApi, "createDraft" | "updateDraft" | "publish">
@@ -72,7 +72,7 @@ export class DraftCoordinator {
           const error = cause instanceof Error ? cause : new Error("Не удалось сохранить черновик")
           this.update({
             error: error.message,
-            conflict: cause instanceof TaskApiError && cause.status === 409,
+            conflict: cause instanceof ApiError && cause.status === 409,
           })
           this.onError(error)
           throw error
@@ -115,7 +115,7 @@ export class DraftCoordinator {
     return this.run(async () => {
       const draft = await this.saveLatest(true)
       if (!draft!.is_valid)
-        throw new TaskApiError(
+        throw new ApiError(
           "Исправьте ошибки валидации перед сохранением задачи",
           422,
           "draft_invalid",

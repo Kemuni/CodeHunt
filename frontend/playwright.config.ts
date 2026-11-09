@@ -33,7 +33,7 @@ export default defineConfig({
       ]
     : undefined,
   testDir: "./e2e",
-  outputDir: join(tmpdir(), "codehunt-playwright-results"),
+  outputDir: process.env.E2E_OUTPUT_DIR ?? join(tmpdir(), "codehunt-playwright-results"),
   workers: 1,
   timeout: 90_000,
   use: {

@@ -56,7 +56,7 @@ export async function proxyBackend(request: Request, path: string[]): Promise<Re
 
   const url = new URL(`/api/${path.join("/")}`, backendOrigin)
   url.search = new URL(request.url).search
-  const isMedia = path[0] === "media" || (path[0] === "editor" && path[1] === "media")
+  const isMedia = path[0] === "media"
 
   try {
     // Передаём только нужные заголовки. Пользователя определяет сессия, а его
