@@ -27,7 +27,7 @@ async def test_non_positive_identifiers_are_validation_errors(client):
         f"/api/tasks?parent_task_id={invalid_id}",
         f"/api/solutions?task_id={invalid_id}",
         f"/api/solutions?author_id={invalid_id}",
-        f"/api/tasks/{invalid_id}/presets",
+        f"/api/editor/tasks/{invalid_id}/presets",
     ]:
         assert (await client.get(path)).status_code == 422
     assert (

@@ -135,7 +135,9 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
             assert [item["order_number"] for item in own_items] == list(
                 range(1, len(own_items) + 1)
             )
-        presets = (await client.get(f"/api/tasks/{task_id}/presets")).json()["data"]
+        presets = (await client.get(f"/api/tasks/by-slug/{task_slug}/presets")).json()[
+            "data"
+        ]
         assert presets == detail["presets"]
         for config in presets.values():
             for item in leaves(config["complications"]):

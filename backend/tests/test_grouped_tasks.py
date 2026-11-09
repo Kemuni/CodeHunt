@@ -96,7 +96,9 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
     for path in (f"/api/editor/tasks/{tid}", f"/api/tasks/by-slug/{task['slug']}"):
         assert (await client.get(path)).json()["data"] == detail
     assert detail["photos"] == []
-    levels = (await client.get(f"/api/tasks/{tid}/presets")).json()["data"]
+    levels = (await client.get(f"/api/tasks/by-slug/{task['slug']}/presets")).json()[
+        "data"
+    ]
     assert levels == detail["presets"]
     easy = levels["easy"]["complications"]
     assert len(easy) == 1 and easy[0]["kind"] == "group"
@@ -357,7 +359,7 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
     ).status_code == 200
     for path in [
         f"/api/tasks/by-slug/{task['slug']}",
-        f"/api/tasks/{tid}/presets",
+        f"/api/tasks/by-slug/{task['slug']}/presets",
     ]:
         assert (await client.get(path)).status_code == 404, path
     assert (await client.get("/api/tasks")).json()["data"]["total"] == 0

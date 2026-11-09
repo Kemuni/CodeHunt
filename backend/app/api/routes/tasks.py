@@ -3,7 +3,7 @@ from sqlalchemy import or_, select
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
 from app.api.routes.library import Limit, Offset
-from app.core.errors import InvalidDifficultyError, NotFoundError
+from app.core.errors import InvalidDifficultyError
 from app.models import Task, TaskLevelPreset
 from app.models.enums import DeveloperType, Level, TaskStatus
 from app.schemas import SuccessResponse
@@ -80,26 +80,18 @@ async def tasks(
     summary="Получить опубликованное задание по slug.",
 )
 async def by_slug(slug: str, db: SessionDep):
-    obj = await db.scalar(
-        select(Task).where(
-            Task.slug == slug,
-            Task.status == TaskStatus.PUBLISHED,
-            Task.is_hidden.is_(False),
-        )
-    )
-    if obj is None:
-        raise NotFoundError("Задание не найдено")
+    obj = await catalog.public_task_by_slug(db, slug)
     return SuccessResponse(data=await catalog.detail(db, obj))
 
 
 @router.get(
-    "/tasks/{task_id}/presets",
+    "/tasks/by-slug/{slug}/presets",
     response_model=SuccessResponse[TaskPresets],
     summary="Получить все пресеты опубликованного задания с пунктами своего уровня",
 )
-async def public_presets(task_id: PositiveID, db: SessionDep):
-    await catalog.task(db, task_id, public=True)
-    return SuccessResponse(data=await catalog.task_presets(db, task_id))
+async def public_presets(slug: str, db: SessionDep):
+    obj = await catalog.public_task_by_slug(db, slug)
+    return SuccessResponse(data=await catalog.task_presets(db, obj.id))
 
 
 @router.get(

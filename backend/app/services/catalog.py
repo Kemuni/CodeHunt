@@ -53,6 +53,19 @@ async def task(
     return obj
 
 
+async def public_task_by_slug(session: AsyncSession, slug: str) -> Task:
+    obj = await session.scalar(
+        select(Task).where(
+            Task.slug == slug,
+            Task.status == TaskStatus.PUBLISHED,
+            Task.is_hidden.is_(False),
+        )
+    )
+    if obj is None:
+        raise NotFoundError("Задание не найдено")
+    return obj
+
+
 async def update_task(session: AsyncSession, task_id: int, values: dict) -> Task:
     if "parent_task_id" in values:
         await lock_hierarchy(session, Hierarchy.TASKS)

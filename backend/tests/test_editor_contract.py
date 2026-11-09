@@ -115,6 +115,7 @@ async def test_removed_routes_and_preserved_future_contract():
     paths = app.openapi()["paths"]
     for path in (
         "/api/tasks/{task_id}",
+        "/api/tasks/{task_id}/presets",
         "/api/editor/tasks/all",
         "/api/editor/tasks/{task_id}/complications",
         "/api/editor/tasks/{task_id}/complications/{link_id}",
@@ -135,14 +136,14 @@ async def test_removed_routes_and_preserved_future_contract():
         "patch" in paths["/api/editor/task-drafts/{draft_id}/resources/{resource_id}"]
     )
     assert not any(path.endswith("/configuration") for path in paths)
-    assert "get" in paths["/api/tasks/{task_id}/presets"]
+    assert "get" in paths["/api/tasks/by-slug/{slug}/presets"]
     assert "get" in paths["/api/editor/tasks/{task_id}/presets"]
     assert "post" in paths["/api/tasks/{task_id}/solutions"]
 
 
 async def test_presets_read_own_levels_and_enforce_task_visibility(client):
     task, links, _ = await make_project(client)
-    public = f"/api/tasks/{task['id']}/presets"
+    public = f"/api/tasks/by-slug/{task['slug']}/presets"
     editor = f"/api/editor/tasks/{task['id']}/presets"
     expected = task["presets"]
     assert (await client.get(editor)).json()["data"] == expected
@@ -155,12 +156,20 @@ async def test_presets_read_own_levels_and_enforce_task_visibility(client):
     admin = {"Authorization": "Bearer test-session-1"}
     assert (await client.get(editor, headers=member)).status_code == 403
     base = f"/api/editor/tasks/{task['id']}"
+    assert (
+        await client.patch(base, json={"slug": "renamed-task"}, headers=admin)
+    ).status_code == 200
+    assert (await client.get(public)).status_code == 404
+    public = "/api/tasks/by-slug/renamed-task/presets"
+    assert (await client.get(public)).json()["data"] == expected
     for change in ({"is_hidden": True}, {"is_hidden": False, "status": "archived"}):
         assert (await client.patch(base, json=change, headers=admin)).status_code == 200
         assert (await client.get(public)).status_code == 404
         assert (await client.get(public, headers=admin)).status_code == 404
         assert (await client.get(editor, headers=admin)).json()["data"] == expected
-    assert (await client.get("/api/tasks/999999/presets")).status_code == 404
+    assert (
+        await client.get("/api/tasks/by-slug/missing-task/presets")
+    ).status_code == 404
     assert (
         await client.get("/api/editor/tasks/999999/presets", headers=admin)
     ).status_code == 404
