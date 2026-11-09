@@ -1,15 +1,15 @@
 from typing import Annotated
 
 from fastapi import Query
-from sqlalchemy import or_, select
+from sqlalchemy import select
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
-from app.core.errors import ConflictingFiltersError, TemplateInUseError
+from app.core.errors import TemplateInUseError
 from app.models import TaskComplication, TaskComplicationCategory, TaskComplicationLink
 from app.models.enums import DeveloperType
 from app.schemas import SuccessResponse
-from app.schemas.common import Page, PositiveID
+from app.schemas.common import PositiveID
 from app.schemas.domain import (
     CategoryCreate,
     CategoryRead,
@@ -26,7 +26,6 @@ from app.services.common import (
     commit,
     get,
     lock_hierarchy,
-    page,
 )
 from app.services.library import grouped_templates
 
@@ -46,31 +45,6 @@ async def library(
     return SuccessResponse(data=await grouped_templates(db, q, developer_type))
 
 
-@router.get(
-    "/task-complication-categories",
-    response_model=SuccessResponse[Page[CategoryRead]],
-    summary="Список категорий с фильтрами, включая выбор корней через roots_only.",
-)
-async def categories(
-    db: SessionDep,
-    limit: Limit = 20,
-    offset: Offset = 0,
-    parent_id: PositiveID | None = None,
-    roots_only: bool = False,
-    developer_type: DeveloperType | None = None,
-):
-    if roots_only and parent_id is not None:
-        raise ConflictingFiltersError()
-    query = select(TaskComplicationCategory).order_by(TaskComplicationCategory.id)
-    if roots_only:
-        query = query.where(TaskComplicationCategory.parent_id.is_(None))
-    elif parent_id is not None:
-        query = query.where(TaskComplicationCategory.parent_id == parent_id)
-    if developer_type:
-        query = query.where(TaskComplicationCategory.developer_type == developer_type)
-    return SuccessResponse(data=await page(db, query, limit, offset))
-
-
 @router.post(
     "/task-complication-categories",
     response_model=SuccessResponse[CategoryRead],
@@ -82,15 +56,6 @@ async def create_category(data: CategoryCreate, db: SessionDep, _admin: CurrentA
     obj = TaskComplicationCategory(**data.model_dump())
     db.add(obj)
     return SuccessResponse(data=await commit(db, obj))
-
-
-@router.get(
-    "/task-complication-categories/{category_id}",
-    response_model=SuccessResponse[CategoryRead],
-    summary="Получить категорию по идентификатору.",
-)
-async def category(category_id: PositiveID, db: SessionDep):
-    return SuccessResponse(data=await get(db, TaskComplicationCategory, category_id))
 
 
 @router.patch(
@@ -129,38 +94,6 @@ async def delete_category(
     return SuccessResponse()
 
 
-@router.get(
-    "/task-complications",
-    response_model=SuccessResponse[Page[TemplateRead]],
-    summary="Найти общие требования по тексту, категории или направлению.",
-)
-async def templates(
-    db: SessionDep,
-    limit: Limit = 20,
-    offset: Offset = 0,
-    q: str | None = None,
-    category_id: PositiveID | None = None,
-    developer_type: DeveloperType | None = None,
-):
-    query = (
-        select(TaskComplication)
-        .join(TaskComplicationCategory)
-        .order_by(TaskComplication.id)
-    )
-    if q:
-        query = query.where(
-            or_(
-                TaskComplication.title.icontains(q, autoescape=True),
-                TaskComplication.description.icontains(q, autoescape=True),
-            )
-        )
-    if category_id is not None:
-        query = query.where(TaskComplication.category_id == category_id)
-    if developer_type:
-        query = query.where(TaskComplicationCategory.developer_type == developer_type)
-    return SuccessResponse(data=await page(db, query, limit, offset))
-
-
 @router.post(
     "/task-complications",
     response_model=SuccessResponse[TemplateRead],
@@ -172,15 +105,6 @@ async def create_template(data: TemplateCreate, db: SessionDep, _admin: CurrentA
     obj = TaskComplication(**data.model_dump())
     db.add(obj)
     return SuccessResponse(data=await commit(db, obj))
-
-
-@router.get(
-    "/task-complications/{template_id}",
-    response_model=SuccessResponse[TemplateRead],
-    summary="Получить общий шаблон требования.",
-)
-async def template(template_id: PositiveID, db: SessionDep):
-    return SuccessResponse(data=await get(db, TaskComplication, template_id))
 
 
 @router.patch(

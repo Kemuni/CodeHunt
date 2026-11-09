@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tests.conftest import make_project
+from tests.conftest import composition_data, make_project, save_task, task_write
 
 pytestmark = pytest.mark.anyio
 
@@ -44,10 +44,10 @@ async def test_solution_snapshots_and_independent_completion(client):
     await client.patch(
         f"/api/editor/tasks/{tid}", json={"full_description": "Новая постановка"}
     )
-    await client.patch(
-        f"/api/editor/tasks/{tid}/complications/{links[1]['id']}",
-        json={"description": "Новое требование"},
-    )
+    base = f"/api/editor/tasks/{tid}"
+    body = task_write((await client.get(base)).json()["data"])
+    body["items"][1]["description"] = "Новое требование"
+    assert (await client.put(base, json=body)).status_code == 200
     current = (await client.get(url, headers=member)).json()["data"]
     assert current["task_description_snapshot"] == task["full_description"]
     assert current["complications"][0]["description"] == links[1]["description"]
@@ -127,10 +127,14 @@ async def test_solution_snapshots_and_independent_completion(client):
     ] == custom["id"]
     assert (await client.delete(custom_url, headers=member)).status_code == 200
     assert (
-        await client.delete(f"/api/editor/tasks/{tid}/presets/{presets[1]['id']}")
+        await save_task(
+            client, base, presets=[p for p in body["presets"] if p["level"] != "medium"]
+        )
     ).status_code == 409
     assert (
-        await client.delete(f"/api/editor/tasks/{tid}/complications/{links[1]['id']}")
+        await save_task(
+            client, base, items=[p for p in body["items"] if p["id"] != links[1]["id"]]
+        )
     ).status_code == 409
     assert (await client.delete(url, headers=member)).status_code == 200
     assert (await client.get(url, headers=member)).status_code == 404
@@ -199,9 +203,9 @@ async def test_source_delete_rollback_with_existing_solution(client):
     assert (await client.delete(f"/api/editor/tasks/{task['id']}")).status_code == 409
     assert (
         len(
-            (await client.get(f"/api/editor/tasks/{task['id']}/complications")).json()[
-                "data"
-            ]
+            composition_data(
+                (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
+            )
         )
         == 3
     )

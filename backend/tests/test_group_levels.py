@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models import TaskComplicationLink, TaskComplicationLinkGroup
 from app.schemas.domain import CompositionGroup
-from tests.conftest import make_project
+from tests.conftest import composition_data, make_project, save_task
 from tests.test_grouped_tasks import link_input
 
 
@@ -40,9 +40,9 @@ async def test_group_levels_are_enforced_and_move_atomically(client, sync_engine
             ],
         },
     ]
-    response = await client.put(base + "/composition", json={"items": items})
+    response = await save_task(client, base, **{"items": items})
     assert response.status_code == 200, response.text
-    tree = response.json()["data"]
+    tree = composition_data(response.json()["data"])
     group, empty = tree[2], tree[2]["items"][1]
     detail = (await client.get(base)).json()["data"]
     assert detail["presets"]["high"]["complications"] == [group]
@@ -54,20 +54,8 @@ async def test_group_levels_are_enforced_and_move_atomically(client, sync_engine
     ]:
         bad = deepcopy(items)
         bad[2]["items"] = [bad_child]
-        assert (
-            await client.put(base + "/composition", json={"items": bad})
-        ).status_code == 422
-        assert (await client.get(base + "/composition")).json()["data"] == tree
-    assert (
-        await client.patch(
-            base + f"/complications/{links[0]['id']}", json={"group_id": group["id"]}
-        )
-    ).status_code == 422
-    assert (
-        await client.patch(
-            base + f"/complications/{links[2]['id']}", json={"level": "easy"}
-        )
-    ).status_code == 422
+        assert (await save_task(client, base, **{"items": bad})).status_code == 422
+        assert composition_data((await client.get(base)).json()["data"]) == tree
     for model, object_id, values in [
         (TaskComplicationLink, links[0]["id"], {"group_id": group["id"]}),
         (TaskComplicationLinkGroup, empty["id"], {"level": "easy"}),
@@ -79,7 +67,7 @@ async def test_group_levels_are_enforced_and_move_atomically(client, sync_engine
     moved[2].update(id=group["id"], level="medium")
     moved[2]["items"][0]["level"] = "medium"
     moved[2]["items"][1].update(id=empty["id"], level="medium")
-    response = await client.put(base + "/composition", json={"items": moved})
+    response = await save_task(client, base, **{"items": moved})
     assert response.status_code == 200, response.text
     detail = (await client.get(base)).json()["data"]
     assert detail["presets"]["high"]["complications"] == []

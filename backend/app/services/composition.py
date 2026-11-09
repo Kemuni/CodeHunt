@@ -26,7 +26,7 @@ from app.schemas.domain import (
     CompositionUpdate,
     LinkRead,
 )
-from app.services.common import assign, commit, flush, get
+from app.services.common import assign, flush, get
 
 
 def confirm_template(obj: TaskComplicationLink, values: dict) -> None:
@@ -96,13 +96,6 @@ async def read(
     return branch(None)
 
 
-async def read_link(session: AsyncSession, task_id: int, link_id: int) -> LinkRead:
-    for link in flatten(await read(session, task_id)):
-        if link.id == link_id:
-            return link
-    raise NotFoundError("Пункт задания не найден")
-
-
 def flatten(items: Sequence[CompositionItem]) -> list[ComplicationItem]:
     result: list[ComplicationItem] = []
     for item in items:
@@ -111,45 +104,6 @@ def flatten(items: Sequence[CompositionItem]) -> list[ComplicationItem]:
         else:
             result.append(item)
     return result
-
-
-async def place_link(
-    session: AsyncSession, obj: TaskComplicationLink, position: int | None
-) -> None:
-    """Вставляет пункт между соседями, сохраняя взаимный порядок остальных веток."""
-    await flush(session)
-    groups = (
-        await session.scalars(
-            select(TaskComplicationLinkGroup).where(
-                TaskComplicationLinkGroup.task_id == obj.task_id,
-                TaskComplicationLinkGroup.level == obj.level,
-                TaskComplicationLinkGroup.parent_group_id == obj.group_id,
-            )
-        )
-    ).all()
-    links = (
-        await session.scalars(
-            select(TaskComplicationLink).where(
-                TaskComplicationLink.task_id == obj.task_id,
-                TaskComplicationLink.level == obj.level,
-                TaskComplicationLink.group_id == obj.group_id,
-                TaskComplicationLink.id != obj.id,
-            )
-        )
-    ).all()
-    siblings = sorted(
-        [*groups, *links],
-        key=lambda item: (
-            item.position,
-            isinstance(item, TaskComplicationLink),
-            item.id,
-        ),
-    )
-    siblings.insert(
-        len(siblings) if position is None else min(position, len(siblings)), obj
-    )
-    for index, sibling in enumerate(siblings):
-        sibling.position = index
 
 
 def by_level(items: Sequence[CompositionItem]) -> dict[Level, list[CompositionItem]]:
@@ -302,10 +256,3 @@ async def save(session: AsyncSession, parent: Task, data: CompositionUpdate):
         )
     parent.updated_at = func.clock_timestamp()
     await ensure_publishable(session, parent)
-
-
-async def replace(session: AsyncSession, task_id: int, data: CompositionUpdate):
-    parent = await get(session, Task, task_id, lock=True)
-    await save(session, parent, data)
-    await commit(session)
-    return await read(session, task_id)

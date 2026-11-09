@@ -1,32 +1,21 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
 from app.api.routes.library import Limit, Offset
 from app.core.errors import InvalidDifficultyError, NotFoundError
-from app.models import Task, TaskComplicationLink, TaskLevelPreset
+from app.models import Task, TaskLevelPreset
 from app.models.enums import DeveloperType, Level, TaskStatus
 from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID
 from app.schemas.domain import (
-    CompositionItem,
-    CompositionUpdate,
-    Configuration,
-    LinkCopy,
-    LinkCreate,
-    LinkRead,
-    LinkUpdate,
-    OrderInput,
-    PresetCreate,
-    PresetRead,
-    PresetUpdate,
     TaskDetail,
-    TaskPublication,
+    TaskPresets,
     TaskRead,
+    TaskSave,
     TaskUpdate,
 )
-from app.services import catalog, composition
-from app.services.common import commit, get
+from app.services import catalog
 
 router = APIResponseRouter(tags=["tasks"])
 
@@ -104,51 +93,15 @@ async def by_slug(slug: str, db: SessionDep):
 
 
 @router.get(
-    "/tasks/{task_id}",
-    response_model=SuccessResponse[TaskDetail],
-    summary="Получить опубликованное задание по идентификатору.",
-)
-async def public_task(task_id: PositiveID, db: SessionDep):
-    return SuccessResponse(
-        data=await catalog.detail(db, await catalog.task(db, task_id, public=True))
-    )
-
-
-@router.get(
     "/tasks/{task_id}/presets",
-    response_model=SuccessResponse[list[PresetRead]],
-    summary="Показать доступные уровни опубликованного задания.",
+    response_model=SuccessResponse[TaskPresets],
+    summary="Получить все пресеты опубликованного задания с пунктами своего уровня",
 )
 async def public_presets(task_id: PositiveID, db: SessionDep):
     await catalog.task(db, task_id, public=True)
-    return SuccessResponse(
-        data=(
-            await db.scalars(
-                select(TaskLevelPreset)
-                .where(TaskLevelPreset.task_id == task_id)
-                .order_by(TaskLevelPreset.id)
-            )
-        ).all()
-    )
+    return SuccessResponse(data=await catalog.task_presets(db, task_id))
 
 
-@router.get(
-    "/tasks/{task_id}/presets/{preset_id}/configuration",
-    response_model=SuccessResponse[Configuration],
-    summary="Получить требования пресета, включая все нижние уровни.",
-)
-async def public_configuration(
-    task_id: PositiveID, preset_id: PositiveID, db: SessionDep
-):
-    await catalog.task(db, task_id, public=True)
-    return SuccessResponse(data=await composition.configuration(db, task_id, preset_id))
-
-
-@router.get(
-    "/editor/tasks/all",
-    response_model=SuccessResponse[Page[TaskRead]],
-    summary="Получить все задания для администратора, включая скрытые и архивные.",
-)
 @router.get(
     "/editor/tasks",
     response_model=SuccessResponse[Page[TaskRead]],
@@ -170,17 +123,6 @@ async def editor_tasks(
     return SuccessResponse(data=await catalog.task_page(db, query, limit, offset))
 
 
-@router.post(
-    "/editor/tasks",
-    response_model=SuccessResponse[TaskRead],
-    status_code=201,
-    summary="Создать готовое опубликованное задание с требованиями и пресетами.",
-)
-async def create_task(data: TaskPublication, db: SessionDep, _admin: CurrentAdmin):
-    obj = await catalog.create_task(db, data.model_dump(mode="json"))
-    return SuccessResponse(data=(await catalog.read_tasks(db, [obj]))[0])
-
-
 @router.get(
     "/editor/tasks/{task_id}",
     response_model=SuccessResponse[TaskDetail],
@@ -190,6 +132,17 @@ async def editor_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin)
     return SuccessResponse(
         data=await catalog.detail(db, await catalog.task(db, task_id))
     )
+
+
+@router.put(
+    "/editor/tasks/{task_id}",
+    response_model=SuccessResponse[TaskDetail],
+    summary="Атомарно сохранить информацию, пресеты и дерево задания",
+)
+async def save_task(
+    task_id: PositiveID, data: TaskSave, db: SessionDep, _admin: CurrentAdmin
+):
+    return SuccessResponse(data=await catalog.save_task(db, task_id, data))
 
 
 @router.patch(
@@ -217,212 +170,10 @@ async def delete_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin)
 
 
 @router.get(
-    "/editor/tasks/{task_id}/complications",
-    response_model=SuccessResponse[list[LinkRead]],
-    summary="Показать требования задания в порядке отображения.",
-)
-async def links(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
-    await catalog.task(db, task_id)
-    return SuccessResponse(
-        data=composition.flatten(await composition.read(db, task_id))
-    )
-
-
-@router.post(
-    "/editor/tasks/{task_id}/complications",
-    response_model=SuccessResponse[LinkRead],
-    status_code=201,
-    summary="Добавить конкретное требование, при необходимости связав его с шаблоном.",
-)
-async def create_link(
-    task_id: PositiveID, data: LinkCreate, db: SessionDep, _admin: CurrentAdmin
-):
-    obj = await catalog.save_child(db, task_id, TaskComplicationLink, data.model_dump())
-    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
-
-
-@router.post(
-    "/editor/tasks/{task_id}/complications/copy",
-    response_model=SuccessResponse[LinkRead],
-    status_code=201,
-    summary="Скопировать готовое требование в это задание.",
-)
-async def copy_link(
-    task_id: PositiveID, data: LinkCopy, db: SessionDep, _admin: CurrentAdmin
-):
-    obj = await catalog.copy_link(
-        db,
-        task_id,
-        data.source_link_id,
-        data.model_dump(exclude={"source_link_id"}),
-    )
-    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
-
-
-@router.put(
-    "/editor/tasks/{task_id}/complications/order",
-    response_model=SuccessResponse[None],
-    summary="Установить порядок требований по полному списку ID без повторов.",
-)
-async def order_links(
-    task_id: PositiveID, data: OrderInput, db: SessionDep, _admin: CurrentAdmin
-):
-    obj = await catalog.task(db, task_id, lock=True)
-    await catalog.reorder(db, TaskComplicationLink, "task_id", task_id, data.ids)
-    obj.updated_at = func.clock_timestamp()
-    await commit(db)
-    return SuccessResponse()
-
-
-@router.get(
-    "/editor/tasks/{task_id}/complications/{link_id}",
-    response_model=SuccessResponse[LinkRead],
-    summary="Получить отдельное требование задания.",
-)
-async def link(
-    task_id: PositiveID, link_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
-):
-    return SuccessResponse(data=await composition.read_link(db, task_id, link_id))
-
-
-@router.patch(
-    "/editor/tasks/{task_id}/complications/{link_id}",
-    response_model=SuccessResponse[LinkRead],
-    summary="Изменить требование с явным подтверждением связанного шаблона при смене текста.",
-)
-async def update_link(
-    task_id: PositiveID,
-    link_id: PositiveID,
-    data: LinkUpdate,
-    db: SessionDep,
-    _admin: CurrentAdmin,
-):
-    obj = await catalog.save_child(
-        db,
-        task_id,
-        TaskComplicationLink,
-        data.model_dump(exclude_unset=True),
-        link_id,
-    )
-    return SuccessResponse(data=await composition.read_link(db, task_id, obj.id))
-
-
-@router.delete(
-    "/editor/tasks/{task_id}/complications/{link_id}",
-    response_model=SuccessResponse[None],
-    summary="Удалить требование, если на него не ссылаются решения.",
-)
-async def delete_link(
-    task_id: PositiveID, link_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
-):
-    await catalog.remove_child(db, task_id, TaskComplicationLink, link_id)
-    return SuccessResponse()
-
-
-@router.get(
     "/editor/tasks/{task_id}/presets",
-    response_model=SuccessResponse[list[PresetRead]],
-    summary="Показать пресеты задания в редакторе.",
+    response_model=SuccessResponse[TaskPresets],
+    summary="Получить все пресеты задания с пунктами своего уровня для редактора",
 )
-async def presets(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
+async def editor_presets(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
     await catalog.task(db, task_id)
-    return SuccessResponse(
-        data=(
-            await db.scalars(
-                select(TaskLevelPreset)
-                .where(TaskLevelPreset.task_id == task_id)
-                .order_by(TaskLevelPreset.id)
-            )
-        ).all()
-    )
-
-
-@router.post(
-    "/editor/tasks/{task_id}/presets",
-    response_model=SuccessResponse[PresetRead],
-    status_code=201,
-    summary="Добавить пресет с уникальным для задания уровнем.",
-)
-async def create_preset(
-    task_id: PositiveID, data: PresetCreate, db: SessionDep, _admin: CurrentAdmin
-):
-    return SuccessResponse(
-        data=await catalog.save_child(db, task_id, TaskLevelPreset, data.model_dump())
-    )
-
-
-@router.get(
-    "/editor/tasks/{task_id}/presets/{preset_id}",
-    response_model=SuccessResponse[PresetRead],
-    summary="Получить описание и оценку времени пресета.",
-)
-async def preset(
-    task_id: PositiveID, preset_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
-):
-    return SuccessResponse(
-        data=await get(db, TaskLevelPreset, preset_id, task_id=task_id)
-    )
-
-
-@router.patch(
-    "/editor/tasks/{task_id}/presets/{preset_id}",
-    response_model=SuccessResponse[PresetRead],
-    summary="Частично изменить уровень, описание или оценку времени пресета.",
-)
-async def update_preset(
-    task_id: PositiveID,
-    preset_id: PositiveID,
-    data: PresetUpdate,
-    db: SessionDep,
-    _admin: CurrentAdmin,
-):
-    return SuccessResponse(
-        data=await catalog.save_child(
-            db, task_id, TaskLevelPreset, data.model_dump(exclude_unset=True), preset_id
-        )
-    )
-
-
-@router.delete(
-    "/editor/tasks/{task_id}/presets/{preset_id}",
-    response_model=SuccessResponse[None],
-    summary="Удалить пресет, если он не используется решениями.",
-)
-async def delete_preset(
-    task_id: PositiveID, preset_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
-):
-    await catalog.remove_child(db, task_id, TaskLevelPreset, preset_id)
-    return SuccessResponse()
-
-
-@router.get(
-    "/editor/tasks/{task_id}/presets/{preset_id}/configuration",
-    response_model=SuccessResponse[Configuration],
-    summary="Предварительно посмотреть накопительный состав пресета.",
-)
-async def editor_configuration(
-    task_id: PositiveID, preset_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
-):
-    await catalog.task(db, task_id)
-    return SuccessResponse(data=await composition.configuration(db, task_id, preset_id))
-
-
-@router.get(
-    "/editor/tasks/{task_id}/composition",
-    response_model=SuccessResponse[list[CompositionItem]],
-    summary="Получить единое дерево групп и требований задания.",
-)
-async def read_composition(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
-    await catalog.task(db, task_id)
-    return SuccessResponse(data=await composition.read(db, task_id))
-
-
-@router.put(
-    "/editor/tasks/{task_id}/composition",
-    response_model=SuccessResponse[list[CompositionItem]],
-    summary="Атомарно сохранить дерево групп и требований, сохраняя ID существующих пунктов.",
-)
-async def replace_composition(
-    task_id: PositiveID, data: CompositionUpdate, db: SessionDep, _admin: CurrentAdmin
-):
-    return SuccessResponse(data=await composition.replace(db, task_id, data))
+    return SuccessResponse(data=await catalog.task_presets(db, task_id))

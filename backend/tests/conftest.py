@@ -168,8 +168,71 @@ def task_data(slug="movie-catalog"):
     }
 
 
+async def publish_task(client, *, json, headers=None):
+    response = await client.post(
+        "/api/editor/task-drafts", json={"payload": json}, headers=headers
+    )
+    if response.status_code != 201:
+        return response
+    draft = response.json()["data"]
+    return await client.post(
+        f"/api/editor/task-drafts/{draft['id']}/publish",
+        json={"revision": draft["revision"]},
+        headers=headers,
+    )
+
+
+def composition_data(detail):
+    return [
+        item for block in detail["presets"].values() for item in block["complications"]
+    ]
+
+
+def task_write(detail):
+    from app.schemas.domain import CompositionUpdate, PresetCreate, TaskCreate
+
+    def item_write(item):
+        if item["kind"] == "group":
+            return {
+                **{key: item[key] for key in ("kind", "id", "title", "level")},
+                "items": [item_write(child) for child in item["items"]],
+            }
+        return {
+            key: item[key]
+            for key in (
+                "kind",
+                "id",
+                "complication_id",
+                "title",
+                "description",
+                "acceptance_criteria",
+                "level",
+                "is_required",
+            )
+        }
+
+    return {
+        **{key: detail[key] for key in TaskCreate.model_fields},
+        "items": CompositionUpdate(
+            items=[item_write(item) for item in composition_data(detail)]
+        ).model_dump()["items"],
+        "presets": [
+            {key: block["preset"][key] for key in PresetCreate.model_fields}
+            for block in detail["presets"].values()
+            if block["preset"]
+        ],
+    }
+
+
+async def save_task(client, base, headers=None, **changes):
+    detail = (await client.get(base)).json()["data"]
+    return await client.put(
+        base, json={**task_write(detail), **changes}, headers=headers
+    )
+
+
 async def make_project(client, slug="movie-catalog", published=True):
-    response = await client.post("/api/editor/tasks", json=task_data(slug))
+    response = await publish_task(client, json=task_data(slug))
     assert response.status_code == 201, response.text
     task = response.json()["data"]
     if not published:
@@ -179,9 +242,7 @@ async def make_project(client, slug="movie-catalog", published=True):
             )
         ).json()["data"]
     detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]
-    links = (await client.get(f"/api/editor/tasks/{task['id']}/composition")).json()[
-        "data"
-    ]
+    links = composition_data(detail)
     presets = [
         value["preset"] for value in detail["presets"].values() if value["preset"]
     ]

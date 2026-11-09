@@ -161,15 +161,13 @@ async def test_draft_photo_owner_publication_and_cache_outage(
     assert published.status_code == 201, published.text
     assert published.json()["data"]["photos"][0]["url"] == url
     assert (await client.get(url)).content == image_bytes()
-    assert (
-        await client.get(url.replace("/media/", "/editor/media/"))
-    ).status_code == 401
+    assert (await client.get(url)).status_code == 200
     assert (
         await client.get(
-            url.replace("/media/", "/editor/media/"),
+            url,
             headers={"Authorization": "Bearer test-session-2"},
         )
-    ).status_code == 403
+    ).status_code == 200
 
 
 @pytest.mark.parametrize("body", [b"project attachment", b""])
@@ -185,11 +183,8 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
     )
     assert uploaded.status_code == 201, uploaded.text
     resource_id = uploaded.json()["data"]["id"]
-    link = (await client.get(base + f"/resources/{resource_id}/download-url")).json()[
-        "data"
-    ]
-    url = f"/api/media/resources/{resource_id}"
-    assert link == {"url": url}
+    url = uploaded.json()["data"]["url"]
+    assert url == f"/api/media/resources/{resource_id}"
     detail = (await client.get(base)).json()["data"]["resources"][0]
     assert detail["url"] == url and "expires_in" not in detail
     client.headers.pop("authorization")
@@ -226,13 +221,13 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
             denied.status_code == 404 and denied.headers["cache-control"] == "no-store"
         )
         assert (await client.head(url)).status_code == 404
-        editor = url.replace("/media/", "/editor/media/")
+        editor = url
         assert (
             await client.get(editor, headers={"Authorization": "Bearer test-session-1"})
         ).content == body
         assert (
             await client.get(editor, headers={"Authorization": "Bearer test-session-2"})
-        ).status_code == 403
+        ).status_code == 404
     assert (
         await client.delete(
             base + f"/resources/{resource_id}",
@@ -281,7 +276,7 @@ async def test_draft_resource_cache_owner_and_publication_or_deletion(
         ).status_code == 404
     client.headers.pop("authorization")
     assert (await client.get(url, headers={"If-None-Match": etag})).status_code == 404
-    editor = url.replace("/media/", "/editor/media/")
+    editor = url
     assert (
         await client.get(editor, headers={"Authorization": "Bearer test-session-1"})
     ).content == b"draft bytes"

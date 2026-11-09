@@ -12,7 +12,7 @@ from app.models.enums import ResourceType
 from app.services import photos, resources
 from app.services.media import MediaOwner, discard_upload
 from app.services.storage import get_storage
-from tests.conftest import task_data
+from tests.conftest import publish_task, task_data
 from tests.test_resources import MemoryStorage
 
 pytestmark = pytest.mark.anyio
@@ -47,7 +47,11 @@ async def test_size_mismatch_cleans_upload_and_preserves_owner(
     store.objects["existing"] = b"keep"
     app.dependency_overrides[get_storage] = lambda: store
     payload = task_data() if owner_kind == "tasks" else {"payload": {}}
-    created = await client.post(f"/api/editor/{owner_kind}", json=payload)
+    created = (
+        await publish_task(client, json=payload)
+        if owner_kind == "tasks"
+        else await client.post(f"/api/editor/{owner_kind}", json=payload)
+    )
     assert created.status_code == 201, created.text
     owner_id = created.json()["data"]["id"]
     url = f"/api/editor/{owner_kind}/{owner_id}"

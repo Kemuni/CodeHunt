@@ -175,12 +175,6 @@ class InvalidDifficultyError(DomainError):
     default_message = "Неверный интервал сложности"
 
 
-class ConflictingFiltersError(DomainError):
-    status = HTTPStatus.UNPROCESSABLE_ENTITY
-    code = "conflicting_filters"
-    default_message = "roots_only и parent_id несовместимы"
-
-
 class TemplateInUseError(DomainError):
     status = HTTPStatus.CONFLICT
     code = "template_in_use"

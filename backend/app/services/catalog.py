@@ -1,12 +1,10 @@
-from collections import defaultdict
 from collections.abc import Sequence
 
 from pydantic import ValidationError
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import (
-    ConstraintViolationError,
     InvalidOrderError,
     InvalidTaskError,
     NotFoundError,
@@ -14,7 +12,6 @@ from app.core.errors import (
 )
 from app.models import (
     Task,
-    TaskComplication,
     TaskComplicationLink,
     TaskComplicationLinkGroup,
     TaskLevelPreset,
@@ -24,16 +21,16 @@ from app.models import (
 from app.models.enums import LEVELS, TaskStatus
 from app.schemas.common import Page
 from app.schemas.domain import (
-    LinkCreate,
+    CompositionUpdate,
     PresetRead,
     TaskCreate,
     TaskDetail,
     TaskPresetRead,
     TaskPresets,
-    TaskPublication,
     TaskRead,
+    TaskSave,
 )
-from app.services import composition, file_cleanup, photos, publication, resources
+from app.services import composition, file_cleanup, photos, resources
 from app.services.common import (
     Hierarchy,
     assign,
@@ -43,7 +40,6 @@ from app.services.common import (
     lock_hierarchy,
     page,
 )
-from app.services.composition import confirm_template
 from app.services.composition import ensure_publishable as ensure_publishable
 from app.services.media import MediaOwner
 
@@ -55,11 +51,6 @@ async def task(
     if public and (obj.status != TaskStatus.PUBLISHED or obj.is_hidden):
         raise NotFoundError("Задание не найдено")
     return obj
-
-
-async def create_task(session: AsyncSession, values: dict) -> Task:
-    obj = await publication.build(session, TaskPublication.model_validate(values))
-    return await commit(session, obj)
 
 
 async def update_task(session: AsyncSession, task_id: int, values: dict) -> Task:
@@ -107,76 +98,32 @@ async def delete_task(session: AsyncSession, task_id: int):
     await file_cleanup.process_pending(session, keys)
 
 
-async def template_reference(session: AsyncSession, template_id: int | None):
-    if template_id is not None:
-        await get(session, TaskComplication, template_id, lock=True)
-
-
-async def save_child(
-    session: AsyncSession,
-    task_id: int,
-    model,
-    values: dict,
-    object_id: int | None = None,
-):
-    parent = await task(session, task_id, lock=True)
-    requested_position = (
-        values.pop("position", None) if model is TaskComplicationLink else None
-    )
-    relocated = object_id is None
-    if object_id is None:
-        obj = model(task_id=task_id, **values)
-        session.add(obj)
-    else:
-        obj = await get(session, model, object_id, task_id=task_id)
-        if model is TaskComplicationLink:
-            confirm_template(obj, values)
-            relocated = any(
-                key in values and values[key] != getattr(obj, key)
-                for key in ("group_id", "level")
-            )
-        assign(obj, values)
-    if model is TaskComplicationLink:
-        with session.no_autoflush:
-            await template_reference(session, obj.complication_id)
-            if obj.group_id is not None:
-                group = await get(
-                    session, TaskComplicationLinkGroup, obj.group_id, task_id=task_id
-                )
-                if group.level != obj.level:
-                    raise ConstraintViolationError(
-                        "Уровень пункта должен совпадать с уровнем группы"
-                    )
-        if relocated or requested_position is not None:
-            await composition.place_link(session, obj, requested_position)
-    parent.updated_at = func.clock_timestamp()
-    await ensure_publishable(session, parent)
-    return await commit(session, obj)
-
-
-async def remove_child(session: AsyncSession, task_id: int, model, object_id: int):
-    parent = await task(session, task_id, lock=True)
-    obj = await get(session, model, object_id, task_id=task_id)
-    await session.delete(obj)
-    parent.updated_at = func.clock_timestamp()
-    await ensure_publishable(session, parent)
+async def save_task(session: AsyncSession, task_id: int, data: TaskSave) -> TaskDetail:
+    """Сохраняет поля, пресеты и дерево одним commit, сохраняя ID и снимки решений."""
+    await lock_hierarchy(session, Hierarchy.TASKS)
+    obj = await task(session, task_id, lock=True)
+    await check_parent(session, Task, data.parent_task_id, task_id, "parent_task_id")
+    assign(obj, data.model_dump(mode="json", exclude={"items", "presets"}))
+    presets = {
+        preset.level: preset
+        for preset in await session.scalars(
+            select(TaskLevelPreset).where(TaskLevelPreset.task_id == task_id)
+        )
+    }
+    for value in data.presets:
+        preset = presets.pop(value.level, None)
+        if preset is None:
+            session.add(TaskLevelPreset(task_id=task_id, **value.model_dump()))
+        else:
+            assign(preset, value.model_dump())
+    for preset in presets.values():
+        await session.delete(preset)
+    # Проверяем пригодность к публикации после записи всего состава, без промежуточных commit.
+    await composition.save(session, obj, CompositionUpdate(items=data.items))
+    await session.refresh(obj)
+    result = await detail(session, obj)
     await commit(session)
-
-
-async def copy_link(
-    session: AsyncSession, task_id: int, source_id: int, overrides: dict
-):
-    # Блокируем задания по возрастанию ID, чтобы встречное копирование не вызвало deadlock.
-    source = await get(session, TaskComplicationLink, source_id)
-    for parent_id in sorted({task_id, source.task_id}):
-        await task(session, parent_id, lock=True)
-    await session.refresh(source)
-    values = {key: getattr(source, key) for key in LinkCreate.model_fields}
-    # Группа относится к исходному заданию, копия создаётся в корне назначения.
-    values["group_id"] = None
-    values["position"] = None
-    values.update({key: value for key, value in overrides.items() if value is not None})
-    return await save_child(session, task_id, TaskComplicationLink, values)
+    return result
 
 
 async def reorder(
@@ -190,40 +137,6 @@ async def reorder(
     if len(set(ids)) != len(ids) or set(ids) != {obj.id for obj in objects}:
         raise InvalidOrderError()
     positions = {object_id: index for index, object_id in enumerate(ids)}
-    if model is TaskComplicationLink:
-        # Меняем порядок листьев только в их контейнере, сохраняя места групп.
-        siblings = defaultdict(list)
-        for obj in objects:
-            siblings[(obj.level, obj.group_id)].append(obj)
-        groups = (
-            await session.scalars(
-                select(TaskComplicationLinkGroup).where(
-                    TaskComplicationLinkGroup.task_id == owner_id
-                )
-            )
-        ).all()
-        for group in groups:
-            siblings[(group.level, group.parent_group_id)].append(group)
-        for items in siblings.values():
-            ordered = sorted(
-                items,
-                key=lambda item: (
-                    item.position,
-                    isinstance(item, TaskComplicationLink),
-                    item.id,
-                ),
-            )
-            links = iter(
-                sorted(
-                    (item for item in items if isinstance(item, TaskComplicationLink)),
-                    key=lambda item: positions[item.id],
-                )
-            )
-            for position, item in enumerate(ordered):
-                if isinstance(item, TaskComplicationLink):
-                    item = next(links)
-                item.position = position
-        return
     for obj in objects:
         obj.order_number = positions[obj.id]
 
@@ -246,33 +159,39 @@ async def task_page(
     return Page[TaskRead](**result)
 
 
-async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
+async def task_presets(session: AsyncSession, task_id: int) -> TaskPresets:
+    """Общий формат уровней для деталей и отдельного чтения, без накопления пунктов."""
     presets = (
         await session.scalars(
             select(TaskLevelPreset)
-            .where(TaskLevelPreset.task_id == obj.id)
+            .where(TaskLevelPreset.task_id == task_id)
             .order_by(TaskLevelPreset.id)
         )
     ).all()
-    gallery = await photos.read(session, MediaOwner(task_id=obj.id))
-    trees = composition.by_level(await composition.read(session, obj.id))
+    trees = composition.by_level(await composition.read(session, task_id))
     presets_by_level = {
         preset.level: PresetRead.model_validate(preset) for preset in presets
     }
+    return TaskPresets.model_validate(
+        {
+            level: TaskPresetRead(
+                preset=presets_by_level.get(level), complications=trees[level]
+            )
+            for level in LEVELS
+        }
+    )
+
+
+async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
+    presets = await task_presets(session, obj.id)
+    gallery = await photos.read(session, MediaOwner(task_id=obj.id))
     return TaskDetail(
         **{key: getattr(obj, key) for key in TaskCreate.model_fields},
         id=obj.id,
         status=obj.status,
         created_at=obj.created_at,
         updated_at=obj.updated_at,
-        presets=TaskPresets.model_validate(
-            {
-                level: TaskPresetRead(
-                    preset=presets_by_level.get(level), complications=trees[level]
-                )
-                for level in LEVELS
-            }
-        ),
+        presets=presets,
         cover_photo=next((photo for photo in gallery if photo.is_cover), None),
         photos=gallery,
         resources=await resources.read(session, MediaOwner(task_id=obj.id)),

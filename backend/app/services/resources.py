@@ -13,7 +13,6 @@ from app.core.errors import (
 )
 from app.models import TaskResource
 from app.models.enums import ResourceType
-from app.schemas.common import DownloadURL
 from app.schemas.domain import ResourceDownloadRead, ResourceRead
 from app.services import file_cleanup
 from app.services.common import assign, commit, flush, get
@@ -21,8 +20,11 @@ from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
 
 
-def download_url(resource: TaskResource) -> DownloadURL:
-    return DownloadURL(url=f"/api/media/resources/{resource.id}")
+def resource_response(obj: TaskResource) -> ResourceDownloadRead:
+    return ResourceDownloadRead(
+        **ResourceRead.model_validate(obj).model_dump(),
+        url=f"/api/media/resources/{obj.id}",
+    )
 
 
 async def read(session: AsyncSession, owner: MediaOwner) -> list[ResourceDownloadRead]:
@@ -33,13 +35,7 @@ async def read(session: AsyncSession, owner: MediaOwner) -> list[ResourceDownloa
             .order_by(TaskResource.id)
         )
     ).all()
-    return [
-        ResourceDownloadRead(
-            **ResourceRead.model_validate(obj).model_dump(),
-            url=download_url(obj).url,
-        )
-        for obj in objects
-    ]
+    return [resource_response(obj) for obj in objects]
 
 
 async def upload(

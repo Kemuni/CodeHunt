@@ -26,7 +26,6 @@ class ObjectMetadata(TypedDict):
 class Storage(Protocol):
     def upload(self, file: BinaryIO, key: str, content_type: str) -> None: ...
     def stat(self, key: str) -> ObjectMetadata: ...
-    def get_download_url(self, key: str) -> str: ...
     def delete(self, key: str) -> None: ...
     def read(self, key: str) -> bytes: ...
 
@@ -42,11 +41,6 @@ class S3Storage:
         self._access_key = settings.S3_ACCESS_KEY.get_secret_value()
         self._secret_key = settings.S3_SECRET_KEY.get_secret_value()
         self.client = self._client(settings.S3_ENDPOINT_URL)
-        self.url_client = (
-            self._client(settings.S3_PUBLIC_ENDPOINT_URL)
-            if settings.S3_PUBLIC_ENDPOINT_URL
-            else self.client
-        )
 
     def _client(self, endpoint: str) -> S3Client:
         return boto3.client(
@@ -72,13 +66,6 @@ class S3Storage:
     def stat(self, key: str) -> ObjectMetadata:
         metadata = self.client.head_object(Bucket=settings.S3_BUCKET, Key=key)
         return {"ContentLength": metadata["ContentLength"]}
-
-    def get_download_url(self, key: str) -> str:
-        return self.url_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": settings.S3_BUCKET, "Key": key},
-            ExpiresIn=settings.S3_URL_TTL,
-        )
 
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=settings.S3_BUCKET, Key=key)

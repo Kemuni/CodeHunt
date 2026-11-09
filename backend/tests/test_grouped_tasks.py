@@ -11,7 +11,13 @@ from app.main import app
 from app.models import Task, TaskComplicationLink, TaskPhoto
 from app.services import catalog, composition, library, media
 from app.services.storage import get_storage
-from tests.conftest import make_project, task_data
+from tests.conftest import (
+    composition_data,
+    make_project,
+    publish_task,
+    save_task,
+    task_data,
+)
 from tests.test_resources import MemoryStorage
 
 pytestmark = pytest.mark.anyio
@@ -44,7 +50,7 @@ def image_bytes():
 async def test_nested_groups_presets_and_solution_snapshots(client, db):
     task, links, presets = await make_project(client)
     tid = task["id"]
-    url = f"/api/editor/tasks/{tid}/composition"
+    url = f"/api/editor/tasks/{tid}"
     payload = {
         "items": [
             {
@@ -71,15 +77,15 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
             {"kind": "group", "level": "high", "title": "Пустая группа", "items": []},
         ]
     }
-    response = await client.put(url, json=payload)
+    response = await save_task(client, url, **payload)
     assert response.status_code == 200, response.text
-    tree = response.json()["data"]
+    tree = composition_data(response.json()["data"])
     group_id = tree[0]["id"]
     nested_id = tree[0]["items"][1]["id"]
     assert tree[0]["items"][0]["id"] == links[0]["id"]
     assert tree[0]["items"][1]["parent_group_id"] == group_id
-    assert (await client.get(url)).json()["data"] == tree
-    detail = (await client.get(f"/api/tasks/{tid}")).json()["data"]
+    assert composition_data((await client.get(url)).json()["data"]) == tree
+    detail = (await client.get(f"/api/tasks/by-slug/{task['slug']}")).json()["data"]
     assert "complications" not in detail
     assert list(detail["presets"]) == ["easy", "medium", "high"]
     assert detail["presets"]["easy"]["complications"] == [tree[0]]
@@ -90,16 +96,16 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
     for path in (f"/api/editor/tasks/{tid}", f"/api/tasks/by-slug/{task['slug']}"):
         assert (await client.get(path)).json()["data"] == detail
     assert detail["photos"] == []
-    easy = (
-        await client.get(f"/api/tasks/{tid}/presets/{presets[0]['id']}/configuration")
-    ).json()["data"]["complications"]
+    levels = (await client.get(f"/api/tasks/{tid}/presets")).json()["data"]
+    assert levels == detail["presets"]
+    easy = levels["easy"]["complications"]
     assert len(easy) == 1 and easy[0]["kind"] == "group"
-    assert [item["id"] for item in easy[0]["items"]] == [links[0]["id"]]
-    high = (
-        await client.get(f"/api/tasks/{tid}/presets/{presets[2]['id']}/configuration")
-    ).json()["data"]["complications"]
-    assert [item["kind"] for item in high] == ["group", "complication", "group"]
-    assert high[2]["items"][0]["id"] == links[2]["id"]
+    assert easy[0]["items"][0]["id"] == links[0]["id"]
+    assert easy[0]["items"][1]["items"] == []
+    high = levels["high"]["complications"]
+    assert [item["kind"] for item in high] == ["group", "group"]
+    assert high[0]["items"][0]["id"] == links[2]["id"]
+    assert high[1]["items"] == []
     solution = await client.post(
         f"/api/tasks/{tid}/solutions",
         json={
@@ -135,16 +141,16 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
             link_input(links[2]),
         ]
     }
-    assert (await client.put(url, json=moved)).status_code == 200
+    assert (await save_task(client, url, **moved)).status_code == 200
     assert (await client.get(f"/api/solutions/{snapshot['id']}")).json()["data"][
         "complications"
     ] == snapshot["complications"]
     # Удаление используемого пункта откатывает всё сохранение структуры.
-    before = (await client.get(url)).json()["data"]
+    before = composition_data((await client.get(url)).json()["data"])
     assert (
-        await client.put(url, json={"items": [link_input(links[2])]})
+        await save_task(client, url, **{"items": [link_input(links[2])]})
     ).status_code == 409
-    assert (await client.get(url)).json()["data"] == before
+    assert composition_data((await client.get(url)).json()["data"]) == before
     async with db() as session:
         queries = []
 
@@ -165,10 +171,11 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
     task, links, _ = await make_project(client, published=False)
     other, other_links, _ = await make_project(client, slug="other", published=False)
     base = f"/api/editor/tasks/{task['id']}"
-    url = base + "/composition"
-    response = await client.put(
+    url = base
+    response = await save_task(
+        client,
         url,
-        json={
+        **{
             "items": [
                 {
                     "kind": "group",
@@ -181,20 +188,21 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
         },
     )
     assert response.status_code == 200, response.text
-    group = response.json()["data"][0]
-    before = (await client.get(url)).json()["data"]
+    group = composition_data(response.json()["data"])[0]
+    before = composition_data((await client.get(url)).json()["data"])
     assert (
-        await client.put(
-            url, json={"items": [link_input(links[0]), link_input(links[0])]}
+        await save_task(
+            client, url, **{"items": [link_input(links[0]), link_input(links[0])]}
         )
     ).status_code == 422
     assert (
-        await client.put(url, json={"items": [link_input(other_links[0])]})
+        await save_task(client, url, **{"items": [link_input(other_links[0])]})
     ).status_code == 404
     assert (
-        await client.put(
+        await save_task(
+            client,
             url,
-            json={
+            **{
                 "items": [
                     {
                         "kind": "group",
@@ -214,34 +222,26 @@ async def test_composition_validation_and_atomicity(client, sync_engine):
             },
         )
     ).status_code == 422
-    assert (await client.get(url)).json()["data"] == before
+    assert composition_data((await client.get(url)).json()["data"]) == before
     bad_link = {**link_input(links[0]), "complication_id": 99999}
-    assert (await client.put(url, json={"items": [bad_link]})).status_code == 404
+    assert (await save_task(client, url, **{"items": [bad_link]})).status_code == 404
     leaf = link_input(links[0])
     for _ in range(11):
         leaf = {"kind": "group", "level": "easy", "title": "Вложение", "items": [leaf]}
-    assert (await client.put(url, json={"items": [leaf]})).status_code == 422
-    # И точечный API, и FK запрещают привязать пункт к группе другого задания.
-    assert (
-        await client.patch(
-            f"/api/editor/tasks/{other['id']}/complications/{other_links[0]['id']}",
-            json={"group_id": group["id"]},
-        )
-    ).status_code == 404
+    assert (await save_task(client, url, **{"items": [leaf]})).status_code == 422
+    # FK также запрещает ссылку на группу другого задания.
     with pytest.raises(IntegrityError), sync_engine.begin() as conn:
         conn.execute(
             update(TaskComplicationLink)
             .where(TaskComplicationLink.id == other_links[0]["id"])
             .values(group_id=group["id"])
         )
-    copied = await client.post(
-        f"/api/editor/tasks/{other['id']}/complications/copy",
-        json={"source_link_id": links[0]["id"]},
-    )
-    assert copied.status_code == 201 and copied.json()["data"]["group_id"] is None
     assert (
-        await client.put(
-            url, json={"items": []}, headers={"Authorization": "Bearer test-session-2"}
+        await save_task(
+            client,
+            url,
+            **{"items": []},
+            headers={"Authorization": "Bearer test-session-2"},
         )
     ).status_code == 403
     assert (await client.delete(base)).status_code == 200
@@ -356,12 +356,8 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
         await client.patch(f"/api/editor/tasks/{tid}", json={"is_hidden": True})
     ).status_code == 200
     for path in [
-        f"/api/tasks/{tid}",
         f"/api/tasks/by-slug/{task['slug']}",
         f"/api/tasks/{tid}/presets",
-        f"/api/tasks/{tid}/presets/{presets[0]['id']}/configuration",
-        f"/api/tasks/{tid}/resources",
-        f"/api/tasks/{tid}/resources/1/download-url",
     ]:
         assert (await client.get(path)).status_code == 404, path
     assert (await client.get("/api/tasks")).json()["data"]["total"] == 0
@@ -372,19 +368,19 @@ async def test_hidden_task_is_private_but_solutions_remain(client):
         )
     ).status_code == 404
     assert (await client.get(f"/api/solutions/{solution['id']}")).status_code == 200
-    admin_list = await client.get("/api/editor/tasks/all")
+    admin_list = await client.get("/api/editor/tasks")
     assert admin_list.status_code == 200 and admin_list.json()["data"]["total"] == 1
     assert admin_list.json()["data"]["items"][0]["is_hidden"] is True
     assert (
         await client.get(
-            "/api/editor/tasks/all", headers={"Authorization": "Bearer test-session-2"}
+            "/api/editor/tasks", headers={"Authorization": "Bearer test-session-2"}
         )
     ).status_code == 403
     assert (await client.get(f"/api/editor/tasks/{tid}")).status_code == 200
     assert (
         await client.patch(f"/api/editor/tasks/{tid}", json={"is_hidden": False})
     ).status_code == 200
-    assert (await client.get(f"/api/tasks/{tid}")).status_code == 200
+    assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 200
 
 
 async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch):
@@ -402,7 +398,7 @@ async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch)
     )
     assert reply.status_code == 201, reply.text
     gallery = reply.json()["data"]
-    for url in ("/api/tasks", "/api/editor/tasks", "/api/editor/tasks/all"):
+    for url in ("/api/tasks", "/api/editor/tasks", "/api/editor/tasks"):
         result = (await client.get(url)).json()["data"]
         assert result["total"] == 2
         assert result["items"][0]["cover_photo"] == gallery[0]
@@ -412,11 +408,13 @@ async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch)
         assert second_page["total"] == 2 and len(second_page["items"]) == 1
         assert second_page["items"][0]["id"] == empty["id"]
         assert second_page["items"][0]["cover_photo"] is None
-    for url in (base, f"/api/tasks/{task['id']}", f"/api/tasks/by-slug/{task['slug']}"):
+    for url in (base, f"/api/tasks/by-slug/{task['slug']}"):
         result = (await client.get(url)).json()["data"]
         assert result["cover_photo"] == gallery[0]
         assert result["photos"] == gallery
-    empty_detail = (await client.get(f"/api/tasks/{empty['id']}")).json()["data"]
+    empty_detail = (await client.get(f"/api/tasks/by-slug/{empty['slug']}")).json()[
+        "data"
+    ]
     assert empty_detail["cover_photo"] is None and empty_detail["photos"] == []
     assert (await client.get("/api/tasks?q=несуществующее")).json()["data"][
         "items"
@@ -458,9 +456,8 @@ async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch)
     await client.patch(base, json={"is_hidden": True})
     public = (await client.get("/api/tasks")).json()["data"]
     assert [item["id"] for item in public["items"]] == [empty["id"]]
-    assert (await client.get(f"/api/tasks/{task['id']}")).status_code == 404
     assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 404
-    assert (await client.get("/api/editor/tasks/all")).json()["data"]["items"][0][
+    assert (await client.get("/api/editor/tasks")).json()["data"]["items"][0][
         "cover_photo"
     ] == reordered[0]
 
@@ -491,7 +488,7 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
     assert len(gallery) == 4 and sum(photo["is_cover"] for photo in gallery) == 1
     assert [photo["position"] for photo in gallery] == [1, 2, 3, 4]
     assert "object_key" not in gallery[0]
-    detail = (await client.get(f"/api/tasks/{task['id']}")).json()["data"]
+    detail = (await client.get(f"/api/tasks/by-slug/{task['slug']}")).json()["data"]
     assert [photo["id"] for photo in detail["photos"]] == [
         photo["id"] for photo in gallery
     ]
@@ -561,7 +558,7 @@ async def test_concurrent_photo_uploads_keep_maximum_four(client, monkeypatch):
     store = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: store
     monkeypatch.setattr(media, "get_storage", lambda: store)
-    task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
+    task = (await publish_task(client, json=task_data())).json()["data"]
     base = f"/api/editor/tasks/{task['id']}"
     content = image_bytes()
     replies = await asyncio.gather(
@@ -606,7 +603,7 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
             },
         )
     ).json()["data"]
-    task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
+    task = (await publish_task(client, json=task_data())).json()["data"]
     base = f"/api/editor/tasks/{task['id']}"
     requirement = {
         "kind": "complication",
@@ -616,9 +613,10 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
         "level": "easy",
         "complication_id": template["id"],
     }
-    response = await client.put(
-        base + "/composition",
-        json={
+    response = await save_task(
+        client,
+        base,
+        **{
             "items": [
                 {
                     "kind": "group",
@@ -630,7 +628,7 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
         },
     )
     assert response.status_code == 200, response.text
-    group = response.json()["data"][0]
+    group = composition_data(response.json()["data"])[0]
     created = group["items"][0]
     assert (
         created["group_id"] == group["id"]
@@ -638,38 +636,29 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
     )
     edited = {**requirement, "id": created["id"], "description": "Другая реализация"}
     edited.pop("complication_id")
-    assert (
-        await client.put(base + "/composition", json={"items": [edited]})
-    ).status_code == 422
-    preserved = (await client.get(base + "/composition")).json()["data"]
+    assert (await save_task(client, base, **{"items": [edited]})).status_code == 422
+    preserved = composition_data((await client.get(base)).json()["data"])
     assert preserved[0]["items"][0]["description"] == requirement["description"]
     edited["complication_id"] = template["id"]
-    assert (
-        await client.put(base + "/composition", json={"items": [edited]})
-    ).status_code == 200
+    assert (await save_task(client, base, **{"items": [edited]})).status_code == 200
     edited["complication_id"] = None
-    detached = (
-        await client.put(base + "/composition", json={"items": [edited]})
-    ).json()["data"]
+    detached = (await save_task(client, base, **{"items": [edited]})).json()["data"]
+    detached = composition_data(detached)
     assert detached[0]["complication_id"] is None and detached[0]["group_id"] is None
     assert (await client.patch(base, json={"status": "published"})).status_code == 200
-    assert (
-        await client.put(base + "/composition", json={"items": []})
-    ).status_code == 422
-    assert (await client.get(base + "/composition")).json()["data"] == detached
+    assert (await save_task(client, base, **{"items": []})).status_code == 422
+    assert composition_data((await client.get(base)).json()["data"]) == detached
 
 
 async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(client, db):
     task, links, presets = await make_project(client, published=False)
     base = f"/api/editor/tasks/{task['id']}"
-    for preset in presets:
-        assert (
-            await client.delete(f"{base}/presets/{preset['id']}")
-        ).status_code == 200
+    assert (await save_task(client, base, presets=[])).status_code == 200
     tree = (
-        await client.put(
-            base + "/composition",
-            json={
+        await save_task(
+            client,
+            base,
+            **{
                 "items": [
                     {
                         "kind": "group",
@@ -690,6 +679,7 @@ async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(clien
             },
         )
     ).json()["data"]
+    tree = composition_data(tree)
     detail = (await client.get(base)).json()["data"]
     assert "complications" not in detail
     assert all(level["preset"] is None for level in detail["presets"].values())
@@ -712,15 +702,15 @@ async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(clien
         try:
             await catalog.detail(session, obj)
             assert len(queries) == 5
-            for preset in presets:
-                response = await client.post(
-                    base + "/presets",
-                    json={
-                        "level": preset["level"],
-                        "description": preset["description"],
-                    },
-                )
-                assert response.status_code == 201
+            response = await save_task(
+                client,
+                base,
+                presets=[
+                    {"level": preset["level"], "description": preset["description"]}
+                    for preset in presets
+                ],
+            )
+            assert response.status_code == 200
             queries.clear()
             populated = await catalog.detail(session, obj)
             assert len(queries) == 5

@@ -5,7 +5,7 @@ from urllib.parse import quote
 from fastapi import Depends, Request, Response
 
 from app.api.base import APIResponseRouter
-from app.api.deps import CurrentAdmin, OptionalUser, SessionDep
+from app.api.deps import OptionalUser, SessionDep
 from app.models import TaskPhoto, TaskResource
 from app.schemas.common import PositiveID
 from app.services import media
@@ -65,23 +65,6 @@ async def photo(
     return await serve_file(file, request, cache)
 
 
-@router.head("/editor/media/photos/{photo_id}", include_in_schema=False)
-@router.get(
-    "/editor/media/photos/{photo_id}",
-    response_class=Response,
-    summary="Получить фотографию задания или своего черновика в редакторе.",
-)
-async def editor_photo(
-    photo_id: PositiveID,
-    request: Request,
-    db: SessionDep,
-    user: CurrentAdmin,
-    cache: CacheDep,
-):
-    file = await media.accessible_file(db, TaskPhoto, photo_id, user)
-    return await serve_file(file, request, cache)
-
-
 @router.head("/media/resources/{resource_id}", include_in_schema=False)
 @router.get(
     "/media/resources/{resource_id}",
@@ -93,23 +76,6 @@ async def resource(
     request: Request,
     db: SessionDep,
     user: OptionalUser,
-    cache: CacheDep,
-):
-    file = await media.accessible_file(db, TaskResource, resource_id, user)
-    return await serve_file(file, request, cache)
-
-
-@router.head("/editor/media/resources/{resource_id}", include_in_schema=False)
-@router.get(
-    "/editor/media/resources/{resource_id}",
-    response_class=Response,
-    summary="Скачать вложение задания или своего черновика в редакторе.",
-)
-async def editor_resource(
-    resource_id: PositiveID,
-    request: Request,
-    db: SessionDep,
-    user: CurrentAdmin,
     cache: CacheDep,
 ):
     file = await media.accessible_file(db, TaskResource, resource_id, user)

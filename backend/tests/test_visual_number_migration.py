@@ -6,7 +6,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from alembic.util import load_python_file
 
-from tests.conftest import task_data
+from tests.conftest import publish_task, task_data
 from tests.test_item_numbering import group, leaf
 
 
@@ -22,7 +22,7 @@ async def test_visual_number_migration_with_nested_groups(client, sync_engine):
             leaf("Максимальный", "high"),
         ],
     }
-    response = await client.post("/api/editor/tasks", json=payload)
+    response = await publish_task(client, json=payload)
     assert response.status_code == 201, response.text
     migration = load_python_file(
         Path(__file__).parents[1] / "alembic/versions",

@@ -4,10 +4,10 @@ from fastapi import Depends, File, Form, Query, UploadFile
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
-from app.models import TaskDraft, TaskResource
+from app.models import TaskDraft
 from app.models.enums import ResourceType
 from app.schemas import SuccessResponse
-from app.schemas.common import DownloadURL, PositiveID
+from app.schemas.common import PositiveID
 from app.schemas.domain import DraftGalleryUpdate, DraftRead, DraftResourceUpdate
 from app.services import drafts, photos, resources
 from app.services.common import get
@@ -120,20 +120,3 @@ async def delete_resource(
     owner = MediaOwner(draft_id=draft_id, user_id=admin.id, revision=revision)
     await resources.delete(db, owner, resource_id)
     return SuccessResponse(data=await current_draft(db, owner))
-
-
-@router.get(
-    "/resources/{resource_id}/download-url",
-    response_model=SuccessResponse[DownloadURL],
-    summary="Получить постоянную ссылку на вложение собственного черновика.",
-)
-async def download_resource(
-    draft_id: PositiveID,
-    resource_id: PositiveID,
-    db: SessionDep,
-    admin: CurrentAdmin,
-):
-    owner = MediaOwner(draft_id=draft_id, user_id=admin.id)
-    await owner.get(db)
-    obj = await get(db, TaskResource, resource_id, **owner.values())
-    return SuccessResponse(data=resources.download_url(obj))

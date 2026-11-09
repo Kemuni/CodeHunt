@@ -9,7 +9,7 @@ from app.main import app
 from app.services import media
 from app.services import storage as storage_module
 from app.services.storage import S3Storage, get_storage
-from tests.conftest import make_project, task_data
+from tests.conftest import make_project, publish_task, task_data
 
 pytestmark = pytest.mark.anyio
 
@@ -31,9 +31,6 @@ class MemoryStorage:
         if key not in self.objects:
             raise ClientError({"Error": {"Code": "NoSuchKey"}}, "HeadObject")
         return {"ContentLength": len(self.objects[key])}
-
-    def get_download_url(self, key):
-        return f"https://storage.example.com/{key}?temporary-signature=yes"
 
     def delete(self, key):
         self.objects.pop(key, None)
@@ -62,15 +59,18 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
         and "object_key" not in resource
         and "order_number" not in resource
     )
-    assert (await client.get(base)).json()["data"][0]["id"] == rid
-    public = f"/api/tasks/{task['id']}/resources"
+    assert (await client.get(base.removesuffix("/resources"))).json()["data"][
+        "resources"
+    ][0]["id"] == rid
+    public = f"/api/tasks/by-slug/{task['slug']}"
     assert (await client.get(public)).status_code == 404
-    assert (await client.get(public + f"/{rid}/download-url")).status_code == 404
+    assert resource["url"] == f"/api/media/resources/{rid}"
+    assert (await client.get(resource["url"])).status_code == 200
     assert (
-        (await client.get(base + f"/{rid}/download-url"))
-        .json()["data"]["url"]
-        .startswith("/api/media/resources/")
-    )
+        await client.get(
+            resource["url"], headers={"Authorization": "Bearer test-session-2"}
+        )
+    ).status_code == 404
     assert (
         await client.patch(
             base + f"/{rid}", json={"title": "Другой заголовок", "type": "asset"}
@@ -81,7 +81,7 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
     ).status_code == 422
     await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "published"})
     assert (await client.get(public)).status_code == 200
-    assert (await client.get(public + f"/{rid}/download-url")).status_code == 200
+    assert (await client.get(resource["url"])).status_code == 200
     keys = list(store.objects)
     await client.post(
         base,
@@ -91,11 +91,11 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
     assert len(store.objects) == 2
     assert (await client.delete(base + f"/{rid}")).status_code == 200
     assert keys[0] not in store.objects
-    remaining = (await client.get(base)).json()["data"][0]
+    remaining = (await client.get(base.removesuffix("/resources"))).json()["data"][
+        "resources"
+    ][0]
     store.objects.clear()
-    url = (await client.get(base + f"/{remaining['id']}/download-url")).json()["data"][
-        "url"
-    ]
+    url = remaining["url"]
     assert (await client.get(url)).status_code == 404
     store.fail_upload = True
     reply = await client.post(
@@ -121,7 +121,7 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
 async def test_storage_configuration_error(client, monkeypatch):
     monkeypatch.setattr(settings, "S3_ENDPOINT_URL", None)
     get_storage.cache_clear()
-    task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
+    task = (await publish_task(client, json=task_data())).json()["data"]
     reply = await client.post(
         f"/api/editor/tasks/{task['id']}/resources",
         data={"title": "Файл", "type": "other"},
@@ -135,7 +135,6 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
     from pydantic import SecretStr
 
     monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
-    monkeypatch.setattr(settings, "S3_PUBLIC_ENDPOINT_URL", None)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", "codehunt-test")
@@ -150,7 +149,7 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
             raise
     app.dependency_overrides[get_storage] = lambda: store
     monkeypatch.setattr(media, "get_storage", lambda: store)
-    task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
+    task = (await publish_task(client, json=task_data())).json()["data"]
     base = f"/api/editor/tasks/{task['id']}/resources"
     reply = await client.post(
         base,
@@ -158,8 +157,7 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
         files={"file": ("spec.txt", b"real minio roundtrip", "text/plain")},
     )
     assert reply.status_code == 201, reply.text
-    rid = reply.json()["data"]["id"]
-    url = (await client.get(base + f"/{rid}/download-url")).json()["data"]["url"]
+    url = reply.json()["data"]["url"]
     downloaded = await client.get(url)
     assert downloaded.status_code == 200
     assert downloaded.content == b"real minio roundtrip"

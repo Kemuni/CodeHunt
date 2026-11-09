@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tests.conftest import task_data
+from tests.conftest import publish_task, task_data
 
 pytestmark = pytest.mark.anyio
 
@@ -59,12 +59,13 @@ async def test_owner_admin_and_live_errors(client):
     draft = response.json()["data"]
     assert draft["revision"] == 2 and draft["is_valid"]
     unchanged = draft["updated_at"]
-    assert (await client.post("/api/editor/tasks", json=task_data())).status_code == 201
+    assert (await publish_task(client, json=task_data())).status_code == 201
     draft = (await client.get(url)).json()["data"]
     assert draft["revision"] == 2 and draft["updated_at"] == unchanged
     assert any(error["code"] == "slug_taken" for error in draft["validation_errors"])
     listed = (await client.get("/api/editor/task-drafts")).json()["data"]["items"][0]
-    assert listed["validation_errors"] == draft["validation_errors"]
+    assert "validation_errors" not in listed and "payload" not in listed
+    assert listed["id"] == draft["id"] and listed["revision"] == draft["revision"]
     response = await client.post(url + "/publish", json={"revision": 2})
     assert response.status_code == 422
     assert response.json()["errors"]["details"][0]["field"] == "slug"
@@ -90,9 +91,7 @@ async def test_owner_admin_and_live_errors(client):
 
 
 async def test_invalid_draft_saved_not_published_and_parent_changes(client):
-    parent = (await client.post("/api/editor/tasks", json=task_data("parent"))).json()[
-        "data"
-    ]
+    parent = (await publish_task(client, json=task_data("parent"))).json()["data"]
     response = await client.post(
         "/api/editor/task-drafts",
         json={"payload": {**task_data(), "parent_task_id": parent["id"]}},

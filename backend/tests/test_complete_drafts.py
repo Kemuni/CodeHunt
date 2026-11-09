@@ -13,7 +13,7 @@ from app.main import app
 from app.models import Task, TaskDraft, TaskPhoto, TaskResource
 from app.services import drafts, media
 from app.services.storage import S3Storage, get_storage
-from tests.conftest import task_data
+from tests.conftest import publish_task, task_data
 from tests.test_failures import SimulatedFailure
 from tests.test_resources import MemoryStorage
 
@@ -118,12 +118,8 @@ async def test_empty_form_files_live_validation_and_atomic_publication(
     assert task["photos"][0]["task_id"] == task["resources"][0]["task_id"] == task["id"]
     assert set(store.objects) == keys
     assert (await client.get(base)).status_code == 404
-    assert (await client.get(f"/api/tasks/{task['id']}")).status_code == 200
-    assert (
-        await client.get(
-            f"/api/tasks/{task['id']}/resources/{resource['id']}/download-url"
-        )
-    ).status_code == 200
+    assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 200
+    assert (await client.get(resource["url"])).status_code == 200
     async with db() as session:
         assert await session.scalar(select(func.count()).select_from(TaskDraft)) == 0
         assert await session.scalar(select(func.count()).select_from(TaskPhoto)) == 1
@@ -201,7 +197,7 @@ async def test_draft_file_ownership_revision_editing_and_deletion(client, db, st
     other = {"Authorization": "Bearer test-session-3"}
     assert (await client.get(base, headers=other)).status_code == 404
     assert (
-        await client.get(base + f"/resources/{rid}/download-url", headers=other)
+        await client.get(f"/api/media/resources/{rid}", headers=other)
     ).status_code == 404
     assert (
         await client.post(
@@ -245,9 +241,7 @@ async def test_draft_file_ownership_revision_editing_and_deletion(client, db, st
     assert updated.status_code == 200, updated.text
     assert updated.json()["data"]["revision"] == 4
     assert updated.json()["data"]["resources"][0]["title"] == "Макет"
-    assert (
-        await client.get(base + f"/resources/{rid}/download-url")
-    ).status_code == 200
+    assert (await client.get(f"/api/media/resources/{rid}")).status_code == 200
     assert (
         await client.post(base + "/publish", json={"revision": 3})
     ).status_code == 409
@@ -364,7 +358,7 @@ async def test_draft_gallery_limit_and_database_owner_constraints(
     reply = await client.put(base + "/photos", json={"revision": 2, "photo_ids": ids})
     assert reply.json()["data"]["photos"][0]["id"] == ids[0]
     assert reply.json()["data"]["photos"][0]["is_cover"]
-    task = (await client.post("/api/editor/tasks", json=task_data())).json()["data"]
+    task = (await publish_task(client, json=task_data())).json()["data"]
     for owner in ({}, {"task_id": task["id"], "draft_id": draft["id"]}):
         with pytest.raises(IntegrityError), sync_engine.begin() as conn:
             conn.execute(
@@ -410,7 +404,6 @@ async def test_real_minio_draft_files_survive_publication(
     client, minio_endpoint, monkeypatch
 ):
     monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
-    monkeypatch.setattr(settings, "S3_PUBLIC_ENDPOINT_URL", None)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", "codehunt-drafts-test")

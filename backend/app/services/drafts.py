@@ -1,4 +1,5 @@
 from pydantic import ValidationError
+from sqlalchemy import case, func, select
 from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +9,8 @@ from app.core.errors import (
     InvalidDraftPayloadError,
 )
 from app.models import TaskDraft, TaskPhoto, TaskResource
-from app.schemas.domain import DraftCreate, DraftRead, TaskPublication
+from app.schemas.common import Page
+from app.schemas.domain import DraftCreate, DraftRead, DraftSummary, TaskPublication
 from app.services import catalog, file_cleanup, photos, publication, resources
 from app.services.common import commit, flush, get
 from app.services.media import MediaOwner
@@ -29,6 +31,60 @@ async def read(session: AsyncSession, obj: TaskDraft) -> DraftRead:
         is_valid=not errors,
         photos=await photos.read(session, owner),
         resources=await resources.read(session, owner),
+    )
+
+
+async def listing(
+    session: AsyncSession, owner_id: int, limit: int, offset: int
+) -> Page[DraftSummary]:
+    # В список не загружаем всё JSON-дерево, вложения и ошибки валидации каждого черновика.
+    def text_field(name: str):
+        value = TaskDraft.payload[name]
+        return case(
+            (func.jsonb_typeof(value) == "string", value.astext), else_=""
+        ).label(name)
+
+    total = await session.scalar(
+        select(func.count())
+        .select_from(TaskDraft)
+        .where(TaskDraft.owner_id == owner_id)
+    )
+    rows = (
+        (
+            await session.execute(
+                select(
+                    TaskDraft.id,
+                    TaskDraft.revision,
+                    TaskDraft.created_at,
+                    TaskDraft.updated_at,
+                    text_field("title"),
+                    text_field("short_description"),
+                )
+                .where(TaskDraft.owner_id == owner_id)
+                .order_by(TaskDraft.updated_at.desc(), TaskDraft.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        )
+        .mappings()
+        .all()
+    )
+    covers = {}
+    if rows:
+        covers = {
+            photo.draft_id: photos.photo_response(photo)
+            for photo in await session.scalars(
+                select(TaskPhoto).where(
+                    TaskPhoto.draft_id.in_([row["id"] for row in rows]),
+                    TaskPhoto.position == 1,
+                )
+            )
+        }
+    return Page[DraftSummary](
+        items=[DraftSummary(**row, cover_photo=covers.get(row["id"])) for row in rows],
+        total=total or 0,
+        limit=limit,
+        offset=offset,
     )
 
 

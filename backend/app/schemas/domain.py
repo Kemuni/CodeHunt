@@ -74,11 +74,6 @@ class LinkContent(Input):
     is_required: bool = False
 
 
-class LinkCreate(LinkContent):
-    group_id: PositiveID | None = None
-    position: Annotated[int, Field(ge=0, le=2_147_483_647)] | None = None
-
-
 class PresetCreate(Input):
     level: Level
     description: Content
@@ -155,28 +150,6 @@ class TaskUpdate(PatchInput):
     is_hidden: bool | None = None
 
 
-class LinkUpdate(PatchInput):
-    nullable_fields = frozenset(["complication_id", "group_id"])
-
-    group_id: PositiveID | None = None
-
-    complication_id: PositiveID | None = None
-    title: Title | None = None
-    description: Content | None = None
-    acceptance_criteria: Content | None = None
-    level: Level | None = None
-    is_required: bool | None = None
-    position: Annotated[int, Field(ge=0, le=2_147_483_647)] | None = None
-
-
-class PresetUpdate(PatchInput):
-    nullable_fields = frozenset(["average_days_to_complete"])
-
-    level: Level | None = None
-    description: Content | None = None
-    average_days_to_complete: Annotated[int, Field(gt=0, le=32767)] | None = None
-
-
 class SolutionLinkUpdate(PatchInput):
     nullable_fields = frozenset(["acceptance_criteria", "implementation_description"])
 
@@ -195,13 +168,6 @@ class ResourcePatch(PatchInput):
 
 class OrderInput(Input):
     ids: list[PositiveID] = Field(max_length=1000)
-
-
-class LinkCopy(Input):
-    source_link_id: PositiveID
-    title: Title | None = None
-    level: Level | None = None
-    position: Annotated[int, Field(ge=0)] | None = None
 
 
 class CategoryRead(Read, CategoryCreate):
@@ -352,6 +318,21 @@ class CompositionUpdate(Input):
         return self
 
 
+class TaskSave(TaskCreate):
+    """Полная запись редактора; существующие пресеты идентифицируются уровнем."""
+
+    items: list[CompositionWriteItem] = Field(max_length=1000)
+    presets: list[PresetCreate] = Field(max_length=3)
+
+    @model_validator(mode="after")
+    def valid_content(self) -> Self:
+        CompositionUpdate(items=self.items)
+        levels = [preset.level for preset in self.presets]
+        if len(levels) != len(set(levels)):
+            raise ValueError("Уровни пресетов не должны повторяться")
+        return self
+
+
 class TaskPublication(TaskCreate):
     items: list[CompositionWriteItem] = Field(default_factory=list, max_length=1000)
     presets: list[PresetCreate] = Field(min_length=1, max_length=3)
@@ -422,11 +403,6 @@ class DeveloperLibrary(BaseModel):
     categories: list[CategoryLibrary]
 
 
-class Configuration(BaseModel):
-    preset: PresetRead
-    complications: list[CompositionItem]
-
-
 class SolutionDetail(SolutionRead):
     complications: list[SolutionLinkRead]
     total_count: int
@@ -463,6 +439,13 @@ class DraftRead(Read, Dates):
     is_valid: bool
     photos: list[PhotoRead]
     resources: list[ResourceDownloadRead]
+
+
+class DraftSummary(Read, Dates):
+    title: str
+    short_description: str
+    revision: int
+    cover_photo: PhotoRead | None = None
 
 
 class DraftGalleryUpdate(GalleryUpdate):

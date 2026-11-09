@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import Query
-from sqlalchemy import select
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
@@ -13,11 +12,12 @@ from app.schemas.domain import (
     DraftCreate,
     DraftPublish,
     DraftRead,
+    DraftSummary,
     DraftUpdate,
     TaskDetail,
 )
 from app.services import drafts
-from app.services.common import get, page
+from app.services.common import get
 
 router = APIResponseRouter(prefix="/editor/task-drafts", tags=["task-drafts"])
 
@@ -34,22 +34,13 @@ async def create(data: DraftCreate, db: SessionDep, admin: CurrentAdmin):
 
 @router.get(
     "",
-    response_model=SuccessResponse[Page[DraftRead]],
-    summary="Список собственных черновиков с повторной проверкой их ошибок.",
+    response_model=SuccessResponse[Page[DraftSummary]],
+    summary="Список собственных черновиков с кратким описанием и обложкой",
 )
 async def listing(
     db: SessionDep, admin: CurrentAdmin, limit: Limit = 20, offset: Offset = 0
 ):
-    result = await page(
-        db,
-        select(TaskDraft)
-        .where(TaskDraft.owner_id == admin.id)
-        .order_by(TaskDraft.updated_at.desc(), TaskDraft.id.desc()),
-        limit,
-        offset,
-    )
-    result["items"] = [await drafts.read(db, obj) for obj in result["items"]]
-    return SuccessResponse(data=result)
+    return SuccessResponse(data=await drafts.listing(db, admin.id, limit, offset))
 
 
 @router.get(

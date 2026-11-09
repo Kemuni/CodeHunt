@@ -97,7 +97,3 @@ class ValidationIssue(BaseModel):
     field: str
     code: str
     message: str
-
-
-class DownloadURL(BaseModel):
-    url: str

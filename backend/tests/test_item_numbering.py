@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.models import TaskComplicationLink, TaskComplicationLinkGroup
 from app.services import composition
-from tests.conftest import task_data
+from tests.conftest import composition_data, publish_task, save_task, task_data
 
 pytestmark = pytest.mark.anyio
 
@@ -72,7 +72,7 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
             leaf("Продвинутый", "medium"),
         ],
     }
-    # Публикация черновика использует ту же нумерацию, что и прямое создание Task.
+    # Проверяем нумерацию после публикации и последующих изменений дерева.
     draft = (
         await client.post("/api/editor/task-drafts", json={"payload": payload})
     ).json()["data"]
@@ -82,10 +82,11 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
     )
     assert response.status_code == 201, response.text
     task_id = response.json()["data"]["id"]
+    task_slug = response.json()["data"]["slug"]
     base = f"/api/editor/tasks/{task_id}"
 
     async def check(expected):
-        tree = (await client.get(base + "/composition")).json()["data"]
+        tree = composition_data((await client.get(base)).json()["data"])
         visible = leaves(tree)
         assert [item["title"] for item in visible] == expected
         numbers = Counter()
@@ -128,27 +129,15 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
                         check_groups(item["items"])
 
             check_groups(tree)
-        detail = (await client.get(f"/api/tasks/{task_id}")).json()["data"]
+        detail = (await client.get(f"/api/tasks/by-slug/{task_slug}")).json()["data"]
         for section in detail["presets"].values():
             own_items = leaves(section["complications"])
             assert [item["order_number"] for item in own_items] == list(
                 range(1, len(own_items) + 1)
             )
-        listed = (await client.get(base + "/complications")).json()["data"]
-        assert [(item["id"], item["order_number"]) for item in listed] == [
-            (item["id"], item["order_number"]) for item in visible
-        ]
-        for item in visible:
-            single = (await client.get(base + f"/complications/{item['id']}")).json()[
-                "data"
-            ]
-            assert single["order_number"] == item["order_number"]
-        for section in detail["presets"].values():
-            config = (
-                await client.get(
-                    f"/api/tasks/{task_id}/presets/{section['preset']['id']}/configuration"
-                )
-            ).json()["data"]
+        presets = (await client.get(f"/api/tasks/{task_id}/presets")).json()["data"]
+        assert presets == detail["presets"]
+        for config in presets.values():
             for item in leaves(config["complications"]):
                 assert item["order_number"] == next(
                     row["order_number"] for row in visible if row["id"] == item["id"]
@@ -156,66 +145,38 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
         return tree
 
     tree = await check(["Первый", "Второй", "Третий", "Продвинутый", "Максимальный"])
-    deep_id = tree[0]["items"][0]["items"][0]["id"]
-    created = await client.post(
-        base + "/complications",
-        json={
-            key: value
-            for key, value in {
-                **leaf("Новый первый"),
-                "group_id": deep_id,
-                "position": 0,
-            }.items()
-            if key != "kind"
-        },
-    )
-    assert created.status_code == 201, created.text
-    added = created.json()["data"]
-    assert added["order_number"] == 1
-    await check(
+    edited = [writable(item) for item in tree]
+    edited[0]["items"][0]["items"][0]["items"].insert(0, leaf("Новый первый"))
+    assert (await save_task(client, base, items=edited)).status_code == 200
+    tree = await check(
         ["Новый первый", "Первый", "Второй", "Третий", "Продвинутый", "Максимальный"]
     )
-    moved = await client.patch(
-        base + f"/complications/{added['id']}", json={"group_id": None, "position": 3}
-    )
-    assert moved.status_code == 200, moved.text
-    await check(
+    edited = [writable(item) for item in tree]
+    added = edited[0]["items"][0]["items"][0]["items"].pop(0)
+    edited.insert(3, added)
+    assert (await save_task(client, base, items=edited)).status_code == 200
+    tree = await check(
         ["Первый", "Второй", "Третий", "Новый первый", "Продвинутый", "Максимальный"]
     )
-    assert (
-        await client.delete(base + f"/complications/{added['id']}")
-    ).status_code == 200
+    edited = [
+        writable(item)
+        for item in tree
+        if item["id"] != added["id"] or item["kind"] != "complication"
+    ]
+    assert (await save_task(client, base, items=edited)).status_code == 200
     tree = await check(["Первый", "Второй", "Третий", "Продвинутый", "Максимальный"])
     reordered = [tree[2], tree[0], tree[1], *tree[3:]]
     assert (
-        await client.put(
-            base + "/composition",
-            json={"items": [writable(item) for item in reordered]},
-        )
+        await save_task(client, base, items=[writable(item) for item in reordered])
     ).status_code == 200
     await check(["Третий", "Первый", "Второй", "Продвинутый", "Максимальный"])
-    copied = await client.post(
-        base + "/complications/copy", json={"source_link_id": leaves(tree)[0]["id"]}
-    )
-    assert copied.status_code == 201, copied.text
-    tree = await check(
-        ["Третий", "Первый", "Второй", "Первый", "Продвинутый", "Максимальный"]
-    )
-    assert (
-        await client.put(
-            base + "/complications/order",
-            json={"ids": [item["id"] for item in reversed(leaves(tree))]},
-        )
-    ).status_code == 200
-    current = (await client.get(base + "/composition")).json()["data"]
-    await check([item["title"] for item in leaves(current)])
 
 
 async def test_sparse_positions_compute_numbers_without_writes_or_changing_solutions(
     client, db
 ):
-    response = await client.post(
-        "/api/editor/tasks",
+    response = await publish_task(
+        client,
         json={
             **task_data(),
             "items": [
@@ -228,7 +189,8 @@ async def test_sparse_positions_compute_numbers_without_writes_or_changing_solut
     )
     assert response.status_code == 201, response.text
     task_id = response.json()["data"]["id"]
-    detail = (await client.get(f"/api/tasks/{task_id}")).json()["data"]
+    task_slug = response.json()["data"]["slug"]
+    detail = (await client.get(f"/api/tasks/by-slug/{task_slug}")).json()["data"]
     preset_id = detail["presets"]["high"]["preset"]["id"]
     solution = await client.post(
         f"/api/tasks/{task_id}/solutions",

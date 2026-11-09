@@ -22,7 +22,6 @@ pytestmark = pytest.mark.anyio
 @pytest.fixture
 def store(client, monkeypatch, minio_endpoint):  # noqa: ARG001 — порядок очистки overrides
     monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
-    monkeypatch.setattr(settings, "S3_PUBLIC_ENDPOINT_URL", None)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", f"cleanup-{uuid4().hex}")
