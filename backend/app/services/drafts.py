@@ -9,7 +9,7 @@ from app.core.errors import (
 )
 from app.models import TaskDraft, TaskPhoto, TaskResource
 from app.schemas.domain import DraftCreate, DraftRead, TaskPublication
-from app.services import catalog, photos, publication, resources
+from app.services import catalog, file_cleanup, photos, publication, resources
 from app.services.common import commit, flush, get
 from app.services.media import MediaOwner
 from app.services.publication import validate as validate
@@ -89,6 +89,9 @@ async def publish(session: AsyncSession, owner_id: int, draft_id: int, revision:
 async def delete(session: AsyncSession, owner_id: int, draft_id: int, revision: int):
     obj = await get(session, TaskDraft, draft_id, lock=True, owner_id=owner_id)
     revision_matches(obj, revision)
-    # FK удаляют только оставшиеся привязки черновика, опубликованные файлы уже принадлежат Task.
+    keys = await file_cleanup.enqueue_owner(
+        session, MediaOwner(draft_id=draft_id, user_id=owner_id)
+    )
     await session.delete(obj)
     await commit(session)
+    await file_cleanup.process_pending(session, keys)

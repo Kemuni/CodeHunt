@@ -260,7 +260,9 @@ async def test_draft_file_ownership_revision_editing_and_deletion(client, db, st
         and removed.json()["data"]["resources"] == []
     )
     assert (await client.delete(base + "?revision=5")).status_code == 409
+    assert len(store.objects) == 1
     assert (await client.delete(base + "?revision=6")).status_code == 200
+    assert not store.objects
     async with db() as session:
         assert await session.get(TaskPhoto, pid) is None
         assert await session.get(TaskResource, rid) is None

@@ -15,6 +15,7 @@ from app.models import TaskResource
 from app.models.enums import ResourceType
 from app.schemas.common import DownloadURL
 from app.schemas.domain import ResourceDownloadRead, ResourceRead
+from app.services import file_cleanup
 from app.services.common import assign, commit, flush, get
 from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
@@ -112,8 +113,10 @@ async def update(
 
 async def delete(session: AsyncSession, owner: MediaOwner, resource_id: int):
     parent = await owner.get(session, lock=True)
-    await session.delete(
-        await get(session, TaskResource, resource_id, **owner.values())
-    )
+    obj = await get(session, TaskResource, resource_id, **owner.values())
+    keys = [obj.object_key]
+    await file_cleanup.enqueue(session, keys)
+    await session.delete(obj)
     owner.touch(parent)
     await commit(session)
+    await file_cleanup.process_pending(session, keys)

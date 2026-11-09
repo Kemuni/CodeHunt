@@ -33,7 +33,7 @@ from app.schemas.domain import (
     TaskPublication,
     TaskRead,
 )
-from app.services import composition, photos, publication, resources
+from app.services import composition, file_cleanup, photos, publication, resources
 from app.services.common import (
     Hierarchy,
     assign,
@@ -93,6 +93,7 @@ async def delete_task(session: AsyncSession, task_id: int):
     obj = await task(session, task_id, lock=True)
     if obj.status != TaskStatus.ARCHIVED:
         raise TaskMustBeArchivedError()
+    keys = await file_cleanup.enqueue_owner(session, MediaOwner(task_id=task_id))
     for model in (
         TaskPhoto,
         TaskResource,
@@ -103,6 +104,7 @@ async def delete_task(session: AsyncSession, task_id: int):
         await session.execute(delete(model).where(model.task_id == task_id))
     await session.delete(obj)
     await commit(session)
+    await file_cleanup.process_pending(session, keys)
 
 
 async def template_reference(session: AsyncSession, template_id: int | None):

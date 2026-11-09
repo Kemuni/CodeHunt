@@ -18,6 +18,7 @@ from app.core.errors import (
 )
 from app.models import TaskPhoto
 from app.schemas.domain import PhotoRead
+from app.services import file_cleanup
 from app.services.common import commit, flush
 from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
@@ -177,9 +178,14 @@ async def replace(session: AsyncSession, owner: MediaOwner, photo_ids: list[int]
     }
     if not set(photo_ids).issubset(current):
         raise NotFoundError("Фотография не принадлежит этому заданию")
+    keys = [
+        photo.object_key
+        for photo_id, photo in current.items()
+        if photo_id not in photo_ids
+    ]
+    await file_cleanup.enqueue(session, keys)
     for photo_id, photo in current.items():
         if photo_id not in photo_ids:
-            # Как и ресурсы, файлы удалённых фотографий ожидают отдельной очистки хранилища.
             await session.delete(photo)
     for position, photo_id in enumerate(photo_ids, 1):
         current[photo_id].position = position
@@ -187,4 +193,5 @@ async def replace(session: AsyncSession, owner: MediaOwner, photo_ids: list[int]
     await flush(session)
     result = await read(session, owner)
     await commit(session)
+    await file_cleanup.process_pending(session, keys)
     return result

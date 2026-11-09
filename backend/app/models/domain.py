@@ -79,6 +79,16 @@ class AuthSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class PendingFileDeletion(Base):
+    __tablename__ = "pending_file_deletions"
+    bucket: Mapped[str] = mapped_column(String(255), primary_key=True)
+    object_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    attempt_count: Mapped[int] = mapped_column(BigInteger, server_default="0")
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
 class TaskComplicationCategory(IdentityMixin, Base):
     __tablename__ = "task_complication_categories"
     __table_args__ = (CheckConstraint("parent_id <> id", name="ck_category_parent"),)
@@ -277,7 +287,7 @@ class TaskResource(IdentityMixin, Timestamps, Base):
     )
     title: Mapped[str] = mapped_column(String(255))
     type: Mapped[ResourceType] = mapped_column(choice(ResourceType, "resource_type"))
-    object_key: Mapped[str] = mapped_column(Text)
+    object_key: Mapped[str] = mapped_column(Text, index=True)
     original_filename: Mapped[str] = mapped_column(String(255))
     content_type: Mapped[str | None] = mapped_column(String(255))
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)

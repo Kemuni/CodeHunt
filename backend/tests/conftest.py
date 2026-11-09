@@ -16,6 +16,10 @@ os.environ["PROJECT_NAME"] = "CodeHunt tests"
 os.environ["ADMIN_EMAILS"] = "admin@example.com,other-admin@example.com"
 os.environ["GITHUB_ID"] = "test-client"
 os.environ["GITHUB_SECRET"] = "test-secret"
+os.environ["S3_ENDPOINT_URL"] = "http://127.0.0.1:1"
+os.environ["S3_ACCESS_KEY"] = "test"
+os.environ["S3_SECRET_KEY"] = "test"
+os.environ["S3_BUCKET"] = "codehunt-tests"
 
 from app.api.deps import get_db  # noqa: E402
 from app.core.db import Base  # noqa: E402

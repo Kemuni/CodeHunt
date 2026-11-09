@@ -1,6 +1,7 @@
 from app.models.contact_request import ContactRequest, RequestUserRole
 from app.models.domain import (
     AuthSession,
+    PendingFileDeletion,
     Task,
     TaskComplication,
     TaskComplicationCategory,
@@ -17,6 +18,7 @@ from app.models.domain import (
 
 __all__ = [
     "AuthSession",
+    "PendingFileDeletion",
     "ContactRequest",
     "RequestUserRole",
     "Task",

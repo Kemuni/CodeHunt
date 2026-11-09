@@ -90,7 +90,7 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
     )
     assert len(store.objects) == 2
     assert (await client.delete(base + f"/{rid}")).status_code == 200
-    assert keys[0] in store.objects  # Удаление метаданных само по себе не удаляет файл.
+    assert keys[0] not in store.objects
     remaining = (await client.get(base)).json()["data"][0]
     store.objects.clear()
     url = (await client.get(base + f"/{remaining['id']}/download-url")).json()["data"][

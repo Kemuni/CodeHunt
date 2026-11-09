@@ -94,15 +94,12 @@ async def update(
 @router.delete(
     "/editor/tasks/{task_id}/resources/{resource_id}",
     response_model=SuccessResponse[None],
-    summary="Удалить привязку ресурса с сохранением файла в хранилище.",
+    summary="Удалить вложение и его файл из хранилища",
 )
 async def delete(
     task_id: PositiveID, resource_id: PositiveID, db: SessionDep, _admin: CurrentAdmin
 ):
-    await catalog.task(db, task_id, lock=True)
-    await db.delete(await get(db, TaskResource, resource_id, task_id=task_id))
-    await commit(db)
-    # Физический файл остаётся до отдельной проверки и очистки неиспользуемых объектов.
+    await resources.delete(db, MediaOwner(task_id=task_id), resource_id)
     return SuccessResponse()
 
 
