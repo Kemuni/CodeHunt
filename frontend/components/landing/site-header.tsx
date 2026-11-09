@@ -15,6 +15,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
+import GithubIcon from "@/components/icons/github";
 
 const navigationLinks = [
   { href: "/tasks", label: "Каталог задач" },
@@ -54,21 +55,15 @@ function AccountActions({ className, onAction }: { className: string; onAction?:
       ) : (
         <>
           <Button
-            variant="outline"
+            variant="default"
+            size="lg"
+            className="bg-black"
             onClick={() => {
               onAction?.()
               void signIn("github", { callbackUrl: "/" })
             }}
           >
-            Войти
-          </Button>
-          <Button
-            onClick={() => {
-              onAction?.()
-              void signIn("github", { callbackUrl: "/" })
-            }}
-          >
-            Регистрация
+            <GithubIcon className="text-white" /> {" "} Войти с помощью GitHub
           </Button>
         </>
       )}

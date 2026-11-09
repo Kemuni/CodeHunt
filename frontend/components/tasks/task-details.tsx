@@ -181,7 +181,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
           <CarouselPrevious
             type="button"
             aria-label="Предыдущее фото"
-            className="absolute left-3 z-11 opacity-25 hover:opacity-100 disabled:opacity-0"
+            className="absolute left-3 z-11 opacity-50 hover:opacity-100 disabled:opacity-0"
           />
         )}
         <CarouselContent className="z-10">
@@ -209,7 +209,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
           <CarouselNext
             type="button"
             aria-label="Следующее фото"
-            className="absolute right-3 z-11 opacity-25 hover:opacity-100 disabled:opacity-0"
+            className="absolute right-3 z-11 opacity-50 hover:opacity-100 disabled:opacity-0"
           />
         )}
       </Carousel>

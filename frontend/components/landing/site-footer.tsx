@@ -113,13 +113,13 @@ export function SiteFooter() {
                       text-sm font-light leading-[1.17]
                       2xl:text-base"
           >
-            <dt className="text-muted">Телефон:</dt>
+            <dt className="my-auto text-muted">Телефон:</dt>
             <dd className="m-0 min-w-0 wrap-break-word">
               <a className="inline-block py-1 hover:opacity-70" href="tel:+79999999999">
                 +7 (999) 999-99-99
               </a>
             </dd>
-            <dt className="text-muted">Email:</dt>
+            <dt className="my-auto text-muted">Email:</dt>
             <dd className="m-0 min-w-0 wrap-break-word">
               <a className="inline-block py-1 hover:opacity-70" href="mailto:support@kodmentor.ru">
                 support@kodmentor.ru

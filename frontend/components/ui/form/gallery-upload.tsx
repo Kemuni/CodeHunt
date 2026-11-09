@@ -30,7 +30,7 @@ interface GalleryUploadProps {
   onCover: (id: number) => Promise<void>
 }
 
-const imageTypes = ["image/jpeg", "image/png", "image/webp"]
+const imageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
 
 /** Галерея с выбором, перетаскиванием и предпросмотром. Владелец сохраняет изменения и передаёт подтверждённые изображения через files. */
 export function GalleryUpload({
