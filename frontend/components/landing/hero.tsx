@@ -39,15 +39,15 @@ const leftBadges = [
 const rightBadges = [
   {
     className: "left-0 top-0",
-    label: "Найти сотрудника",
+    label: "Освоить новый стек",
   },
   {
     className: "left-28 top-16 2xl:left-34 2xl:top-20",
-    label: "Создать тестовое",
+    label: "Увидеть прогресс",
   },
   {
     className: "left-8 top-34 2xl:left-9 2xl:top-37",
-    label: "Быстро оценить",
+    label: "Стать лучше",
   },
   {
     className: "bottom-0 left-24 2xl:left-27",
@@ -239,10 +239,10 @@ export function Hero() {
                    2xl:top-[160px] 2xl:h-[300px] 2xl:w-[440px] xl:block"
       />
 
-      <div className="absolute hidden xl:block inset-x-0 top-0 z-[1] h-full 2xl:-translate-y-16">
+      {/* <div className="absolute hidden xl:block inset-x-0 top-0 z-[1] h-full 2xl:-translate-y-16">
         <AnimatedArrow direction="left" />
         <AnimatedArrow direction="right" />
-      </div>
+      </div> */}
 
       {decorations.map((decoration) => (
         <Image
@@ -271,7 +271,7 @@ export function Hero() {
         </Link>
         <Link href="/for-company">
           <Button variant='outline' size='xl'>
-            Для компаний
+            Подобрать идею
           </Button>
         </Link>
       </div>
