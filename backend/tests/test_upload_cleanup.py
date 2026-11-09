@@ -68,7 +68,7 @@ async def test_size_mismatch_cleans_upload_and_preserves_owner(
     assert store.stat_calls == store.mismatch_on
     assert store.objects == {"existing": b"keep"}
     after = (await client.get(url)).json()["data"]
-    assert after[media_kind] == []
+    assert after[media_kind] == before[media_kind]
     assert after["updated_at"] == before["updated_at"]
     if owner_kind == "task-drafts":
         assert after["revision"] == before["revision"]

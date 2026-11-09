@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 
 from pydantic import ValidationError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import (
+    InvalidDifficultyError,
     InvalidOrderError,
     InvalidTaskError,
     NotFoundError,
@@ -19,6 +20,7 @@ from app.models import (
     TaskResource,
 )
 from app.models.enums import LEVELS, TaskStatus
+from app.schemas.catalog import EditorTaskCatalogQuery, TaskCatalogQuery
 from app.schemas.common import Page
 from app.schemas.domain import (
     CompositionUpdate,
@@ -42,6 +44,72 @@ from app.services.common import (
 )
 from app.services.composition import ensure_publishable as ensure_publishable
 from app.services.media import MediaOwner
+
+
+def catalog_query(filters: TaskCatalogQuery, *, public: bool):
+    """Общие фильтры до пагинации; ID устраняет неоднозначность при равных значениях сортировки."""
+    if any(
+        value is not None and not 0 <= value <= 10
+        for value in (filters.difficulty_min, filters.difficulty_max)
+    ) or (
+        filters.difficulty_min is not None
+        and filters.difficulty_max is not None
+        and filters.difficulty_min > filters.difficulty_max
+    ):
+        raise InvalidDifficultyError()
+    query = select(Task)
+    if public:
+        query = query.where(
+            Task.status == TaskStatus.PUBLISHED, Task.is_hidden.is_(False)
+        )
+    elif isinstance(filters, EditorTaskCatalogQuery):
+        if filters.status:
+            query = query.where(Task.status == filters.status)
+        if filters.is_hidden is not None:
+            query = query.where(Task.is_hidden == filters.is_hidden)
+    if q := filters.q.strip():
+        query = query.where(
+            or_(
+                Task.title.icontains(q, autoescape=True),
+                Task.short_description.icontains(q, autoescape=True),
+            )
+        )
+    if filters.developer_type:
+        query = query.where(Task.developer_type.in_(filters.developer_type))
+    if filters.access is not None:
+        query = query.where(Task.is_paid.is_(filters.access == "subscription"))
+    if filters.level:
+        query = query.where(
+            select(TaskLevelPreset.id)
+            .where(
+                TaskLevelPreset.task_id == Task.id,
+                TaskLevelPreset.level == filters.level,
+            )
+            .exists()
+        )
+    # Диапазон задачи должен пересекаться с выбранным диапазоном сложности.
+    if filters.difficulty_min is not None:
+        query = query.where(Task.difficulty_to >= filters.difficulty_min)
+    if filters.difficulty_max is not None:
+        query = query.where(Task.difficulty_from <= filters.difficulty_max)
+    if filters.parent_task_id is not None:
+        query = query.where(Task.parent_task_id == filters.parent_task_id)
+    ordering = {
+        "oldest": (Task.created_at.asc(), Task.id.asc()),
+        "newest": (Task.created_at.desc(), Task.id.desc()),
+        "title": (Task.title.asc(), Task.id.asc()),
+        "difficulty_asc": (
+            Task.difficulty_from.asc(),
+            Task.difficulty_to.asc(),
+            Task.id.asc(),
+        ),
+        "difficulty_desc": (
+            Task.difficulty_to.desc(),
+            Task.difficulty_from.desc(),
+            Task.id.asc(),
+        ),
+    }
+    return query.order_by(*ordering[filters.sort])
 
 
 async def task(
@@ -115,6 +183,7 @@ async def save_task(session: AsyncSession, task_id: int, data: TaskSave) -> Task
     """Сохраняет поля, пресеты и дерево одним commit, сохраняя ID и снимки решений."""
     await lock_hierarchy(session, Hierarchy.TASKS)
     obj = await task(session, task_id, lock=True)
+    await photos.ensure_present(session, task_id)
     await check_parent(session, Task, data.parent_task_id, task_id, "parent_task_id")
     assign(obj, data.model_dump(mode="json", exclude={"items", "presets"}))
     presets = {

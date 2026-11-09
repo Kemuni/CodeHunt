@@ -1,6 +1,5 @@
 from pydantic import ValidationError
 from sqlalchemy import case, func, select
-from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import (
@@ -8,8 +7,8 @@ from app.core.errors import (
     InvalidDraftError,
     InvalidDraftPayloadError,
 )
-from app.models import TaskDraft, TaskPhoto, TaskResource
-from app.schemas.common import Page
+from app.models import TaskDraft, TaskPhoto
+from app.schemas.common import Page, ValidationIssue
 from app.schemas.domain import DraftCreate, DraftRead, DraftSummary, TaskPublication
 from app.services import catalog, file_cleanup, photos, publication, resources
 from app.services.common import commit, flush, get
@@ -20,6 +19,15 @@ from app.services.publication import validate as validate
 async def read(session: AsyncSession, obj: TaskDraft) -> DraftRead:
     errors = await validate(session, obj.payload)
     owner = MediaOwner(draft_id=obj.id, user_id=obj.owner_id)
+    gallery = await photos.read(session, owner)
+    if not gallery:
+        errors.append(
+            ValidationIssue(
+                field="photos",
+                code="missing_photo",
+                message="Добавьте хотя бы одну фотографию задачи",
+            )
+        )
     return DraftRead(
         id=obj.id,
         owner_id=obj.owner_id,
@@ -29,7 +37,7 @@ async def read(session: AsyncSession, obj: TaskDraft) -> DraftRead:
         updated_at=obj.updated_at,
         validation_errors=errors,
         is_valid=not errors,
-        photos=await photos.read(session, owner),
+        photos=gallery,
         resources=await resources.read(session, owner),
     )
 
@@ -120,19 +128,12 @@ async def update(
 async def publish(session: AsyncSession, owner_id: int, draft_id: int, revision: int):
     obj = await get(session, TaskDraft, draft_id, lock=True, owner_id=owner_id)
     revision_matches(obj, revision)
-    errors = await validate(session, obj.payload)
+    errors = (await read(session, obj)).validation_errors
     if errors:
         raise InvalidDraftError(details=[error.model_dump() for error in errors])
     result = await publication.build(
-        session, TaskPublication.model_validate(obj.payload)
+        session, TaskPublication.model_validate(obj.payload), draft_id=draft_id
     )
-    # Обе ссылки меняются одним UPDATE, поэтому ограничение владельца всегда выполнено.
-    for model in (TaskPhoto, TaskResource):
-        await session.execute(
-            sql_update(model)
-            .where(model.draft_id == draft_id)
-            .values(task_id=result.id, draft_id=None)
-        )
     await session.delete(obj)
     await flush(session)
     await session.refresh(result)

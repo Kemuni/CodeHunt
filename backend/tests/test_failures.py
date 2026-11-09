@@ -9,7 +9,7 @@ from app.main import app
 from app.models import TaskSolution, TaskSolutionComplication
 from app.services import solutions
 from app.services.storage import get_storage
-from tests.conftest import make_project, publish_task, task_data
+from tests.conftest import add_draft_photo, make_project, publish_task, task_data
 from tests.test_resources import MemoryStorage
 
 pytestmark = pytest.mark.anyio
@@ -91,6 +91,7 @@ async def test_competing_drafts_keep_loser_and_live_parent_validation(client):
             "/api/editor/task-drafts", json={"payload": task_data()}
         )
         draft_ids.append(response.json()["data"]["id"])
+        await add_draft_photo(draft_ids[-1])
     replies = await asyncio.gather(
         *[
             client.post(f"/api/editor/task-drafts/{did}/publish", json={"revision": 1})

@@ -113,7 +113,7 @@ async def test_reject_invalid_github_tokens_and_fail_closed(
     assert len(github["calls"]) == 1
 
 
-async def test_no_header_impersonation_expired_sessions_or_legacy_admin(client, db):
+async def test_no_header_impersonation_expired_sessions_or_unverified_admin(client, db):
     client.headers.pop("authorization")
     for headers in ({}, {"X-User-ID": "1"}, {"Authorization": "Bearer forged"}):
         assert (
@@ -124,7 +124,7 @@ async def test_no_header_impersonation_expired_sessions_or_legacy_admin(client, 
         session_row = await session.get(AuthSession, auth.token_hash("test-session-1"))
         session_row.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         legacy = await session.get(User, 3)
-        legacy.github_id = None
+        legacy.verified_emails = []
         await session.commit()
     assert (
         await client.get(
@@ -154,3 +154,12 @@ async def test_no_automatic_link_by_email_or_client_supplied_role(client, db, gi
 async def test_missing_configuration(client, monkeypatch):
     monkeypatch.setattr(settings, "GITHUB_SECRET", None)
     assert (await sign_in(client)).status_code == 503
+
+
+async def test_user_requires_github_id(db):
+    from sqlalchemy.exc import IntegrityError
+
+    async with db() as session:
+        session.add(User(email="missing@github.test"))
+        with pytest.raises(IntegrityError):
+            await session.commit()

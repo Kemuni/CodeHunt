@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.errors import (
     FileTooLargeError,
     InvalidPhotoError,
+    MissingPhotoError,
     NotFoundError,
     PhotoLimitError,
     UploadSizeMismatchError,
@@ -23,18 +24,30 @@ from app.services.common import commit, flush
 from app.services.media import MediaOwner, discard_upload
 from app.services.storage import STORAGE_EXCEPTIONS, Storage, storage_error
 
-IMAGE_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+IMAGE_TYPES = {
+    "JPEG": "image/jpeg",
+    "JPG": "image/jpeg",
+    "MPO": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+}
 
 
-def image_type(content: bytes) -> str:
+def prepare_image(content: bytes) -> tuple[bytes, str]:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(BytesIO(content)) as image:
                 content_type = IMAGE_TYPES.get(image.format or "")
-                if content_type is None or image.width * image.height > 20_000_000:
-                    raise InvalidPhotoError()
-                if getattr(image, "is_animated", False):
+                if content_type is None:
+                    raise InvalidPhotoError(
+                        f"Формат {image.format or 'неизвестен'} не поддерживается. Выберите JPEG, PNG или WebP"
+                    )
+                if image.width * image.height > 20_000_000:
+                    raise InvalidPhotoError(
+                        "Разрешение фотографии не должно превышать 20 мегапикселей"
+                    )
+                if image.format != "MPO" and getattr(image, "is_animated", False):
                     raise InvalidPhotoError(
                         "Анимированные изображения не поддерживаются"
                     )
@@ -42,7 +55,20 @@ def image_type(content: bytes) -> str:
             # verify проверяет контейнер, load дополнительно проверяет декодирование пикселей.
             with Image.open(BytesIO(content)) as image:
                 image.load()
-        return content_type
+                if image.format == "MPO":
+                    # JPEG с дополнительными снимками/картой яркости (MPO) — не анимация.
+                    # Сохраняем основной кадр обычным JPEG, доступным всем браузерам.
+                    from PIL import ImageOps
+
+                    output = BytesIO()
+                    ImageOps.exif_transpose(image).convert("RGB").save(
+                        output,
+                        format="JPEG",
+                        quality=95,
+                        icc_profile=image.info.get("icc_profile"),
+                    )
+                    content = output.getvalue()
+        return content, content_type
     except (
         UnidentifiedImageError,
         OSError,
@@ -50,7 +76,16 @@ def image_type(content: bytes) -> str:
         Image.DecompressionBombError,
         Image.DecompressionBombWarning,
     ) as exc:
-        raise InvalidPhotoError() from exc
+        raise InvalidPhotoError(
+            "Не удалось прочитать изображение: файл повреждён или содержит неподдерживаемый вариант JPEG/PNG/WebP"
+        ) from exc
+
+
+async def ensure_present(session: AsyncSession, task_id: int) -> None:
+    if not await session.scalar(
+        select(TaskPhoto.id).where(TaskPhoto.task_id == task_id).limit(1)
+    ):
+        raise MissingPhotoError()
 
 
 async def read(session: AsyncSession, owner: MediaOwner) -> list[PhotoRead]:
@@ -119,7 +154,11 @@ async def upload(
         content = await file.read(settings.MAX_PHOTO_BYTES + 1)
         if len(content) > settings.MAX_PHOTO_BYTES:
             raise FileTooLargeError("Фотография превышает допустимый размер")
-        content_type = await run_in_threadpool(image_type, content)
+        content, content_type = await run_in_threadpool(prepare_image, content)
+        if len(content) > settings.MAX_PHOTO_BYTES:
+            raise FileTooLargeError(
+                "Фотография после обработки превышает допустимый размер"
+            )
         prepared.append((filename, content, content_type))
     # Передаём файлы без удержания транзакции БД, затем повторно проверяем лимит под блокировкой.
     await session.rollback()
@@ -170,6 +209,8 @@ async def upload(
 
 async def replace(session: AsyncSession, owner: MediaOwner, photo_ids: list[int]):
     parent = await owner.get(session, lock=True)
+    if owner.task_id is not None and not photo_ids:
+        raise MissingPhotoError()
     current = {
         photo.id: photo
         for photo in (

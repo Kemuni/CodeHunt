@@ -431,3 +431,51 @@ async def test_real_minio_draft_files_survive_publication(
     } == keys
     for key in keys:
         store.delete(key)
+
+
+async def test_photo_required_for_publication_and_last_photo_cannot_be_deleted(
+    client, store
+):
+    draft = await create_draft(client, task_data())
+    base = f"/api/editor/task-drafts/{draft['id']}"
+    assert draft["validation_errors"] == [
+        {
+            "field": "photos",
+            "code": "missing_photo",
+            "message": "Добавьте хотя бы одну фотографию задачи",
+        }
+    ]
+    rejected = await client.post(
+        base + "/publish", json={"revision": draft["revision"]}
+    )
+    assert rejected.status_code == 422
+    assert (await client.get(base)).json()["data"]["revision"] == draft["revision"]
+    uploaded = await client.post(
+        base + "/photos",
+        data={"revision": draft["revision"]},
+        files={"files": ("cover.png", picture(), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    draft = uploaded.json()["data"]
+    assert draft["is_valid"]
+    published = await client.post(
+        base + "/publish", json={"revision": draft["revision"]}
+    )
+    assert published.status_code == 201, published.text
+    task = published.json()["data"]
+    assert task["photos"][0]["id"] == draft["photos"][0]["id"]
+    before = dict(store.objects)
+    clear = await client.put(
+        f"/api/editor/tasks/{task['id']}/photos", json={"photo_ids": []}
+    )
+    assert clear.status_code == 422
+    assert clear.json()["errors"]["code"] == "missing_photo"
+    assert store.objects == before
+    assert (
+        len(
+            (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"][
+                "photos"
+            ]
+        )
+        == 1
+    )

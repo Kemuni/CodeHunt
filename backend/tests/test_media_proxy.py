@@ -11,7 +11,7 @@ from app.main import app
 from app.services import media, media_cache
 from app.services.media_cache import MediaCache, get_media_cache
 from app.services.storage import get_storage
-from tests.conftest import make_project, task_data
+from tests.conftest import add_draft_photo, make_project, task_data
 from tests.test_grouped_tasks import image_bytes
 from tests.test_resources import MemoryStorage
 
@@ -69,7 +69,7 @@ async def test_proxy_caches_bytes_but_rechecks_access_and_etags(
         files={"files": ("photo.png", image_bytes(), "image/png")},
     )
     assert response.status_code == 201, response.text
-    photo = response.json()["data"][0]
+    photo = response.json()["data"][-1]
     url = photo["url"]
     assert url == f"/api/media/photos/{photo['id']}"
     assert "expires_in" not in photo
@@ -114,7 +114,7 @@ async def test_proxy_caches_bytes_but_rechecks_access_and_etags(
         await client.put(
             f"/api/editor/tasks/{task_id}/photos",
             headers={"Authorization": "Bearer test-session-1"},
-            json={"photo_ids": []},
+            json={"photo_ids": [task["photos"][0]["id"]]},
         )
     ).status_code == 200
     assert (
@@ -281,6 +281,7 @@ async def test_draft_resource_cache_owner_and_publication_or_deletion(
         await client.get(editor, headers={"Authorization": "Bearer test-session-1"})
     ).content == b"draft bytes"
     if publish:
+        await add_draft_photo(draft["id"])
         published = await client.post(
             base + "/publish",
             headers={"Authorization": "Bearer test-session-1"},

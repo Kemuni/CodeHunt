@@ -1,10 +1,10 @@
 from typing import Annotated
 
 from pydantic import Field, TypeAdapter, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Task, TaskComplication, TaskLevelPreset
+from app.models import Task, TaskComplication, TaskLevelPreset, TaskPhoto, TaskResource
 from app.models.enums import LEVELS
 from app.schemas.common import PositiveID, ValidationIssue
 from app.schemas.domain import (
@@ -176,13 +176,20 @@ async def validate(session: AsyncSession, payload: dict) -> list[ValidationIssue
     return issues
 
 
-async def build(session: AsyncSession, data: TaskPublication) -> Task:
+async def build(session: AsyncSession, data: TaskPublication, *, draft_id: int) -> Task:
     """Создаёт строгое задание целиком внутри транзакции вызывающего сервиса."""
     values = data.model_dump(mode="json", exclude={"items", "presets"})
     await check_parent(session, Task, data.parent_task_id, None, "parent_task_id")
     obj = Task(**values)
     session.add(obj)
     await flush(session)
+    # Переносим файлы до проверки готовности задачи в той же транзакции.
+    for model in (TaskPhoto, TaskResource):
+        await session.execute(
+            update(model)
+            .where(model.draft_id == draft_id)
+            .values(task_id=obj.id, draft_id=None)
+        )
     for preset in data.presets:
         session.add(TaskLevelPreset(task_id=obj.id, **preset.model_dump()))
     await composition.save(session, obj, CompositionUpdate(items=data.items))

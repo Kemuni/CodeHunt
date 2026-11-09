@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tests.conftest import publish_task, task_data
+from tests.conftest import add_draft_photo, publish_task, task_data
 
 pytestmark = pytest.mark.anyio
 
@@ -55,6 +55,7 @@ async def test_owner_admin_and_live_errors(client):
         await client.get(url, headers={"Authorization": "Bearer test-session-999"})
     ).status_code == 401
 
+    await add_draft_photo(draft["id"])
     response = await client.patch(url, json={"revision": 1, "payload": task_data()})
     draft = response.json()["data"]
     assert draft["revision"] == 2 and draft["is_valid"]
@@ -97,7 +98,8 @@ async def test_invalid_draft_saved_not_published_and_parent_changes(client):
         json={"payload": {**task_data(), "parent_task_id": parent["id"]}},
     )
     draft = response.json()["data"]
-    assert draft["is_valid"]
+    assert not draft["is_valid"]
+    await add_draft_photo(draft["id"])
     url = f"/api/editor/task-drafts/{draft['id']}"
     await client.patch(f"/api/editor/tasks/{parent['id']}", json={"status": "archived"})
     await client.delete(f"/api/editor/tasks/{parent['id']}")
@@ -139,6 +141,7 @@ async def test_concurrent_draft_revision_and_publication(client):
         ]
     )
     assert sorted(r.status_code for r in replies) == [200, 409]
+    await add_draft_photo(draft["id"])
     replies = await asyncio.gather(
         *[client.post(url + "/publish", json={"revision": 2}) for _ in range(2)]
     )

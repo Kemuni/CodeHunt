@@ -91,7 +91,7 @@ async def test_restricted_task_deletion_preserves_files_and_rolls_back_queue(
     before = stored_keys(store)
     assert (await client.delete(base)).status_code == 409
     assert stored_keys(store) == before
-    assert len((await client.get(base)).json()["data"]["photos"]) == 1
+    assert len((await client.get(base)).json()["data"]["photos"]) == 2
     async with db() as session:
         assert not (await session.scalars(select(PendingFileDeletion))).all()
 

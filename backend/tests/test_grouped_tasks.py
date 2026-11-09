@@ -95,7 +95,7 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
         assert detail["presets"][preset["level"]]["preset"] == preset
     for path in (f"/api/editor/tasks/{tid}", f"/api/tasks/by-slug/{task['slug']}"):
         assert (await client.get(path)).json()["data"] == detail
-    assert detail["photos"] == []
+    assert len(detail["photos"]) == 1
     levels = (await client.get(f"/api/tasks/by-slug/{task['slug']}/presets")).json()[
         "data"
     ]
@@ -392,7 +392,13 @@ async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch)
     monkeypatch.setattr(media, "get_storage", lambda: store)
     task, _, _ = await make_project(client)
     empty, _, _ = await make_project(client, slug="without-photos")
-    assert task["cover_photo"] is None and empty["cover_photo"] is None
+    assert task["cover_photo"] is not None and empty["cover_photo"] is not None
+    # Чтение старых данных без фото остаётся совместимым после введения обязательности.
+    from sqlalchemy import delete
+
+    async with db() as session:
+        await session.execute(delete(TaskPhoto).where(TaskPhoto.task_id == empty["id"]))
+        await session.commit()
     base = f"/api/editor/tasks/{task['id']}"
     reply = await client.post(
         base + "/photos",
@@ -463,11 +469,10 @@ async def test_task_covers_in_lists_details_and_updates(client, db, monkeypatch)
         "cover_photo"
     ] == reordered[0]
 
-    await client.put(base + "/photos", json={"photo_ids": []})
-    assert (await client.get(base)).json()["data"]["cover_photo"] is None
-    assert (await client.get("/api/editor/tasks")).json()["data"]["items"][0][
-        "cover_photo"
-    ] is None
+    assert (
+        await client.put(base + "/photos", json={"photo_ids": []})
+    ).status_code == 422
+    assert (await client.get(base)).json()["data"]["cover_photo"] == reordered[0]
 
 
 async def test_photo_gallery_limits_cover_and_atomic_reordering(
@@ -483,7 +488,7 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
     content = image_bytes()
     response = await client.post(
         base + "/photos",
-        files=[("files", (f"{index}.png", content, "image/png")) for index in range(4)],
+        files=[("files", (f"{index}.png", content, "image/png")) for index in range(3)],
     )
     assert response.status_code == 201, response.text
     gallery = response.json()["data"]
@@ -499,7 +504,7 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
             base + "/photos", files={"files": ("extra.png", content, "image/png")}
         )
     ).status_code == 409
-    assert len(store.objects) == 4
+    assert len(store.objects) == 3
     ids = [photo["id"] for photo in reversed(gallery)]
     reordered = await client.put(base + "/photos", json={"photo_ids": ids})
     assert reordered.status_code == 200, reordered.text
@@ -528,9 +533,12 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
                 size_bytes=10,
             )
         )
-    assert (await client.put(base + "/photos", json={"photo_ids": []})).json()[
-        "data"
-    ] == []
+    assert (
+        await client.put(base + "/photos", json={"photo_ids": []})
+    ).status_code == 422
+    retained = (
+        await client.put(base + "/photos", json={"photo_ids": [ids[-1]]})
+    ).json()["data"]
     invalid = await client.post(
         base + "/photos",
         files=[
@@ -539,7 +547,7 @@ async def test_photo_gallery_limits_cover_and_atomic_reordering(
         ],
     )
     assert invalid.status_code == 422
-    assert (await client.get(base)).json()["data"]["photos"] == []
+    assert (await client.get(base)).json()["data"]["photos"] == retained
     monkeypatch.setattr(settings, "MAX_PHOTO_BYTES", 3)
     assert (
         await client.post(
@@ -572,12 +580,16 @@ async def test_concurrent_photo_uploads_keep_maximum_four(client, monkeypatch):
             for index in range(5)
         ]
     )
-    assert sorted(reply.status_code for reply in replies) == [201, 201, 201, 201, 409]
+    assert sorted(reply.status_code for reply in replies) == [201, 201, 201, 409, 409]
     gallery = (await client.get(base)).json()["data"]["photos"]
-    assert len(gallery) == len(store.objects) == 4
+    assert len(gallery) == 4 and len(store.objects) == 3
     assert sum(photo["is_cover"] for photo in gallery) == 1
     store.fail_stat = True
-    await client.put(base + "/photos", json={"photo_ids": []})
+    retained = (
+        await client.put(
+            base + "/photos", json={"photo_ids": [task["photos"][0]["id"]]}
+        )
+    ).json()["data"]
     previous_objects = set(store.objects)
     assert (
         await client.post(
@@ -585,7 +597,7 @@ async def test_concurrent_photo_uploads_keep_maximum_four(client, monkeypatch):
         )
     ).status_code == 503
     assert set(store.objects) == previous_objects
-    assert (await client.get(base)).json()["data"]["photos"] == []
+    assert (await client.get(base)).json()["data"]["photos"] == retained
 
 
 async def test_composition_creates_requirements_and_confirms_template_changes(client):

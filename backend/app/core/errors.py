@@ -209,3 +209,9 @@ class InvalidPhotoError(DomainError):
     status = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "invalid_photo"
     default_message = "Нужна корректная фотография JPEG, PNG или WebP"
+
+
+class MissingPhotoError(DomainError):
+    status = HTTPStatus.UNPROCESSABLE_ENTITY
+    code = "missing_photo"
+    default_message = "Добавьте хотя бы одну фотографию задачи"

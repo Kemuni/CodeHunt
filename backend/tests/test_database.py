@@ -120,4 +120,4 @@ async def test_explicit_demo_seed_is_repeatable(db, monkeypatch):
             await session.scalar(select(func.count()).select_from(TaskComplicationLink))
             == 6
         )
-        assert await session.scalar(select(func.count()).select_from(User)) == 4
+        assert await session.scalar(select(func.count()).select_from(User)) == 3

@@ -12,7 +12,6 @@ from app.models import (
     TaskComplicationCategory,
     TaskComplicationLink,
     TaskLevelPreset,
-    User,
 )
 from app.models.enums import LEVELS
 
@@ -21,18 +20,6 @@ logger = logging.getLogger(__name__)
 
 async def seed():
     async with async_session_maker() as db:
-        for email, admin in [
-            ("admin@example.com", True),
-            ("developer@example.com", False),
-        ]:
-            user = await db.scalar(select(User).where(User.email == email))
-            if user is None:
-                user = User(email=email, is_admin=admin)
-                db.add(user)
-                await db.flush()
-            logger.info(
-                "Demo user %s: X-User-ID=%s, is_admin=%s", email, user.id, user.is_admin
-            )
         category = await db.scalar(
             select(TaskComplicationCategory)
             .where(
@@ -79,7 +66,7 @@ async def seed():
                     developer_type=developer_type,
                     difficulty_from=0,
                     difficulty_to=10,
-                    status="published",
+                    status="archived",
                     parent_task_id=parent_id,
                 )
                 db.add(task)

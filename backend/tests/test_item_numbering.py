@@ -5,7 +5,13 @@ from sqlalchemy import select
 
 from app.models import TaskComplicationLink, TaskComplicationLinkGroup
 from app.services import composition
-from tests.conftest import composition_data, publish_task, save_task, task_data
+from tests.conftest import (
+    add_draft_photo,
+    composition_data,
+    publish_task,
+    save_task,
+    task_data,
+)
 
 pytestmark = pytest.mark.anyio
 
@@ -76,6 +82,7 @@ async def test_visible_numbers_computed_through_nested_composition_and_link_muta
     draft = (
         await client.post("/api/editor/task-drafts", json={"payload": payload})
     ).json()["data"]
+    await add_draft_photo(draft["id"])
     response = await client.post(
         f"/api/editor/task-drafts/{draft['id']}/publish",
         json={"revision": draft["revision"]},

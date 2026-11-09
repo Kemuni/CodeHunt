@@ -74,9 +74,7 @@ async def github_identity(access_token: str) -> tuple[int, str, list[str]]:
 
 
 def is_admin(user: User) -> bool:
-    return user.github_id is not None and bool(
-        settings.admin_emails.intersection(user.verified_emails)
-    )
+    return bool(settings.admin_emails.intersection(user.verified_emails))
 
 
 async def login(db: AsyncSession, access_token: str) -> LoginResult:

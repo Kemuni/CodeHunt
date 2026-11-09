@@ -57,6 +57,7 @@ class TaskCreate(Input):
     design_author_name: Title | None = None
     design_author_link: HttpUrl | None = None
     is_hidden: bool = False
+    is_paid: bool = False
 
     @model_validator(mode="after")
     def difficulty_interval(self) -> Self:
@@ -148,6 +149,7 @@ class TaskUpdate(PatchInput):
     design_author_link: HttpUrl | None = None
     status: TaskStatus | None = None
     is_hidden: bool | None = None
+    is_paid: bool | None = None
 
 
 class SolutionLinkUpdate(PatchInput):

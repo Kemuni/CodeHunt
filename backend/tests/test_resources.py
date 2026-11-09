@@ -171,7 +171,12 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
         files={"files": ("cover.png", content, "image/png")},
     )
     assert photo_response.status_code == 201, photo_response.text
-    photo = photo_response.json()["data"][0]
+    photo = photo_response.json()["data"][-1]
+    photo = (
+        await client.put(
+            f"/api/editor/tasks/{task['id']}/photos", json={"photo_ids": [photo["id"]]}
+        )
+    ).json()["data"][0]
     assert photo["is_cover"] and photo["content_type"] == "image/png"
     downloaded_photo = await client.get(photo["url"])
     assert downloaded_photo.status_code == 200 and downloaded_photo.content == content

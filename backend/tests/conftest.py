@@ -168,6 +168,24 @@ def task_data(slug="movie-catalog"):
     }
 
 
+async def add_draft_photo(draft_id: int):
+    """Метаданные обложки для тестов предметной области; загрузку байтов проверяют media-тесты."""
+    from app.models import TaskPhoto
+
+    async for session in app.dependency_overrides[get_db]():
+        session.add(
+            TaskPhoto(
+                draft_id=draft_id,
+                position=1,
+                object_key=f"fixture-cover-{draft_id}",
+                original_filename="fixture-cover.png",
+                content_type="image/png",
+                size_bytes=1,
+            )
+        )
+        await session.commit()
+
+
 async def publish_task(client, *, json, headers=None):
     response = await client.post(
         "/api/editor/task-drafts", json={"payload": json}, headers=headers
@@ -175,6 +193,7 @@ async def publish_task(client, *, json, headers=None):
     if response.status_code != 201:
         return response
     draft = response.json()["data"]
+    await add_draft_photo(draft["id"])
     return await client.post(
         f"/api/editor/task-drafts/{draft['id']}/publish",
         json={"revision": draft["revision"]},

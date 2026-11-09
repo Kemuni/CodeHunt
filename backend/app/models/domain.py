@@ -64,7 +64,7 @@ class User(IdentityMixin, Timestamps, Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    github_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)
+    github_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     verified_emails: Mapped[list[str]] = mapped_column(
         JSONB, server_default=text("'[]'::jsonb")
     )
@@ -138,6 +138,7 @@ class Task(IdentityMixin, Timestamps, Base):
         choice(TaskStatus, "task_status"), server_default="published"
     )
     is_hidden: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    is_paid: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
 
 class TaskComplicationLinkGroup(IdentityMixin, Timestamps, Base):

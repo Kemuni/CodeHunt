@@ -183,3 +183,88 @@ async def test_existing_api_contract(client):
         )
     ).status_code == 422
     assert (await client.get("/missing-route")).json()["success"] is False
+
+
+async def test_catalog_filters_sorting_and_access_editing(client):
+    tasks = []
+    for slug, title, direction, difficulty, paid in [
+        ("alpha", "Alpha", "frontend", (1, 3), False),
+        ("bravo", "Bravo", "fullstack", (5, 8), True),
+        ("charlie", "Charlie", "frontend", (5, 8), True),
+        ("hidden", "Hidden", "fullstack", (1, 10), True),
+    ]:
+        response = await publish_task(
+            client,
+            json={
+                **task_data(slug),
+                "title": title,
+                "developer_type": direction,
+                "difficulty_from": difficulty[0],
+                "difficulty_to": difficulty[1],
+                "is_paid": paid,
+                "is_hidden": slug == "hidden",
+            },
+        )
+        assert response.status_code == 201, response.text
+        tasks.append(response.json()["data"])
+    for path in ("/api/tasks", "/api/editor/tasks"):
+        response = await client.get(
+            path,
+            params={
+                "q": "  BRAVO ",
+                "developer_type": "fullstack",
+                "difficulty_min": 8,
+                "difficulty_max": 9,
+                "access": "subscription",
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert [item["slug"] for item in response.json()["data"]["items"]] == ["bravo"]
+        response = await client.get(path, params={"access": "free"})
+        assert [item["slug"] for item in response.json()["data"]["items"]] == ["alpha"]
+        response = await client.get(path, params={"q": "%"})
+        assert response.json()["data"]["total"] == 0
+        response = await client.get(
+            path + "?developer_type=frontend&developer_type=fullstack"
+        )
+        assert response.json()["data"]["total"] == (3 if path == "/api/tasks" else 4)
+        for params in (
+            {"sort": "invalid"},
+            {"access": "invalid"},
+            {"difficulty_min": 8, "difficulty_max": 2},
+            {"difficulty_max": 11},
+        ):
+            assert (await client.get(path, params=params)).status_code == 422
+    for sort, expected in [
+        ("oldest", ["alpha", "bravo", "charlie"]),
+        ("newest", ["charlie", "bravo", "alpha"]),
+        ("title", ["alpha", "bravo", "charlie"]),
+        ("difficulty_asc", ["alpha", "bravo", "charlie"]),
+        ("difficulty_desc", ["bravo", "charlie", "alpha"]),
+    ]:
+        # Проверяем стабильность страниц при одинаковой сложности и правильный total.
+        for offset, slug in enumerate(expected):
+            response = await client.get(
+                "/api/tasks", params={"sort": sort, "limit": 1, "offset": offset}
+            )
+            page = response.json()["data"]
+            assert page["total"] == 3
+            assert [item["slug"] for item in page["items"]] == [slug]
+    base = f"/api/editor/tasks/{tasks[1]['id']}"
+    assert (await client.patch(base, json={"is_paid": None})).status_code == 422
+    assert (await client.patch(base, json={"is_paid": False})).json()["data"][
+        "is_paid"
+    ] is False
+    saved = await save_task(client, base, is_paid=True)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["data"]["is_paid"] is True
+    assert (await client.get("/api/tasks/by-slug/bravo")).json()["data"][
+        "is_paid"
+    ] is True
+    client.headers.pop("Authorization")
+    assert (await client.get("/api/tasks?access=subscription")).json()["data"][
+        "total"
+    ] == 2
+    assert (
+        await client.get("/api/editor/tasks?access=subscription")
+    ).status_code == 401

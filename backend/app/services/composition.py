@@ -27,6 +27,7 @@ from app.schemas.domain import (
     LinkRead,
 )
 from app.services.common import assign, flush, get
+from app.services.photos import ensure_present
 
 
 def confirm_template(obj: TaskComplicationLink, values: dict) -> None:
@@ -126,6 +127,7 @@ async def ensure_publishable(session: AsyncSession, obj: Task) -> None:
     await flush(session)
     if obj.status != TaskStatus.PUBLISHED:
         return
+    await ensure_present(session, obj.id)
     presets = (
         await session.scalars(
             select(TaskLevelPreset).where(TaskLevelPreset.task_id == obj.id)
