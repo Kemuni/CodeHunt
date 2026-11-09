@@ -1,6 +1,3 @@
-from typing import Annotated
-
-from fastapi import Query
 from sqlalchemy import select
 
 from app.api.base import APIResponseRouter
@@ -30,8 +27,6 @@ from app.services.common import (
 from app.services.library import grouped_templates
 
 router = APIResponseRouter(tags=["complication-library"])
-Limit = Annotated[int, Query(ge=1, le=100)]
-Offset = Annotated[int, Query(ge=0)]
 
 
 @router.get(

@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import DeveloperType, Level, TaskStatus
+from app.models.enums import DeveloperType, Level
 from app.schemas.common import PositiveID
 
 
@@ -22,5 +22,4 @@ class TaskCatalogQuery(BaseModel):
 
 
 class EditorTaskCatalogQuery(TaskCatalogQuery):
-    status: TaskStatus | None = None
     is_hidden: bool | None = None

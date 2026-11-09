@@ -9,7 +9,6 @@ from app.core.errors import (
     InvalidOrderError,
     InvalidTaskError,
     NotFoundError,
-    TaskMustBeArchivedError,
 )
 from app.models import (
     Task,
@@ -18,8 +17,9 @@ from app.models import (
     TaskLevelPreset,
     TaskPhoto,
     TaskResource,
+    User,
 )
-from app.models.enums import LEVELS, TaskStatus
+from app.models.enums import LEVELS
 from app.schemas.catalog import EditorTaskCatalogQuery, TaskCatalogQuery
 from app.schemas.common import Page
 from app.schemas.domain import (
@@ -46,7 +46,7 @@ from app.services.composition import ensure_publishable as ensure_publishable
 from app.services.media import MediaOwner
 
 
-def catalog_query(filters: TaskCatalogQuery, *, public: bool):
+def catalog_query(filters: TaskCatalogQuery, *, public: bool, user: User | None = None):
     """Общие фильтры до пагинации; ID устраняет неоднозначность при равных значениях сортировки."""
     if any(
         value is not None and not 0 <= value <= 10
@@ -59,12 +59,10 @@ def catalog_query(filters: TaskCatalogQuery, *, public: bool):
         raise InvalidDifficultyError()
     query = select(Task)
     if public:
-        query = query.where(
-            Task.status == TaskStatus.PUBLISHED, Task.is_hidden.is_(False)
-        )
+        query = query.where(Task.is_hidden.is_(False))
+        if user is None or not user.is_admin:
+            query = query.where(Task.is_paid.is_(False))
     elif isinstance(filters, EditorTaskCatalogQuery):
-        if filters.status:
-            query = query.where(Task.status == filters.status)
         if filters.is_hidden is not None:
             query = query.where(Task.is_hidden == filters.is_hidden)
     if q := filters.q.strip():
@@ -113,22 +111,28 @@ def catalog_query(filters: TaskCatalogQuery, *, public: bool):
 
 
 async def task(
-    session: AsyncSession, task_id: int, *, public=False, lock=False
+    session: AsyncSession,
+    task_id: int,
+    *,
+    public=False,
+    lock=False,
+    user: User | None = None,
 ) -> Task:
     obj = await get(session, Task, task_id, lock=lock)
-    if public and (obj.status != TaskStatus.PUBLISHED or obj.is_hidden):
+    if public and (
+        obj.is_hidden or (obj.is_paid and (user is None or not user.is_admin))
+    ):
         raise NotFoundError("Задание не найдено")
     return obj
 
 
-async def public_task_by_slug(session: AsyncSession, slug: str) -> Task:
-    obj = await session.scalar(
-        select(Task).where(
-            Task.slug == slug,
-            Task.status == TaskStatus.PUBLISHED,
-            Task.is_hidden.is_(False),
-        )
-    )
+async def public_task_by_slug(
+    session: AsyncSession, slug: str, user: User | None = None
+) -> Task:
+    query = select(Task).where(Task.slug == slug, Task.is_hidden.is_(False))
+    if user is None or not user.is_admin:
+        query = query.where(Task.is_paid.is_(False))
+    obj = await session.scalar(query)
     if obj is None:
         raise NotFoundError("Задание не найдено")
     return obj
@@ -139,7 +143,7 @@ async def update_task(session: AsyncSession, task_id: int, values: dict) -> Task
         await lock_hierarchy(session, Hierarchy.TASKS)
     obj = await task(session, task_id, lock=True)
     merged = {key: getattr(obj, key) for key in TaskCreate.model_fields}
-    merged.update({key: value for key, value in values.items() if key != "status"})
+    merged.update(values)
     try:
         TaskCreate.model_validate(merged)
     except ValidationError as exc:
@@ -163,8 +167,6 @@ async def update_task(session: AsyncSession, task_id: int, values: dict) -> Task
 
 async def delete_task(session: AsyncSession, task_id: int):
     obj = await task(session, task_id, lock=True)
-    if obj.status != TaskStatus.ARCHIVED:
-        raise TaskMustBeArchivedError()
     keys = await file_cleanup.enqueue_owner(session, MediaOwner(task_id=task_id))
     for model in (
         TaskPhoto,
@@ -270,7 +272,6 @@ async def detail(session: AsyncSession, obj: Task) -> TaskDetail:
     return TaskDetail(
         **{key: getattr(obj, key) for key in TaskCreate.model_fields},
         id=obj.id,
-        status=obj.status,
         created_at=obj.created_at,
         updated_at=obj.updated_at,
         presets=presets,

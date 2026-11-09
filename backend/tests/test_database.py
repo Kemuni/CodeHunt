@@ -47,7 +47,7 @@ async def test_database_constraints_and_generated_status(client, sync_engine):
                 "SELECT count(*) FROM pg_constraint WHERE conrelid='tasks'::regclass AND conname='task_status'"
             )
         ).scalar_one()
-        assert count == 1
+        assert count == 0
 
 
 def test_metadata_schema_lifecycle(sync_engine):

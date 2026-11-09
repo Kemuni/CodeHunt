@@ -115,7 +115,7 @@ async def validate(session: AsyncSession, payload: dict) -> list[ValidationIssue
             )
         if item.get("kind") == "group":
             children = item.get("items")
-            if isinstance(children, list) and depth < 10:
+            if isinstance(children, list) and depth < 4:
                 stack.extend(
                     (child, f"{path}.items.{i}", depth + 1)
                     for i, child in enumerate(children)

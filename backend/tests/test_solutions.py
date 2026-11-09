@@ -188,7 +188,7 @@ async def test_solution_exclusions_ownership_and_atomicity(client):
         *[client.put(f"/api/solutions/{sid}/completion") for _ in range(2)]
     )
     assert len({response.json()["data"]["resolved_at"] for response in replies}) == 1
-    await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "archived"})
+    await client.patch(f"/api/editor/tasks/{task['id']}", json={"is_hidden": True})
     assert (await client.post(url, json=payload)).status_code == 404
     assert (await client.get(f"/api/solutions/{sid}")).status_code == 200
 
@@ -199,7 +199,7 @@ async def test_source_delete_rollback_with_existing_solution(client):
         f"/api/tasks/{task['id']}/solutions",
         json={"author_id": 1, "task_level_preset_id": presets[0]["id"]},
     )
-    await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "archived"})
+    await client.patch(f"/api/editor/tasks/{task['id']}", json={"is_hidden": True})
     assert (await client.delete(f"/api/editor/tasks/{task['id']}")).status_code == 409
     assert (
         len(

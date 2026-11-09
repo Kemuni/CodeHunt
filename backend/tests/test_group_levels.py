@@ -25,7 +25,7 @@ def test_empty_group_requires_and_keeps_its_level(level):
 
 @pytest.mark.anyio
 async def test_group_levels_are_enforced_and_move_atomically(client, sync_engine):
-    task, links, _ = await make_project(client, published=False)
+    task, links, _ = await make_project(client, hidden=True)
     base = f"/api/editor/tasks/{task['id']}"
     items: list[dict] = [
         link_input(links[0]),

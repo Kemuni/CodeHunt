@@ -162,7 +162,7 @@ async def test_presets_read_own_levels_and_enforce_task_visibility(client):
     assert (await client.get(public)).status_code == 404
     public = "/api/tasks/by-slug/renamed-task/presets"
     assert (await client.get(public)).json()["data"] == expected
-    for change in ({"is_hidden": True}, {"is_hidden": False, "status": "archived"}):
+    for change in ({"is_hidden": True}, {"is_hidden": True}):
         assert (await client.patch(base, json=change, headers=admin)).status_code == 200
         assert (await client.get(public)).status_code == 404
         assert (await client.get(public, headers=admin)).status_code == 404

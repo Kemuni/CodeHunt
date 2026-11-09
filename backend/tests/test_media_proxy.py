@@ -210,7 +210,7 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
     assert head.headers["content-disposition"] == first.headers["content-disposition"]
     conditional = await client.get(url, headers={"If-None-Match": etag})
     assert conditional.status_code == 304 and conditional.content == b""
-    for update in ({"status": "archived"}, {"status": "published", "is_hidden": True}):
+    for update in ({"is_hidden": True}, {"is_hidden": True}):
         assert (
             await client.patch(
                 base, headers={"Authorization": "Bearer test-session-1"}, json=update

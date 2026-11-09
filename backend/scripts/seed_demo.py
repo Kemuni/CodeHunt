@@ -66,7 +66,7 @@ async def seed():
                     developer_type=developer_type,
                     difficulty_from=0,
                     difficulty_to=10,
-                    status="archived",
+                    is_hidden=True,
                     parent_task_id=parent_id,
                 )
                 db.add(task)

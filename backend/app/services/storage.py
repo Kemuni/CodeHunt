@@ -27,7 +27,7 @@ class Storage(Protocol):
     def upload(self, file: BinaryIO, key: str, content_type: str) -> None: ...
     def stat(self, key: str) -> ObjectMetadata: ...
     def delete(self, key: str) -> None: ...
-    def read(self, key: str) -> bytes: ...
+    def open(self, key: str) -> BinaryIO: ...
 
 
 class S3Storage:
@@ -70,13 +70,9 @@ class S3Storage:
     def delete(self, key: str) -> None:
         self.client.delete_object(Bucket=settings.S3_BUCKET, Key=key)
 
-    def read(self, key: str) -> bytes:
+    def open(self, key: str) -> BinaryIO:
         response = self.client.get_object(Bucket=settings.S3_BUCKET, Key=key)
-        body = response["Body"]
-        try:
-            return body.read()
-        finally:
-            body.close()
+        return response["Body"]  # ty: ignore[invalid-return-type]
 
 
 @lru_cache

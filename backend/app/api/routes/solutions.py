@@ -4,8 +4,8 @@ from sqlalchemy import select
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentUser, SessionDep
-from app.api.routes.library import Limit, Offset
-from app.models import TaskSolution, TaskSolutionComplication
+from app.api.pagination import Limit, Offset
+from app.models import Task, TaskSolution, TaskSolutionComplication
 from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID
 from app.schemas.domain import (
@@ -33,7 +33,7 @@ router = APIResponseRouter(tags=["solutions"])
 async def create(
     task_id: PositiveID, data: SolutionCreate, db: SessionDep, user: CurrentUser
 ):
-    return SuccessResponse(data=await solutions.create(db, task_id, user.id, data))
+    return SuccessResponse(data=await solutions.create(db, task_id, user, data))
 
 
 @router.get(
@@ -55,6 +55,10 @@ async def listing(
         .where(TaskSolution.author_id == user.id)
         .order_by(TaskSolution.created_at.desc(), TaskSolution.id.desc())
     )
+    if not user.is_admin:
+        query = query.join(Task, Task.id == TaskSolution.task_id).where(
+            Task.is_paid.is_(False)
+        )
     if task_id is not None:
         query = query.where(TaskSolution.task_id == task_id)
     if author_id is not None:
@@ -70,7 +74,7 @@ async def listing(
     summary="Получить своё решение с чек-листом и количеством выполненных пунктов.",
 )
 async def read(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
-    obj = await solutions.solution(db, solution_id, user.id)
+    obj = await solutions.solution(db, solution_id, user)
     return SuccessResponse(data=await solutions.detail(db, obj))
 
 
@@ -82,7 +86,7 @@ async def read(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
 async def update(
     solution_id: PositiveID, data: SolutionUpdate, db: SessionDep, user: CurrentUser
 ):
-    obj = await solutions.solution(db, solution_id, user.id, lock=True)
+    obj = await solutions.solution(db, solution_id, user, lock=True)
     assign(obj, data.model_dump(exclude_unset=True, mode="json"))
     return SuccessResponse(data=await commit(db, obj))
 
@@ -93,7 +97,7 @@ async def update(
     summary="Удалить своё решение вместе с его чек-листом.",
 )
 async def delete(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
-    await db.delete(await solutions.solution(db, solution_id, user.id, lock=True))
+    await db.delete(await solutions.solution(db, solution_id, user, lock=True))
     await commit(db)
     return SuccessResponse()
 
@@ -104,7 +108,7 @@ async def delete(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
     summary="Отметить решение завершённым независимо от состояния чек-листа.",
 )
 async def complete(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
-    obj = await solutions.solution(db, solution_id, user.id, lock=True)
+    obj = await solutions.solution(db, solution_id, user, lock=True)
     return SuccessResponse(data=await solutions.completion(db, obj, True))
 
 
@@ -114,7 +118,7 @@ async def complete(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
     summary="Вернуть решение в работу, очистив дату завершения.",
 )
 async def reopen(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
-    obj = await solutions.solution(db, solution_id, user.id, lock=True)
+    obj = await solutions.solution(db, solution_id, user, lock=True)
     return SuccessResponse(data=await solutions.completion(db, obj, False))
 
 
@@ -124,7 +128,7 @@ async def reopen(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
     summary="Получить независимый чек-лист своего решения.",
 )
 async def links(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
-    obj = await solutions.solution(db, solution_id, user.id)
+    obj = await solutions.solution(db, solution_id, user)
     return SuccessResponse(data=(await solutions.detail(db, obj)).complications)
 
 
@@ -137,7 +141,7 @@ async def links(solution_id: PositiveID, db: SessionDep, user: CurrentUser):
 async def create_link(
     solution_id: PositiveID, data: SolutionLinkCreate, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     obj = TaskSolutionComplication(solution_id=solution_id, **data.model_dump())
     db.add(obj)
     return SuccessResponse(data=await commit(db, obj))
@@ -151,7 +155,7 @@ async def create_link(
 async def order_links(
     solution_id: PositiveID, data: OrderInput, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     await catalog.reorder(
         db, TaskSolutionComplication, "solution_id", solution_id, data.ids
     )
@@ -167,7 +171,7 @@ async def order_links(
 async def link(
     solution_id: PositiveID, link_id: PositiveID, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id)
+    await solutions.solution(db, solution_id, user)
     return SuccessResponse(
         data=await get(db, TaskSolutionComplication, link_id, solution_id=solution_id)
     )
@@ -185,7 +189,7 @@ async def update_link(
     db: SessionDep,
     user: CurrentUser,
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     obj = await get(db, TaskSolutionComplication, link_id, solution_id=solution_id)
     assign(obj, data.model_dump(exclude_unset=True))
     return SuccessResponse(data=await commit(db, obj))
@@ -199,7 +203,7 @@ async def update_link(
 async def delete_link(
     solution_id: PositiveID, link_id: PositiveID, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     await db.delete(
         await get(db, TaskSolutionComplication, link_id, solution_id=solution_id)
     )
@@ -215,7 +219,7 @@ async def delete_link(
 async def complete_link(
     solution_id: PositiveID, link_id: PositiveID, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     obj = await get(db, TaskSolutionComplication, link_id, solution_id=solution_id)
     return SuccessResponse(data=await solutions.completion(db, obj, True))
 
@@ -228,6 +232,6 @@ async def complete_link(
 async def reopen_link(
     solution_id: PositiveID, link_id: PositiveID, db: SessionDep, user: CurrentUser
 ):
-    await solutions.solution(db, solution_id, user.id, lock=True)
+    await solutions.solution(db, solution_id, user, lock=True)
     obj = await get(db, TaskSolutionComplication, link_id, solution_id=solution_id)
     return SuccessResponse(data=await solutions.completion(db, obj, False))

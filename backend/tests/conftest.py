@@ -20,6 +20,7 @@ os.environ["S3_ENDPOINT_URL"] = "http://127.0.0.1:1"
 os.environ["S3_ACCESS_KEY"] = "test"
 os.environ["S3_SECRET_KEY"] = "test"
 os.environ["S3_BUCKET"] = "codehunt-tests"
+os.environ["MAX_PHOTO_BYTES"] = str(5 * 1024 * 1024)
 
 from app.api.deps import get_db  # noqa: E402
 from app.core.db import Base  # noqa: E402
@@ -250,14 +251,14 @@ async def save_task(client, base, headers=None, **changes):
     )
 
 
-async def make_project(client, slug="movie-catalog", published=True):
+async def make_project(client, slug="movie-catalog", hidden=False):
     response = await publish_task(client, json=task_data(slug))
     assert response.status_code == 201, response.text
     task = response.json()["data"]
-    if not published:
+    if hidden:
         task = (
             await client.patch(
-                f"/api/editor/tasks/{task['id']}", json={"status": "archived"}
+                f"/api/editor/tasks/{task['id']}", json={"is_hidden": True}
             )
         ).json()["data"]
     detail = (await client.get(f"/api/editor/tasks/{task['id']}")).json()["data"]

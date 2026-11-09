@@ -17,7 +17,7 @@ from app.models import (
     TaskComplicationLinkGroup,
     TaskLevelPreset,
 )
-from app.models.enums import LEVELS, Level, TaskStatus
+from app.models.enums import LEVELS, Level
 from app.schemas.domain import (
     ComplicationGroupRead,
     ComplicationItem,
@@ -125,7 +125,7 @@ async def configuration(session: AsyncSession, task_id: int, preset_id: int):
 
 async def ensure_publishable(session: AsyncSession, obj: Task) -> None:
     await flush(session)
-    if obj.status != TaskStatus.PUBLISHED:
+    if obj.is_hidden:
         return
     await ensure_present(session, obj.id)
     presets = (

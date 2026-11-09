@@ -4,7 +4,7 @@ from fastapi import Query
 
 from app.api.base import APIResponseRouter
 from app.api.deps import CurrentAdmin, SessionDep
-from app.api.routes.library import Limit, Offset
+from app.api.pagination import Limit, Offset
 from app.models import TaskDraft
 from app.schemas import SuccessResponse
 from app.schemas.common import Page, PositiveID

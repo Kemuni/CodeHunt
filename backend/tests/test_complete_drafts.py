@@ -103,7 +103,7 @@ async def test_empty_form_files_live_validation_and_atomic_publication(
     reply = await client.post(base + "/publish", json={"revision": 4})
     assert reply.status_code == 201, reply.text
     task = reply.json()["data"]
-    assert task["status"] == "published" and len(task["presets"]) == 3
+    assert task["is_hidden"] is False and len(task["presets"]) == 3
     assert (
         task["presets"]["easy"]["complications"][0]["items"][0]["items"][0]["title"]
         == "Требование easy"

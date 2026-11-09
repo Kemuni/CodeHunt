@@ -84,7 +84,7 @@ async def test_owner_admin_and_live_errors(client):
     assert response.json()["data"]["is_valid"]
     response = await client.post(url + "/publish", json={"revision": 3})
     assert response.status_code == 201, response.text
-    assert response.json()["data"]["status"] == "published"
+    assert response.json()["data"]["is_hidden"] is False
     assert (await client.get(url)).status_code == 404
     assert (
         await client.post(url + "/publish", json={"revision": 3})
@@ -101,7 +101,7 @@ async def test_invalid_draft_saved_not_published_and_parent_changes(client):
     assert not draft["is_valid"]
     await add_draft_photo(draft["id"])
     url = f"/api/editor/task-drafts/{draft['id']}"
-    await client.patch(f"/api/editor/tasks/{parent['id']}", json={"status": "archived"})
+    await client.patch(f"/api/editor/tasks/{parent['id']}", json={"is_hidden": True})
     await client.delete(f"/api/editor/tasks/{parent['id']}")
     assert (await client.get(url)).json()["data"]["validation_errors"][0][
         "code"

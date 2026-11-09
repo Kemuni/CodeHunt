@@ -10,6 +10,8 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.db import async_session_maker
 from app.core.exception_handlers import register_exception_handlers
+from app.core.request_limits import RequestLimitsMiddleware
+from app.core.response_cache import ResponseCacheMiddleware
 from app.services.file_cleanup import run_worker
 from app.services.media_cache import MediaCache
 
@@ -37,6 +39,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 register_exception_handlers(app)
+app.add_middleware(RequestLimitsMiddleware)
+app.add_middleware(ResponseCacheMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

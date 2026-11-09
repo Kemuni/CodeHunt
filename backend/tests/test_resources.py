@@ -35,16 +35,16 @@ class MemoryStorage:
     def delete(self, key):
         self.objects.pop(key, None)
 
-    def read(self, key):
+    def open(self, key):
         self.stat(key)
-        return self.objects[key]
+        return BytesIO(self.objects[key])
 
 
 async def test_resources_metadata_download_and_compensation(client, monkeypatch):
     store = MemoryStorage()
     app.dependency_overrides[get_storage] = lambda: store
     monkeypatch.setattr(media, "get_storage", lambda: store)
-    task, _, _ = await make_project(client, published=False)
+    task, _, _ = await make_project(client, hidden=True)
     base = f"/api/editor/tasks/{task['id']}/resources"
     reply = await client.post(
         base,
@@ -79,7 +79,7 @@ async def test_resources_metadata_download_and_compensation(client, monkeypatch)
     assert (
         await client.patch(base + f"/{rid}", json={"object_key": "other"})
     ).status_code == 422
-    await client.patch(f"/api/editor/tasks/{task['id']}", json={"status": "published"})
+    await client.patch(f"/api/editor/tasks/{task['id']}", json={"is_hidden": False})
     assert (await client.get(public)).status_code == 200
     assert (await client.get(resource["url"])).status_code == 200
     keys = list(store.objects)

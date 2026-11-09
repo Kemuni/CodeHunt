@@ -16,10 +16,11 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: SecretStr | None = None
     S3_BUCKET: str = "codehunt"
     S3_REGION: str = "us-east-1"
-    MAX_PHOTO_BYTES: int = Field(default=10 * 1024 * 1024, gt=0)
+    MAX_PHOTO_BYTES: int = Field(default=5 * 1024 * 1024, gt=0)
     MAX_RESOURCE_BYTES: int = Field(default=50 * 1024 * 1024, gt=0)
     REDIS_URL: str | None = None
     MEDIA_CACHE_TTL: int = Field(default=300, ge=1, le=86400)
+    MEDIA_CACHE_MAX_BYTES: int = Field(default=1024 * 1024, ge=0, le=5 * 1024 * 1024)
     GITHUB_ID: str | None = None
     GITHUB_SECRET: SecretStr | None = None
     ADMIN_EMAILS: str = ""

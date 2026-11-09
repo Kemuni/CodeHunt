@@ -17,7 +17,6 @@ from app.models.enums import (
     DeveloperType,
     Level,
     ResourceType,
-    TaskStatus,
 )
 from app.schemas.common import (
     Content,
@@ -111,11 +110,6 @@ class SolutionLinkCreate(Input):
     order_number: Annotated[int, Field(ge=0, le=2_147_483_647)] = 0
 
 
-class ResourceUpdate(Input):
-    title: Title
-    type: ResourceType
-
-
 class CategoryUpdate(PatchInput):
     nullable_fields = frozenset(["parent_id"])
 
@@ -147,7 +141,6 @@ class TaskUpdate(PatchInput):
     difficulty_to: Rating | None = None
     design_author_name: Title | None = None
     design_author_link: HttpUrl | None = None
-    status: TaskStatus | None = None
     is_hidden: bool | None = None
     is_paid: bool | None = None
 
@@ -192,7 +185,6 @@ class PhotoRead(Read, Dates):
 
 
 class TaskRead(Read, Dates, TaskCreate):
-    status: TaskStatus
     cover_photo: PhotoRead | None = Field(
         default=None,
         description="Титульное фото со стабильным URL медиапрокси, null при отсутствии",
@@ -306,8 +298,10 @@ class CompositionUpdate(Input):
         while stack:
             item, depth = stack.pop()
             count += 1
-            if depth > 10 or count > 1000:
-                raise ValueError("Допустимо не более 10 уровней и 1000 элементов")
+            if count > 1000 or (isinstance(item, CompositionGroup) and depth > 3):
+                raise ValueError(
+                    "Допустимо не более трёх уровней категорий и 1000 элементов"
+                )
             if item.id is not None:
                 key = (item.kind, item.id)
                 if key in seen:

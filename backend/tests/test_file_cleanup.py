@@ -63,9 +63,6 @@ async def test_delete_task_removes_minio_files_only_after_commit(client, db, sto
     store.upload(BytesIO(b"keep"), "unrelated", "text/plain")
     before = stored_keys(store)
     assert len(before) == 3
-    assert (await client.delete(base)).status_code == 409
-    assert stored_keys(store) == before
-    assert (await client.patch(base, json={"status": "archived"})).status_code == 200
     assert (await client.delete(base)).status_code == 200
     assert stored_keys(store) == {"unrelated"}
     assert (await client.get(photo["url"])).status_code == 404
@@ -87,7 +84,7 @@ async def test_restricted_task_deletion_preserves_files_and_rolls_back_queue(
     )
     assert reply.status_code == 201, reply.text
     base = f"/api/editor/tasks/{task['id']}"
-    assert (await client.patch(base, json={"status": "archived"})).status_code == 200
+    assert (await client.patch(base, json={"is_hidden": True})).status_code == 200
     before = stored_keys(store)
     assert (await client.delete(base)).status_code == 409
     assert stored_keys(store) == before
@@ -99,7 +96,7 @@ async def test_restricted_task_deletion_preserves_files_and_rolls_back_queue(
 async def test_failed_minio_delete_is_retried_from_new_db_session(
     client, db, store, monkeypatch
 ):
-    task, _, _ = await make_project(client, published=False)
+    task, _, _ = await make_project(client, hidden=True)
     await attach_task(client, task)
     failed_key = next(key for key in stored_keys(store) if key.startswith("photos/"))
     delete = store.delete
@@ -148,7 +145,7 @@ async def test_failed_minio_delete_is_retried_from_new_db_session(
 async def test_reference_lookup_is_batched_and_skipped_for_empty_queue(
     client, db, store
 ):
-    task, _, _ = await make_project(client, published=False)
+    task, _, _ = await make_project(client, hidden=True)
     await attach_task(client, task)
     referenced_keys = stored_keys(store)
     for key in ("orphan-1", "orphan-2", "orphan-3"):
@@ -178,9 +175,9 @@ async def test_reference_lookup_is_batched_and_skipped_for_empty_queue(
 
 
 async def test_shared_key_is_removed_only_after_last_reference(client, db, store):
-    task, _, _ = await make_project(client, published=False)
+    task, _, _ = await make_project(client, hidden=True)
     photo, _ = await attach_task(client, task)
-    other, _, _ = await make_project(client, slug="other", published=False)
+    other, _, _ = await make_project(client, slug="other", hidden=True)
     key = next(key for key in stored_keys(store) if key.startswith("photos/"))
     async with db() as session:
         # Старые данные могут содержать общий ключ у фото и вложения другой задачи.

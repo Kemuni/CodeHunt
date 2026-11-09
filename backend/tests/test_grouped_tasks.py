@@ -170,8 +170,8 @@ async def test_nested_groups_presets_and_solution_snapshots(client, db):
 
 
 async def test_composition_validation_and_atomicity(client, sync_engine):
-    task, links, _ = await make_project(client, published=False)
-    other, other_links, _ = await make_project(client, slug="other", published=False)
+    task, links, _ = await make_project(client, hidden=True)
+    other, other_links, _ = await make_project(client, slug="other", hidden=True)
     base = f"/api/editor/tasks/{task['id']}"
     url = base
     response = await save_task(
@@ -659,13 +659,13 @@ async def test_composition_creates_requirements_and_confirms_template_changes(cl
     detached = (await save_task(client, base, **{"items": [edited]})).json()["data"]
     detached = composition_data(detached)
     assert detached[0]["complication_id"] is None and detached[0]["group_id"] is None
-    assert (await client.patch(base, json={"status": "published"})).status_code == 200
+    assert (await client.patch(base, json={"is_hidden": False})).status_code == 200
     assert (await save_task(client, base, **{"items": []})).status_code == 422
     assert composition_data((await client.get(base)).json()["data"]) == detached
 
 
 async def test_detail_keeps_levels_without_presets_and_empty_nested_groups(client, db):
-    task, links, presets = await make_project(client, published=False)
+    task, links, presets = await make_project(client, hidden=True)
     base = f"/api/editor/tasks/{task['id']}"
     assert (await save_task(client, base, presets=[])).status_code == 200
     tree = (

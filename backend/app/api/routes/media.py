@@ -3,6 +3,8 @@ from typing import Annotated
 from urllib.parse import quote
 
 from fastapi import Depends, Request, Response
+from starlette.background import BackgroundTask
+from starlette.responses import StreamingResponse
 
 from app.api.base import APIResponseRouter
 from app.api.deps import OptionalUser, SessionDep
@@ -40,7 +42,14 @@ async def serve_file(
         return Response(
             headers=headers, media_type=file.content_type or "application/octet-stream"
         )
-    data = await media.content(file.object_key, cache)
+    data = await media.content(file.object_key, cache, file.size_bytes)
+    if not isinstance(data, bytes):
+        return StreamingResponse(
+            media.stream_content(data),
+            headers=headers,
+            media_type=file.content_type or "application/octet-stream",
+            background=BackgroundTask(media.close_stream, data),
+        )
     return Response(
         content=data,
         headers=headers,

@@ -15,11 +15,6 @@ class Level(StrEnum):
 LEVELS = (Level.EASY, Level.MEDIUM, Level.HIGH)
 
 
-class TaskStatus(StrEnum):
-    PUBLISHED = "published"
-    ARCHIVED = "archived"
-
-
 class ResourceType(StrEnum):
     DESIGN = "design"
     SPECIFICATION = "specification"

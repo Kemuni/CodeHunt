@@ -95,12 +95,6 @@ class EmptyConfigurationError(DomainError):
     default_message = "Пресет не содержит требований"
 
 
-class TaskMustBeArchivedError(DomainError):
-    status = HTTPStatus.CONFLICT
-    code = "archive_task"
-    default_message = "Опубликованное задание нужно архивировать"
-
-
 class InvalidOrderError(DomainError):
     status = HTTPStatus.UNPROCESSABLE_ENTITY
     code = "invalid_order"

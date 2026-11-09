@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Query
 
 from app.api.base import APIResponseRouter
-from app.api.deps import CurrentAdmin, SessionDep
+from app.api.deps import CurrentAdmin, OptionalUser, SessionDep
 from app.schemas import SuccessResponse
 from app.schemas.catalog import EditorTaskCatalogQuery, TaskCatalogQuery
 from app.schemas.common import Page, PositiveID
@@ -24,8 +24,10 @@ router = APIResponseRouter(tags=["tasks"])
     response_model=SuccessResponse[Page[TaskRead]],
     summary="Найти опубликованные задания с фильтрами и пагинацией.",
 )
-async def tasks(db: SessionDep, filters: Annotated[TaskCatalogQuery, Query()]):
-    query = catalog.catalog_query(filters, public=True)
+async def tasks(
+    db: SessionDep, user: OptionalUser, filters: Annotated[TaskCatalogQuery, Query()]
+):
+    query = catalog.catalog_query(filters, public=True, user=user)
     return SuccessResponse(
         data=await catalog.task_page(db, query, filters.limit, filters.offset)
     )
@@ -36,8 +38,8 @@ async def tasks(db: SessionDep, filters: Annotated[TaskCatalogQuery, Query()]):
     response_model=SuccessResponse[TaskDetail],
     summary="Получить опубликованное задание по slug.",
 )
-async def by_slug(slug: str, db: SessionDep):
-    obj = await catalog.public_task_by_slug(db, slug)
+async def by_slug(slug: str, db: SessionDep, user: OptionalUser):
+    obj = await catalog.public_task_by_slug(db, slug, user)
     return SuccessResponse(data=await catalog.detail(db, obj))
 
 
@@ -46,8 +48,8 @@ async def by_slug(slug: str, db: SessionDep):
     response_model=SuccessResponse[TaskPresets],
     summary="Получить все пресеты опубликованного задания с пунктами своего уровня",
 )
-async def public_presets(slug: str, db: SessionDep):
-    obj = await catalog.public_task_by_slug(db, slug)
+async def public_presets(slug: str, db: SessionDep, user: OptionalUser):
+    obj = await catalog.public_task_by_slug(db, slug, user)
     return SuccessResponse(data=await catalog.task_presets(db, obj.id))
 
 
@@ -70,7 +72,7 @@ async def editor_tasks(
 @router.get(
     "/editor/tasks/{task_id}",
     response_model=SuccessResponse[TaskDetail],
-    summary="Получить опубликованное или архивное задание для редактирования.",
+    summary="Получить задание для редактирования",
 )
 async def editor_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
     return SuccessResponse(
@@ -106,7 +108,7 @@ async def update_task(
 @router.delete(
     "/editor/tasks/{task_id}",
     response_model=SuccessResponse[None],
-    summary="Удалить неиспользуемое архивное задание.",
+    summary="Удалить неиспользуемое задание и его файлы",
 )
 async def delete_task(task_id: PositiveID, db: SessionDep, _admin: CurrentAdmin):
     await catalog.delete_task(db, task_id)

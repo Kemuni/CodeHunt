@@ -19,9 +19,12 @@ def error_response(
     message: str,
     status_code: int,
     headers: Mapping[str, str] | None = None,
+    details: list[dict] | None = None,
 ) -> JSONResponse:
     """Создает API ответ с ошибкой"""
-    payload = ErrorResponse(errors=ErrorDetail(code=code, message=message))
+    payload = ErrorResponse(
+        errors=ErrorDetail(code=code, message=message, details=details)
+    )
     return JSONResponse(
         status_code=status_code,
         content=payload.model_dump(mode="json"),
@@ -57,15 +60,33 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def request_validation_exception_handler(
         _: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        messages = []
+        details = []
         for error in exc.errors():
-            location = ".".join(str(part) for part in error.get("loc", ()))
-            message = str(error.get("msg", "Некорректное значение"))
-            messages.append(f"{location}: {message}" if location else message)
+            location = list(error.get("loc", ()))
+            if location and location[0] in {
+                "body",
+                "query",
+                "path",
+                "header",
+                "cookie",
+            }:
+                location = location[1:]
+            details.append(
+                {
+                    "field": ".".join(
+                        str(part)
+                        for part in location
+                        if part not in {"group", "complication"}
+                    ),
+                    "code": error["type"],
+                    "message": str(error.get("msg", "Некорректное значение")),
+                }
+            )
         return error_response(
             "validation_error",
-            ". ".join(messages) or "Некорректные входные данные",
+            "Проверьте значения полей",
             422,
+            details=details,
         )
 
     @app.exception_handler(ResponseValidationError)

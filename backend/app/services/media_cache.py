@@ -34,7 +34,7 @@ class MediaCache:
             return None
 
     async def put(self, key: str, content: bytes) -> None:
-        if self.client is not None:
+        if self.client is not None and len(content) <= settings.MEDIA_CACHE_MAX_BYTES:
             try:
                 await self.client.set(key, content, ex=settings.MEDIA_CACHE_TTL)
             except RedisError:

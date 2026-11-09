@@ -28,7 +28,6 @@ from app.models.enums import (
     DeveloperType,
     Level,
     ResourceType,
-    TaskStatus,
 )
 
 
@@ -118,7 +117,7 @@ class Task(IdentityMixin, Timestamps, Base):
             name="ck_task_difficulty",
         ),
         CheckConstraint("parent_task_id <> id", name="ck_task_parent"),
-        Index("ix_tasks_catalog", "status", "developer_type", "id"),
+        Index("ix_tasks_catalog", "is_hidden", "is_paid", "developer_type", "id"),
     )
     parent_task_id: Mapped[int | None] = mapped_column(
         ForeignKey("tasks.id", ondelete="RESTRICT"), index=True
@@ -134,9 +133,6 @@ class Task(IdentityMixin, Timestamps, Base):
     difficulty_to: Mapped[int] = mapped_column(SmallInteger)
     design_author_name: Mapped[str | None] = mapped_column(String(255))
     design_author_link: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[TaskStatus] = mapped_column(
-        choice(TaskStatus, "task_status"), server_default="published"
-    )
     is_hidden: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     is_paid: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 

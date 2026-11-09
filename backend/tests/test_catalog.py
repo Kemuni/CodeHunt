@@ -51,7 +51,7 @@ async def test_category_tree_and_template_lifecycle(client):
             f"/api/task-complications/{template['id']}", json={"slug": "obsolete"}
         )
     ).status_code == 422
-    task, _, _ = await make_project(client, published=False)
+    task, _, _ = await make_project(client, hidden=True)
     base = f"/api/editor/tasks/{task['id']}"
     body = task_write((await client.get(base)).json()["data"])
     body["items"][0]["complication_id"] = template["id"]
@@ -84,7 +84,7 @@ async def test_category_tree_and_template_lifecycle(client):
 
 
 async def test_tasks_presets_filters_and_atomic_edits(client):
-    task, links, presets = await make_project(client, published=False)
+    task, links, presets = await make_project(client, hidden=True)
     tid = task["id"]
     base = f"/api/editor/tasks/{tid}"
     assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 404
@@ -104,7 +104,7 @@ async def test_tasks_presets_filters_and_atomic_edits(client):
         saved.json()["data"]["presets"]["easy"]["complications"][0]["id"]
         == links[0]["id"]
     )
-    assert (await client.patch(base, json={"status": "published"})).status_code == 200
+    assert (await client.patch(base, json={"is_hidden": False})).status_code == 200
     assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).json()["data"][
         "title"
     ] == body["title"]
@@ -120,19 +120,18 @@ async def test_tasks_presets_filters_and_atomic_edits(client):
     assert (
         await client.get("/api/tasks?difficulty_min=9&difficulty_max=1")
     ).status_code == 422
-    assert (await client.delete(base)).status_code == 409
     assert (await client.patch(base, json={"title": None})).status_code == 422
     assert (await client.patch(base, json={"is_hidden": True})).status_code == 200
     assert (await client.get(f"/api/tasks/by-slug/{task['slug']}")).status_code == 404
     assert (await client.get("/api/editor/tasks?is_hidden=true")).json()["data"][
         "total"
     ] == 1
-    assert (await client.patch(base, json={"status": "archived"})).status_code == 200
+    assert (await client.patch(base, json={"is_hidden": True})).status_code == 200
     assert (await client.delete(base)).status_code == 200
 
 
 async def test_missing_low_preset_and_competing_parent_changes(client):
-    task, links, _ = await make_project(client, published=False)
+    task, links, _ = await make_project(client, hidden=True)
     base = f"/api/editor/tasks/{task['id']}"
     body = task_write((await client.get(base)).json()["data"])
     await save_task(client, base, presets=body["presets"][1:])
@@ -264,7 +263,7 @@ async def test_catalog_filters_sorting_and_access_editing(client):
     client.headers.pop("Authorization")
     assert (await client.get("/api/tasks?access=subscription")).json()["data"][
         "total"
-    ] == 2
+    ] == 0
     assert (
         await client.get("/api/editor/tasks?access=subscription")
     ).status_code == 401
