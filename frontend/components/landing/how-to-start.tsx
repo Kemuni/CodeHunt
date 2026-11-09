@@ -117,9 +117,9 @@ export function HowToStart() {
           </div>
         </div>
 
-        {/* ─────────── Правый блок ─────────── */}
-        <div
-          className="relative col-span-3 flex items-center rounded-4xl
+      {/* ─────────── Правый блок ─────────── */}
+      <div
+        className="relative col-span-3 flex items-center justify-center rounded-4xl
                   border overflow-hidden
                   w-[round(down,100%,var(--cell))]
                   bg-[radial-gradient(transparent,#FFFFFFA4),radial-gradient(#B6A2D450,#FFFFFF20),url('/figma/DotGrid.svg')] bg-center
