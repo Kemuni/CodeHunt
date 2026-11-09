@@ -1,18 +1,11 @@
-import importlib.util
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import insert, inspect, select, text
 
 from app.core import request_limits
 from app.core.config import settings
-from app.core.db import Base
 from app.main import app
-from app.models import Task
 from app.schemas.domain import CompositionUpdate
 from app.services import media
 from app.services.media_cache import MediaCache, get_media_cache
@@ -209,50 +202,3 @@ def test_composition_accepts_three_category_levels_and_rejects_four():
             ]
         )
     assert settings.MAX_PHOTO_BYTES == 5 * 1024 * 1024
-
-
-def test_visibility_migration_preserves_hidden_archived_and_parent_links(sync_engine):
-    path = (
-        Path(__file__).parents[1]
-        / "alembic/versions/72ad0e81f630_task_visibility_only.py"
-    )
-    spec = importlib.util.spec_from_file_location("visibility", path)
-    assert spec and spec.loader
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
-    with sync_engine.connect() as connection:
-        transaction = connection.begin()
-        try:
-            Base.metadata.create_all(connection)
-            with Operations.context(MigrationContext.configure(connection)):
-                migration.downgrade()
-                for id, hidden in ((1, False), (2, False), (3, True)):
-                    connection.execute(
-                        insert(Task).values(
-                            id=id,
-                            slug=f"task-{id}",
-                            title="Task",
-                            short_description="Short",
-                            full_description="Full",
-                            developer_type="frontend",
-                            difficulty_from=1,
-                            difficulty_to=3,
-                            is_hidden=hidden,
-                            parent_task_id=1 if id == 2 else None,
-                        )
-                    )
-                connection.execute(
-                    text("UPDATE tasks SET status='archived' WHERE id=2")
-                )
-                migration.upgrade()
-                assert "status" not in {
-                    column["name"]
-                    for column in inspect(connection).get_columns("tasks")
-                }
-                assert connection.execute(
-                    select(Task.id, Task.is_hidden, Task.parent_task_id).order_by(
-                        Task.id
-                    )
-                ).all() == [(1, False, None), (2, True, 1), (3, True, None)]
-        finally:
-            transaction.rollback()

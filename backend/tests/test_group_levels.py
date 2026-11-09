@@ -1,8 +1,6 @@
-"""Проверки модели/API и чистого преобразования данных; миграции не применяются."""
+"""Проверки уровней групп в модели и API."""
 
-import importlib.util
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -76,66 +74,3 @@ async def test_group_levels_are_enforced_and_move_atomically(client, sync_engine
     assert saved["items"][0]["id"] == links[2]["id"]
     assert saved["items"][1]["id"] == empty["id"]
     assert all(child["level"] == "medium" for child in saved["items"])
-
-
-@pytest.fixture
-def migration_module():
-    path = Path(__file__).parents[1] / "alembic/versions/e62b9c43a105_group_levels.py"
-    spec = importlib.util.spec_from_file_location("group_levels_migration", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def test_legacy_split_preserves_nested_items_ids_and_empty_group_fallback(
-    migration_module,
-):
-    items = [
-        {
-            "kind": "group",
-            "id": 1,
-            "title": "Общая",
-            "items": [
-                {"kind": "complication", "id": 10, "level": "medium"},
-                {
-                    "kind": "group",
-                    "id": 2,
-                    "title": "Вложенная",
-                    "items": [
-                        {"kind": "complication", "id": 11, "level": "high"},
-                        {"kind": "group", "id": 3, "title": "Пустая", "items": []},
-                    ],
-                },
-            ],
-        },
-        {"kind": "group", "id": 4, "title": "Корневая пустая", "items": []},
-    ]
-    before = deepcopy(items)
-    converted = migration_module.split_legacy_items(items, "medium")
-    assert items == before
-    assert [node["level"] for node in converted] == ["medium", "high", "medium"]
-    assert converted[0]["items"][0]["id"] == 10
-    nested = converted[1]["items"][0]
-    assert nested["id"] == 2 and nested["level"] == "high"
-    assert nested["items"][0]["id"] == 11
-    assert nested["items"][1]["id"] == 3 and nested["items"][1]["level"] == "high"
-    assert converted[2]["id"] == 4 and converted[2]["items"] == []
-
-
-def test_legacy_split_keeps_incomplete_draft_fields(migration_module):
-    items = [
-        {
-            "kind": "group",
-            "title": "Недописанная",
-            "custom": True,
-            "items": [
-                {"kind": "complication", "description": "Только описание"},
-            ],
-        },
-        {"kind": "group", "items": "Некорректное значение"},
-    ]
-    converted = migration_module.split_legacy_items(items, "high")
-    assert converted[0]["level"] == "high" and converted[0]["custom"] is True
-    assert converted[0]["items"] == items[0]["items"]
-    assert converted[1]["items"] == "Некорректное значение"

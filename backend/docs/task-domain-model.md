@@ -1,6 +1,6 @@
 # Модель каталога и редактора
 
-Состояние на 10.11.2026, сверено с app/models/domain.py и сервисами. Текущий head — `72ad0e81f630`. Контракты запросов — в [api-contracts.md](api-contracts.md), миграционные оговорки — в [development.md](development.md#миграции).
+Состояние на 10.11.2026, сверено с app/models/domain.py и сервисами. Текущий head — `64c29e8f0a31`. Контракты запросов — в [api-contracts.md](api-contracts.md), миграционные оговорки — в [development.md](development.md#миграции).
 
 ## Сущности
 
