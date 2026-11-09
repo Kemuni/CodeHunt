@@ -6,6 +6,9 @@ from fastapi import APIRouter
 from app.schemas import ErrorResponse
 
 DEFAULT_ERROR_RESPONSES = {
+    401: {"model": ErrorResponse, "description": "Пользователь не найден"},
+    403: {"model": ErrorResponse, "description": "Недостаточно прав"},
+    409: {"model": ErrorResponse, "description": "Конфликт данных"},
     404: {"model": ErrorResponse, "description": "Ресурс не найден"},
     422: {"model": ErrorResponse, "description": "Ошибка валидации запроса"},
     500: {"model": ErrorResponse, "description": "Внутренняя ошибка сервера"},

@@ -1,5 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Дожидаемся проверки существования/доступа в metadata до отправки HTML: реальный 404.
+  htmlLimitedBots: /.*/,
+}
 
-export default nextConfig;
+export default nextConfig

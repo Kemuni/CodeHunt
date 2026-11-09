@@ -7,12 +7,17 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.0",
     "asyncpg>=0.32.0",
+    "boto3>=1.43.123",
     "fastapi[standard]>=0.143.3",
+    "httpx>=0.28,<1",
+    "pillow>=13.0.0",
+    "redis>=5,<8",
     "sqlalchemy[asyncio]>=2.1.4",
 ]
 
 [dependency-groups]
 dev = [
+    "boto3-stubs[s3]>=1.43.123,<1.44",
     "coverage>=7.16.2",
     "prek>=0.5.4",
     "psycopg[binary]>=3.3.6",
@@ -33,6 +38,9 @@ exclude = []
 [tool.coverage.run]
 source = ["app"]
 omit = ["*/tests/*"]
+# SQLAlchemy asyncio переключается в greenlet; явно учитываем это при измерении покрытия.
+concurrency = ["thread", "greenlet"]
+core = "ctrace"
 
 [tool.coverage.report]
 exclude_lines = [
@@ -52,19 +60,19 @@ error-on-warning = true
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
+    "E",  # ошибки pycodestyle
+    "W",  # предупреждения pycodestyle
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
-    "ARG001", # unused arguments in functions
-    "T201",   # print statements are not allowed
+    "ARG001", # неиспользуемые аргументы функций
+    "T201",   # запрет вызовов print
 ]
 ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
-    "W191",  # indentation contains tabs
-    "B904",  # Allow raising exceptions without from e, for HTTPException
+    "E501",  # длину строк обрабатывает форматтер
+    "B008",  # допускаем Depends и Query в значениях по умолчанию
+    "W191",  # отступы с табуляцией
+    "B904",  # допускаем HTTPException без from e
 ]
