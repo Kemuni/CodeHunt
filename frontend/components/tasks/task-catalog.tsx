@@ -79,7 +79,7 @@ export default function TaskCatalog({
 
   return (
     <PageLayout>
-      <PageLayoutHeader>{admin ? "Управление задачами" : "Каталог задач"}</PageLayoutHeader>
+      <PageLayoutHeader text={admin ? "Управление задачами" : "Каталог задач"} />
       <PageLayoutContent>
         {admin ? (
           <TaskCatalogTabs value={tab} onValueChange={handleTabChange} actions={adminActions} />

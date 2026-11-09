@@ -19,8 +19,6 @@ import Form from "@/components/ui/form/form"
 import { GalleryUpload } from "@/components/ui/form/gallery-upload"
 import { toast } from "sonner"
 import { useTaskEditor, type TaskEditorProps } from "@/hooks/tasks/use-task-editor"
-import Link from "next/link"
-import { ArrowLeftIcon } from "lucide-react"
 
 /** Собирает секции редактора; запросы, автосохранение и состояние операций находятся в useTaskEditor. */
 export default function TaskEditor({ mode, initial }: TaskEditorProps) {
@@ -63,9 +61,10 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
     >
       <PageLayout>
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <PageLayoutHeader backHref="/admin/tasks">
-            {mode.kind === "task" ? "Редактирование задачи" : "Новая задача"}
-          </PageLayoutHeader>
+          <PageLayoutHeader
+            text={mode.kind === "task" ? "Редактирование задачи" : "Новая задача"}
+            backHref="/admin/tasks"
+          />
         </div>
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           {status}

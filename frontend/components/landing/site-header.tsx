@@ -94,7 +94,7 @@ export function SiteHeader() {
   }, [])
 
   return (
-    <header className="relative z-49 flex min-h-20 w-full items-center gap-2 px-4 py-2 sm:gap-4 sm:px-6 lg:min-h-23.5 lg:py-3 xl:px-20">
+    <header className="relative z-49 grid grid-cols-[0.5fr_1fr_0.5fr] min-h-20 w-full items-center gap-2 px-4 py-2 sm:gap-4 sm:px-6 lg:min-h-23.5 lg:py-3 xl:px-20">
       <Link href="/" className="block shrink-0" onClick={closeMenu}>
         <Image src="/figma/our-logo.svg" alt="Track dev" width={90} height={64} priority />
       </Link>

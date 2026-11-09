@@ -444,7 +444,7 @@ export default function TaskDetails({ id }: { id: number }) {
     )
   return (
     <PageLayout>
-      <PageLayoutHeader backHref="/tasks">Обзор задачи</PageLayoutHeader>
+      <PageLayoutHeader text="Обзор задачи" backHref="/tasks" />
       <TaskDetailsContent key={id} task={taskQuery.data} />
     </PageLayout>
   )

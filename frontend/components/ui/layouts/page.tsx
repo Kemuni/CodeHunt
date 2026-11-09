@@ -16,7 +16,9 @@ export const PageLayout: React.FC<PageLayoutProps> = ({ children, className, ...
   )
 }
 
-export type PageLayoutHeaderProps = HTMLAttributes<HTMLDivElement> & {
+export type PageLayoutHeaderProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
+  text: string
+  children?: never
   /** Адрес страницы, на которую ведёт кнопка «Вернуться назад». */
   backHref?: string
 }
@@ -24,10 +26,11 @@ export type PageLayoutHeaderProps = HTMLAttributes<HTMLDivElement> & {
 /** Заголовок с декором и необязательной ссылкой возврата справа. */
 export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
   className,
-  children,
+  text,
   backHref,
   ...props
 }) => {
+
   return (
     <div
       className={cn(
@@ -38,7 +41,12 @@ export const PageLayoutHeader: React.FC<PageLayoutHeaderProps> = ({
       {...props}
     >
       <div className="flex min-w-0 items-center gap-6">
-        <h2 className="min-w-0 wrap-anywhere">{children}</h2>
+        <h2 className="min-w-0 wrap-anywhere">
+          <span className="underline decoration-primary decoration-wavy underline-offset-8">
+            { text.substring(0, text.indexOf(' ')) }
+          </span>
+          {" "}{ text.substring(text.indexOf(' ') + 1) }
+        </h2>
         <div aria-hidden="true" className="relative hidden size-20 shrink-0 xl:block">
           <Image src="/figma/Asterisk 2.svg" alt="" fill sizes="80px" />
         </div>
