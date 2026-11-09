@@ -1,6 +1,6 @@
-import { getToken } from "next-auth/jwt"
-import { NextRequest } from "next/server"
 import { backendOrigin } from "./backend-origin"
+import { backendSessionToken } from "./backend-session"
+import { requestBodyLimit } from "./request-limits"
 
 const MEDIA_HEADERS = [
   "etag",
@@ -26,18 +26,11 @@ function errorResponse(status: number, code: string, message: string): Response 
   )
 }
 
-async function getBackendToken(request: Request): Promise<string | null> {
-  // NextAuth умеет читать и cookie, и Authorization. Оставляем только cookie,
-  // чтобы клиент не мог подставить другой способ авторизации через заголовок.
-  const cookieRequest = new NextRequest(request.url, {
-    headers: { cookie: request.headers.get("cookie") ?? "" },
-  })
-  const session = await getToken({ req: cookieRequest, secret: process.env.NEXTAUTH_SECRET })
-  const expiresAt = Date.parse(session?.backendExpiresAt ?? "")
-  return session?.backendToken && expiresAt > Date.now() ? session.backendToken : null
-}
-
-export async function proxyBackend(request: Request, path: string[]): Promise<Response> {
+export async function proxyBackend(
+  request: Request,
+  path: string[],
+  timeoutMs = 120_000,
+): Promise<Response> {
   // Обмен OAuth-токена доступен серверному NextAuth напрямую. Не открываем его
   // через прокси; сегменты пути также не должны менять адрес назначения через ../.
   if (path[0] === "auth" || path.some((part) => !/^[a-zA-Z0-9_-]+$/.test(part))) {
@@ -57,6 +50,16 @@ export async function proxyBackend(request: Request, path: string[]): Promise<Re
   const url = new URL(`/api/${path.join("/")}`, backendOrigin)
   url.search = new URL(request.url).search
   const isMedia = path[0] === "media"
+  const limit = requestBodyLimit(path, request.method)
+  const length = request.headers.get("content-length")
+  const tooLarge = () =>
+    errorResponse(413, "request_too_large", "Запрос превышает допустимый размер")
+  if (!readOnly && length !== null && (!/^\d+$/.test(length) || Number(length) > limit))
+    return tooLarge()
+  const controller = new AbortController()
+  const timeout = AbortSignal.timeout(timeoutMs)
+  const signal = AbortSignal.any([request.signal, timeout, controller.signal])
+  let exceeded = false
 
   try {
     // Передаём только нужные заголовки. Пользователя определяет сессия, а его
@@ -65,16 +68,42 @@ export async function proxyBackend(request: Request, path: string[]): Promise<Re
       request.headers,
       isMedia ? ["content-type", "if-none-match"] : ["content-type"],
     )
-    const token = await getBackendToken(request)
+    const token = await backendSessionToken(request.headers.get("cookie") ?? "")
     if (token) headers.set("authorization", `Bearer ${token}`)
 
-    const response = await fetch(url, {
+    // Передаём тело потоком с обратным давлением, считая байты даже без Content-Length.
+    let body: ReadableStream<Uint8Array> | undefined
+    if (!readOnly && request.body) {
+      let received = 0
+      body = request.body.pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk, stream) {
+            received += chunk.byteLength
+            if (received > limit) {
+              exceeded = true
+              const error = new Error("request_too_large")
+              stream.error(error)
+              controller.abort(error)
+            } else stream.enqueue(chunk)
+          },
+        }),
+        { signal },
+      )
+    }
+
+    const init: RequestInit & { duplex?: "half" } = {
       method: request.method,
       headers,
-      body: readOnly ? undefined : await request.arrayBuffer(),
+      body,
+      duplex: body ? "half" : undefined,
       cache: "no-store",
-      signal: request.signal,
-    })
+      signal,
+    }
+    const response = await fetch(url, init)
+    if (exceeded) {
+      await response.body?.cancel()
+      return tooLarge()
+    }
 
     // Next.js не кеширует ответы от backend. Браузер сохраняет правила кеша
     // медиа и ETag: backend проверяет доступ даже перед ответом 304.
@@ -88,6 +117,9 @@ export async function proxyBackend(request: Request, path: string[]): Promise<Re
     // Отдаём поток без разбора JSON или загрузки всего файла в память.
     return new Response(response.body, { status: response.status, headers: responseHeaders })
   } catch {
+    if (exceeded) return tooLarge()
+    if (timeout.aborted)
+      return errorResponse(504, "backend_timeout", "Сервер не ответил вовремя. Повторите попытку.")
     return errorResponse(
       502,
       "backend_unavailable",

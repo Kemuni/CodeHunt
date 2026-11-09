@@ -256,7 +256,7 @@ test("nested presets restore fields and all editor branches without inherited du
     short_description: "Кратко",
     full_description: "Полностью",
     developer_type: "frontend",
-    status: "archived",
+    is_hidden: true,
     difficulty_from: 1,
     difficulty_to: 5,
     created_at: stamp,

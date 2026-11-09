@@ -1,3 +1,4 @@
+import { registerPublicTask } from "./public-task-fixture"
 import { jpegPhoto } from "./photo-fixture"
 import { TaskLevel } from "@/lib/tasks/task-level"
 import { test, expect } from "./auth-fixture"
@@ -21,7 +22,6 @@ function taskFixture(): TaskDetail {
     developer_type: "frontend",
     difficulty_from: 1,
     difficulty_to: 5,
-    status: "published",
     created_at: stamp,
     updated_at: stamp,
     photos: [],
@@ -135,6 +135,7 @@ test("public task shows all own-level sections without configuration requests", 
     requests.push(path)
     await route.fulfill({ json: { success: true, data: task } })
   })
+  await registerPublicTask(task)
   await page.goto(`/tasks/${task.slug}`)
   const specification = page.getByRole("region", { name: "Техническое задание", exact: true })
   await expect(specification.getByRole("article")).toHaveCount(3)
@@ -160,7 +161,7 @@ test("public task shows all own-level sections without configuration requests", 
   await expect(page.getByRole("region", { name: "Техническое задание" })).toContainText(
     task.full_description,
   )
-  expect(requests).toEqual([`/api/backend/tasks/by-slug/${task.slug}`])
+  expect(requests).toEqual([])
 })
 
 test("editor loads keyed presets and saves existing IDs without creating duplicates", async ({
@@ -283,6 +284,7 @@ test("each level previews four numbered leaves across nested collapsible categor
   await page.route("**/api/backend/**", (route) =>
     route.fulfill({ json: { success: true, data: task } }),
   )
+  await registerPublicTask(task)
   await page.goto(`/tasks/${task.slug}`)
   for (const title of ["Базовый", "Продвинутый", "Максимальный"]) {
     const section = page.getByRole("region", { name: `${title} функционал`, exact: true })
@@ -402,6 +404,7 @@ for (const width of [1440, 390]) {
         await route.fulfill({ json: { success: true, data: task } })
       }
     })
+    await registerPublicTask(task)
     await page.goto(`/tasks/${task.slug}`)
     const back = page.getByRole("link", { name: "Вернуться назад", exact: true })
     await expect(back).toHaveAttribute("href", "/tasks")
@@ -491,6 +494,7 @@ test("empty media and categories have clear states and absent levels are omitted
   await page.route("**/api/backend/**", (route) =>
     route.fulfill({ json: { success: true, data: task } }),
   )
+  await registerPublicTask(task)
   await page.goto(`/tasks/${task.slug}`)
   await expect(page.getByText("Фотографии пока не добавлены")).toBeVisible()
   await expect(page.getByText("Пункты пока не добавлены.")).toBeVisible()

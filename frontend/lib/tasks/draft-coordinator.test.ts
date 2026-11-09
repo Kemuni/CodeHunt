@@ -19,6 +19,26 @@ const makeDraft = (payload: DraftPayload, revision = 1): DraftRead => ({
 })
 const published = { id: 99 } as TaskDetail
 
+test("a non-revision 409 keeps the draft editable and allows retry", async () => {
+  let failed = false
+  const manager = new DraftCoordinator(makeDraft({ title: "old" }), { title: "old" }, () => {}, {
+    createDraft: async (payload) => makeDraft(payload),
+    updateDraft: async (_id, revision, payload) => makeDraft(payload, revision + 1),
+    publish: async () => {
+      if (!failed) {
+        failed = true
+        throw new ApiError("Slug занят", 409, "already_exists")
+      }
+      return published
+    },
+  })
+  await assert.rejects(manager.publish())
+  assert.equal(manager.getSnapshot().conflict, false)
+  manager.setPayload({ title: "corrected" })
+  assert.equal(await manager.publish(), published)
+  assert.equal(manager.getSnapshot().draft?.payload.title, "corrected")
+})
+
 test("opening and flushing an untouched new editor does not create a draft", async () => {
   let creates = 0
   const manager = new DraftCoordinator(null, { title: "" }, () => {}, {
@@ -118,7 +138,7 @@ test("revision conflicts preserve local edits, report immediately and block blin
       createDraft: async (payload) => makeDraft(payload),
       updateDraft: async () => {
         requests++
-        throw new ApiError("Конфликт ревизии", 409, "revision_conflict")
+        throw new ApiError("Конфликт ревизии", 409, "draft_revision_conflict")
       },
       publish: async () => published,
     },

@@ -72,7 +72,7 @@ export class DraftCoordinator {
           const error = cause instanceof Error ? cause : new Error("Не удалось сохранить черновик")
           this.update({
             error: error.message,
-            conflict: cause instanceof ApiError && cause.status === 409,
+            conflict: cause instanceof ApiError && cause.code === "draft_revision_conflict",
           })
           this.onError(error)
           throw error

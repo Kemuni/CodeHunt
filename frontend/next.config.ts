@@ -1,19 +1,8 @@
 import type { NextConfig } from "next"
 
-const nextConfig: NextConfig = {}
-
-module.exports = {
-  images: {
-  dangerouslyAllowLocalIP: process.env.NODE_ENV === 'development',
-    remotePatterns: [
-        {
-            protocol: 'http',
-            hostname: 'localhost',
-            port: '9000',
-            pathname: '/**'
-        }
-    ]
-  }
+const nextConfig: NextConfig = {
+  // Дожидаемся проверки существования/доступа в metadata до отправки HTML: реальный 404.
+  htmlLimitedBots: /.*/,
 }
 
 export default nextConfig

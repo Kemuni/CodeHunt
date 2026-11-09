@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { FileIcon, UploadIcon, Trash2Icon, DownloadIcon, PencilIcon } from "lucide-react"
-import { formatBytes } from "@/lib/hooks/use-file-upload"
+import { formatBytes } from "@/lib/format-bytes"
 import type { ResourceRead } from "@/lib/api/task-contract"
 
 import { ResourceTitleEditor } from "./resource-title-editor"

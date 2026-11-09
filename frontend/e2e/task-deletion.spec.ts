@@ -5,9 +5,9 @@ import { test, expect } from "./auth-fixture"
 import type { DraftSummary, TaskRead } from "../lib/api/task-contract"
 
 const stamp = "2026-01-01T00:00:00Z"
-const taskFixture = (id = 1, status: TaskRead["status"] = "published"): TaskRead => ({
+const taskFixture = (id = 1, is_hidden = false): TaskRead => ({
   id,
-  status,
+  is_hidden,
   title: `Задача ${id}`,
   slug: `task-${id}`,
   short_description: "Описание",
@@ -74,12 +74,6 @@ async function mockCatalog(page: Page, tasks = [taskFixture()]) {
       return reply(null)
     }
     const id = Number(path.split("/").at(-1))
-    if (path.startsWith("editor/tasks/") && method === "PATCH") {
-      expect(request.postDataJSON()).toEqual({ status: "archived" })
-      const task = state.tasks.find((item) => item.id === id)!
-      task.status = "archived"
-      return reply(task)
-    }
     if (path.startsWith("editor/tasks/") && method === "DELETE") {
       if (state.rejectTask)
         return route.fulfill({
@@ -104,7 +98,7 @@ async function confirmDeletion(page: Page) {
   await page.getByRole("alertdialog").getByRole("button", { name: "Удалить", exact: true }).click()
 }
 
-test("public catalog hides deletion; cancelling preserves the task; confirming archives and deletes", async ({
+test("public catalog hides deletion; cancelling preserves the task; confirming deletes in one request", async ({
   page,
 }) => {
   const state = await mockCatalog(page)
@@ -114,7 +108,7 @@ test("public catalog hides deletion; cancelling preserves the task; confirming a
   await page.goto("/admin/tasks")
   const remove = page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true })
   await remove.click()
-  await expect(page.getByRole("alertdialog")).toContainText("снята с публикации и удалена")
+  await expect(page.getByRole("alertdialog")).toContainText("будет удалена")
   await expect(page.getByRole("button", { name: "Отмена", exact: true })).toBeFocused()
   await page.getByRole("button", { name: "Отмена", exact: true }).click()
   await expect(page.getByRole("alertdialog")).toHaveCount(0)
@@ -123,15 +117,15 @@ test("public catalog hides deletion; cancelling preserves the task; confirming a
   await confirmDeletion(page)
   await expect(page.getByText("Задач пока нет", { exact: true })).toBeVisible()
   await expect(page.getByText("Всего: 0", { exact: true })).toBeVisible()
-  expect(state.writes).toEqual(["PATCH editor/tasks/1", "DELETE editor/tasks/1"])
+  expect(state.writes).toEqual(["DELETE editor/tasks/1"])
 })
 
-test("deleting the last task on a page returns to the preceding page without archiving again", async ({
+test("deleting the last task on a page returns to the preceding page without an extra mutation", async ({
   page,
 }) => {
   const state = await mockCatalog(
     page,
-    Array.from({ length: 21 }, (_, i) => taskFixture(i + 1, "archived")),
+    Array.from({ length: 21 }, (_, i) => taskFixture(i + 1, true)),
   )
   await page.goto("/admin/tasks")
   await page.getByRole("button", { name: "Далее", exact: true }).click()
@@ -167,14 +161,14 @@ test("draft revision conflicts refresh the list and require a new confirmation",
   ])
 })
 
-test("failed deletion preserves the task and explains its archive status", async ({ page }) => {
+test("failed deletion preserves the task and does not change visibility", async ({ page }) => {
   const state = await mockCatalog(page)
   state.rejectTask = true
   await page.goto("/admin/tasks")
   await page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true }).click()
   await confirmDeletion(page)
   await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
-    "перенесена в архив, но не удалена",
+    "видимость не изменена",
   )
   await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
     "используется в решениях",
@@ -182,21 +176,17 @@ test("failed deletion preserves the task and explains its archive status", async
   await page.getByRole("button", { name: "Отмена", exact: true }).click()
   await expect(page.getByRole("alertdialog")).toHaveCount(0)
   await expect(page.getByText("Задача 1", { exact: true })).toBeVisible()
-  expect(state.writes).toEqual(["PATCH editor/tasks/1", "DELETE editor/tasks/1"])
+  expect(state.writes).toEqual(["DELETE editor/tasks/1"])
   await page.getByRole("button", { name: "Удалить задачу «Задача 1»", exact: true }).click()
   await confirmDeletion(page)
   await expect(page.getByRole("alertdialog").getByRole("alert")).toContainText(
     "Удаление недоступно",
   )
-  expect(state.writes).toEqual([
-    "PATCH editor/tasks/1",
-    "DELETE editor/tasks/1",
-    "DELETE editor/tasks/1",
-  ])
+  expect(state.writes).toEqual(["DELETE editor/tasks/1", "DELETE editor/tasks/1"])
 })
 
 test("pending deletion disables repeat submission and dismissal", async ({ page }) => {
-  const state = await mockCatalog(page, [taskFixture(1, "archived")])
+  const state = await mockCatalog(page, [taskFixture(1, true)])
   let finish!: () => void
   const pending = new Promise<void>((resolve) => {
     finish = resolve
@@ -311,7 +301,7 @@ test(
         }
       }
       if (taskId) {
-        await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { status: "archived" } })
+        await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { is_hidden: true } })
         await request.delete(`/api/backend/editor/tasks/${taskId}`)
       }
     }

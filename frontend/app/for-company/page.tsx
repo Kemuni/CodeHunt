@@ -123,7 +123,13 @@ function TariffVariants() {
           </ul>
         </div>
 
-        <Button variant="default" size="lg" className="w-full">
+        <Button
+          render={<Link href="#contactMeSection" />}
+          nativeButton={false}
+          variant="default"
+          size="lg"
+          className="w-full"
+        >
           Узнать подробнее
         </Button>
       </div>
@@ -146,7 +152,13 @@ function TariffVariants() {
           </ul>
         </div>
 
-        <Button variant="outline" size="lg" className="w-full">
+        <Button
+          render={<Link href="#contactMeSection" />}
+          nativeButton={false}
+          variant="outline"
+          size="lg"
+          className="w-full"
+        >
           Узнать подробнее
         </Button>
       </div>

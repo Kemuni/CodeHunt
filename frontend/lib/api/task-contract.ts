@@ -16,7 +16,7 @@ type TaskFields = {
   is_paid?: boolean
 }
 
-export type TaskUpdate = Partial<TaskFields> & { status?: TaskStatus }
+export type TaskUpdate = Partial<TaskFields>
 
 export type TaskDetail = TaskRead & {
   presets: TaskPresets
@@ -36,7 +36,6 @@ export type TaskRead = TaskFields & {
   created_at: string
   updated_at: string
   id: number
-  status: TaskStatus
   cover_photo?: PhotoRead | null
 }
 
@@ -119,8 +118,6 @@ export type PresetCreate = {
   description: string
   average_days_to_complete?: number | null
 }
-
-export type TaskStatus = "published" | "archived"
 
 export type ComplicationItem = {
   complication_id?: number | null

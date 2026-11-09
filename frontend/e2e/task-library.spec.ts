@@ -40,7 +40,6 @@ async function mockLibrary(page: Page) {
         developer_type: "frontend",
         difficulty_from: 1,
         difficulty_to: 5,
-        status: "published",
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-01-01T00:00:00Z",
         photos: [],

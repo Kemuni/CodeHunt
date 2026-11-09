@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { z } from "zod"
 import { tasksApi, type DraftPayload } from "@/lib/api/tasks"
+import { invalidateTaskQueries } from "@/lib/tasks/query-keys"
 import { ApiError, type ValidationProblem } from "@/lib/api/request"
 import { draftMediaApi, taskMediaApi, taskMediaUrl } from "@/lib/api/task-media"
 import type {
@@ -169,7 +170,8 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
         coordinator.setPayload(toPayload(values, contentRef.current.nodes, originalPayload))
         const published = await coordinator.publish()
         toast.success("Черновик опубликован: задача сохранена")
-        void queryClient.invalidateQueries({ queryKey: ["task-catalog"] })
+        void invalidateTaskQueries(queryClient)
+        router.refresh()
         router.replace(`/admin/tasks/editor?taskId=${published.id}`)
         return
       }
@@ -189,7 +191,8 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
       )
       setDirty(false)
       toast.success("Основная информация и пункты задачи сохранены")
-      void queryClient.invalidateQueries({ queryKey: ["task-catalog"] })
+      void invalidateTaskQueries(queryClient)
+      router.refresh()
     } catch (error) {
       if (error instanceof ApiError) setProblems(error.issues)
       if (!coordinator)
@@ -209,7 +212,8 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
           ? `${label}. Изменения уже сохранены в задаче.`
           : `${label}. Изменения сохранены в черновике.`,
       )
-      void queryClient.invalidateQueries({ queryKey: ["task-catalog"] })
+      void invalidateTaskQueries(queryClient)
+      router.refresh()
     } catch (error) {
       if (!coordinator)
         toast.error(error instanceof Error ? error.message : "Не удалось сохранить файл")

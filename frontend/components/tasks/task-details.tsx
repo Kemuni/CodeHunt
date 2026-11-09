@@ -9,7 +9,6 @@ import Image from "next/image"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
-  BookmarkIcon,
   ChevronDownIcon,
   DownloadIcon,
   FileArchiveIcon,
@@ -22,6 +21,7 @@ import {
   PaperclipIcon,
 } from "lucide-react"
 import { tasksApi } from "@/lib/api/tasks"
+import { publicTaskKey } from "@/lib/tasks/query-keys"
 import type {
   ComplicationItem,
   ComplicationGroupRead,
@@ -31,7 +31,7 @@ import type {
   TaskPresetRead,
 } from "@/lib/api/task-contract"
 import { developerTypeLabels, levelLabels } from "@/lib/tasks/labels"
-import { formatBytes } from "@/lib/hooks/use-file-upload"
+import { formatBytes } from "@/lib/format-bytes"
 import { PageLayout, PageLayoutContent, PageLayoutHeader } from "@/components/ui/layouts/page"
 import {
   SectionLayout,
@@ -196,7 +196,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
                   src={taskMediaUrl(photo.url)}
                   alt={`${title} — фото ${index + 1}`}
                   fill
-                  loading="eager"
+                  loading={index === 0 ? "eager" : "lazy"}
                   unoptimized
                   className="object-cover"
                   sizes="(min-width: 1024px) 50vw, 100vw"
@@ -273,15 +273,6 @@ function TaskOverview({ task }: { task: TaskDetail }) {
             }}
           >
             Начать выполнение
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => {
-              toast.message("Пока не реализовано")
-            }}
-          >
-            <BookmarkIcon />
           </Button>
         </div>
         {task.design_author_name && (
@@ -422,10 +413,17 @@ function TaskDetailsContent({ task }: { task: TaskDetail }) {
   )
 }
 
-export default function TaskDetails({ slug }: { slug: string }) {
+export default function TaskDetails({
+  slug,
+  initialTask,
+}: {
+  slug: string
+  initialTask: TaskDetail
+}) {
   const taskQuery = useQuery({
-    queryKey: ["public-task", slug],
+    queryKey: publicTaskKey(slug),
     queryFn: () => tasksApi.publicTask(slug),
+    initialData: initialTask,
     retry: false,
   })
   if (taskQuery.isPending)
@@ -434,7 +432,7 @@ export default function TaskDetails({ slug }: { slug: string }) {
         <p role="status">Загружаем задачу…</p>
       </PageLayout>
     )
-  if (!taskQuery.data)
+  if (taskQuery.error || !taskQuery.data)
     return (
       <PageLayout>
         <p role="alert">{taskQuery.error?.message ?? "Задача не найдена"}</p>

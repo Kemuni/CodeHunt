@@ -217,7 +217,7 @@ test(
       expect(errors).toEqual([])
     } finally {
       if (taskId) {
-        await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { status: "archived" } })
+        await request.patch(`/api/backend/editor/tasks/${taskId}`, { data: { is_hidden: true } })
         const response = await request.delete(`/api/backend/editor/tasks/${taskId}`)
         expect(response.ok()).toBeTruthy()
       } else if (draftId) {

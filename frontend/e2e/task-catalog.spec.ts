@@ -7,7 +7,6 @@ const task: TaskRead = {
   slug: "movies",
   short_description: "Тест фильтрации",
   full_description: "Тест фильтрации",
-  status: "published",
   developer_type: "frontend",
   difficulty_from: 1,
   difficulty_to: 8,

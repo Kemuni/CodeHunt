@@ -6,6 +6,8 @@ import TaskDifficulty from "@/components/tasks/task-difficulty"
 
 import { useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { invalidateTaskQueries } from "@/lib/tasks/query-keys"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon } from "lucide-react"
 import { toast } from "sonner"
@@ -116,17 +118,19 @@ export default function TaskCatalog({
         >
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {isDrafts
-              ? draftsQuery.data?.items.map((draft) => (
+              ? draftsQuery.data?.items.map((draft, index) => (
                   <DraftCard
                     key={draft.id}
                     draft={draft}
+                    eager={index === 0}
                     onDelete={() => deletion.open({ kind: "draft", draft })}
                   />
                 ))
-              : tasksQuery.data?.items.map((task) => (
+              : tasksQuery.data?.items.map((task, index) => (
                   <TaskCard
                     key={task.id}
                     task={task}
+                    eager={index === 0}
                     admin={admin}
                     onDelete={() => deletion.open({ kind: "task", task })}
                   />
@@ -228,7 +232,15 @@ function TaskCatalogResults({
   )
 }
 
-function DraftCard({ draft, onDelete }: { draft: DraftSummary; onDelete: () => void }) {
+function DraftCard({
+  draft,
+  eager,
+  onDelete,
+}: {
+  draft: DraftSummary
+  eager: boolean
+  onDelete: () => void
+}) {
   const title = draft.title || "Без названия"
   const href = `/admin/tasks/editor?draftId=${draft.id}`
   const shortDescription = draft.short_description || `Черновик #${draft.id}`
@@ -245,7 +257,7 @@ function DraftCard({ draft, onDelete }: { draft: DraftSummary; onDelete: () => v
             alt="taskImage"
             fill
             sizes="20vw"
-            loading="eager"
+            loading={eager ? "eager" : "lazy"}
             className="aspect-video object-cover"
           />
         ) : (
@@ -280,10 +292,12 @@ function DraftCard({ draft, onDelete }: { draft: DraftSummary; onDelete: () => v
 
 function TaskCard({
   task,
+  eager,
   admin,
   onDelete,
 }: {
   task: TaskRead
+  eager: boolean
   admin: boolean
   onDelete: () => void
 }) {
@@ -310,7 +324,7 @@ function TaskCard({
             alt="taskImage"
             fill
             sizes="20vw"
-            loading="eager"
+            loading={eager ? "eager" : "lazy"}
             className="aspect-video object-cover"
           />
         ) : (
@@ -357,6 +371,7 @@ function DeleteCatalogItemButton({ label, onClick }: { label: string; onClick: (
 
 /** Не повторяет разрушительные запросы автоматически; конфликт версии требует нового подтверждения. */
 function useCatalogDeletion(onDeleted: () => void) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [target, setTarget] = useState<DeleteTarget | null>(null)
   const mutation = useMutation({
@@ -366,22 +381,16 @@ function useCatalogDeletion(onDeleted: () => void) {
         await tasksApi.deleteDraft(selected.draft.id, selected.draft.revision)
         return
       }
-      let archived = false
-      if (selected.task.status !== "archived") {
-        const task = await tasksApi.updateTask(selected.task.id, { status: "archived" })
-        archived = true
-        setTarget({ kind: "task", task })
-      }
       try {
         await tasksApi.deleteTask(selected.task.id)
       } catch (error) {
         const message =
           error instanceof ApiError && error.code === "reference_conflict"
-            ? "Задача используется в решениях или связана с другими задачами. Удаление недоступно."
+            ? "Задача используется в решениях или связана с другими задачами. Удаление недоступно; видимость не изменена."
             : error instanceof Error
               ? error.message
               : "Не удалось удалить задачу"
-        throw new Error(`${archived ? "Задача перенесена в архив, но не удалена. " : ""}${message}`)
+        throw new Error(message)
       }
     },
     onSuccess: (_, selected) => {
@@ -399,12 +408,10 @@ function useCatalogDeletion(onDeleted: () => void) {
     },
     onSettled: (_, __, selected) => {
       const id = selected.kind === "task" ? selected.task.id : selected.draft.id
+      router.refresh()
       return Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["task-catalog"] }),
+        invalidateTaskQueries(queryClient),
         queryClient.invalidateQueries({ queryKey: ["task-editor", { kind: selected.kind, id }] }),
-        ...(selected.kind === "task"
-          ? [queryClient.invalidateQueries({ queryKey: ["public-task", id] })]
-          : []),
       ])
     },
   })
@@ -444,7 +451,6 @@ function DeleteCatalogItemDialog({
 }: DeleteCatalogItemDialogProps) {
   const isDraft = target.kind === "draft"
   const title = isDraft ? target.draft.title || "Без названия" : target.task.title
-  const needsArchive = target.kind === "task" && target.task.status !== "archived"
 
   return (
     <ConfirmDialog
@@ -455,9 +461,7 @@ function DeleteCatalogItemDialog({
       title={isDraft ? "Удалить черновик?" : "Удалить задачу?"}
       description={
         <>
-          {needsArchive
-            ? `Задача «${title}» будет снята с публикации и удалена.`
-            : `${isDraft ? "Черновик" : "Задача"} «${title}» будет удалён${isDraft ? "" : "а"}.`}{" "}
+          {`${isDraft ? "Черновик" : "Задача"} «${title}» ${isDraft ? "будет удалён" : "будет удалена"}.`}{" "}
           Восстановить {isDraft ? "его" : "её"} не получится.
         </>
       }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import Image from "next/image"
-import { formatBytes } from "@/lib/hooks/use-file-upload"
+import { formatBytes } from "@/lib/format-bytes"
 import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
