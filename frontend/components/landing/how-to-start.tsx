@@ -7,24 +7,6 @@ export function HowToStart() {
                  2xl:gap-8"
       aria-labelledby="how-to-start-title"
     >
-      {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-1 text-base leading-[18px]
-                      text-primary/50
-                      2xl:text-lg 2xl:leading-[19px]">
-          <DoubleSlash className="size-4" aria-hidden="true" />
-          Основа
-        </p>
-        <h2
-          id="how-to-start-title"
-          className="m-0 mt-0.5 font-heading
-                     text-[40px] font-medium leading-[1.05] tracking-[1px]
-                     text-primary
-                     2xl:text-[60px] 2xl:tracking-[1.2px]"
-        >
-          Как начать?
-        </h2>
-      </div> */}
-
       <div className="grid grid-cols-10 gap-2 px-10 2xl:px-40">
         {/* ─────────── Левый блок ─────────── */}
         <div

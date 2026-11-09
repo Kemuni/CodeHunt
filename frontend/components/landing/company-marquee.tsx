@@ -62,19 +62,6 @@ export function CompanyMarquee() {
       className="flex flex-col overflow-hidden pt-8 gap-20 w-full"
       aria-labelledby="company-marquee-title"
     >
-      {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-2 text-lg leading-[19px] text-primary/50">
-          <DoubleSlash className="size-4" aria-hidden="true" />
-          Совершенствуемся решая
-        </p>
-        <h2
-          id="company-marquee-title"
-          className="m-0 mt-0.5 font-heading text-[60px] font-medium leading-[1.05] tracking-[1.2px] text-primary"
-        >
-          Задачи Big Tech компаний
-        </h2>
-      </div> */}
-
       <div
         className="w-full overflow-hidden"
         aria-label="Компании, задачи которых представлены на платформе"

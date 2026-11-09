@@ -6,24 +6,6 @@ export function PortfolioInstruction() {
       className="flex flex-col gap-6 2xl:gap-8 overflow-hidden  w-full"
       aria-labelledby="how-to-start-title"
     >
-      {/* <div className="mx-auto flex w-[min(84%,1209px)] flex-col items-center">
-        <p className="m-0 inline-flex items-center gap-2 text-base leading-[18px]
-                      text-primary/50
-                      2xl:text-lg 2xl:leading-[19px]">
-          <DoubleSlash className="size-4" aria-hidden="true" />
-          Что делать если
-        </p>
-        <h2
-          id="how-to-start-title"
-          className="m-0 mt-0.5 font-heading
-                    text-[40px] font-medium leading-[1.05] tracking-[1px]
-                    text-primary
-                    2xl:text-[60px] 2xl:tracking-[1.2px]"
-        >
-          Нет своего портфолио?
-        </h2>
-      </div> */}
-
       <div className="flex flex-row px-10 2xl:px-40">
         <div className="flex flex-col w-1/2 gap-8">
           <div className="bg-white w-full h-fit py-2 px-3 gap-2 border-b border-[#6363631A] rounded-lg">

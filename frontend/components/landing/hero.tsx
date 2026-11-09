@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 import { useEffect, useState } from "react"
 
-import { AnimatedArrow } from "@/components/landing/animated-arrow"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -222,7 +221,7 @@ export function Hero() {
           className="mx-auto mt-4 w-[600px] text-xl leading-7 text-black
                      2xl:mt-5 2xl:w-[660px] 2xl:text-2xl 2xl:leading-7"
         >
-          Объединяем соискателей и нанимателей в едином честном пространстве
+          Объединяем всех разработчиков в едином пространстве
         </p>
       </div>
 
