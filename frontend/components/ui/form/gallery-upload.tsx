@@ -21,6 +21,7 @@ export interface GalleryImage {
 interface GalleryUploadProps {
   files: GalleryImage[]
   busy?: boolean
+  minFiles?: number
   maxFiles?: number
   maxSize?: number
   className?: string
@@ -36,6 +37,7 @@ const imageTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
 export function GalleryUpload({
   files,
   busy = false,
+  minFiles = 0,
   maxFiles = 4,
   maxSize = 5 * 1024 * 1024,
   className,
@@ -74,8 +76,13 @@ export function GalleryUpload({
       problems.push(`Можно добавить не более ${maxFiles} фотографий`)
     if (selected.some((file) => file.size > maxSize))
       problems.push(`Размер фотографии не должен превышать ${formatBytes(maxSize)}`)
-    if (selected.some((file) => !imageTypes.includes(file.type)))
-      problems.push("Выберите фотографии JPEG, PNG, WebP или GIF")
+    if (
+      selected.some(
+        (file) =>
+          !imageTypes.includes(file.type.toLowerCase()) && !/\.(jpe?g|png|webp)$/i.test(file.name),
+      )
+    )
+      problems.push("Выберите фотографии JPG, JPEG, PNG или WebP")
     setErrors(problems)
     if (!problems.length) void runOperation(() => onUpload(selected))
   }
@@ -107,7 +114,7 @@ export function GalleryUpload({
           ref={input}
           type="file"
           multiple
-          accept={imageTypes.join(",")}
+          accept={[...imageTypes, ".jpg", ".jpeg", ".png", ".webp"].join(",")}
           disabled={disabled}
           className="sr-only"
           aria-label="Загрузить фотографии"
@@ -131,8 +138,7 @@ export function GalleryUpload({
               Перетащите изображения сюда или нажмите на кнопку
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, WebP не более {formatBytes(maxSize)} каждый (максимум {maxFiles}{" "}
-              файлов)
+              PNG, JPG, WebP не более {formatBytes(maxSize)} каждый (максимум {maxFiles} файлов)
             </p>
           </div>
           <Button
@@ -158,7 +164,7 @@ export function GalleryUpload({
             </div>
             <Button
               type="button"
-              disabled={disabled}
+              disabled={disabled || minFiles > 0}
               onClick={() => void runOperation(onClear)}
               variant="outline"
               size="sm"
@@ -193,7 +199,7 @@ export function GalleryUpload({
                     </Button>
                     <Button
                       type="button"
-                      disabled={disabled}
+                      disabled={disabled || files.length <= minFiles}
                       variant="secondary"
                       size="icon-sm"
                       aria-label={`Удалить ${file.name}`}

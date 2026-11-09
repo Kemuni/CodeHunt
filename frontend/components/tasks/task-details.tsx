@@ -1,6 +1,6 @@
 "use client"
 
-import { taskPhotoUrl, taskMediaUrl } from "@/lib/api/task-media"
+import { taskMediaUrl } from "@/lib/api/task-media"
 import { downloadFile } from "@/lib/tasks/download-file"
 
 import { TaskLevel } from "@/lib/tasks/task-level"
@@ -26,7 +26,7 @@ import type {
   ComplicationItem,
   ComplicationGroupRead,
   PhotoRead,
-  ResourceDownloadRead,
+  ResourceRead,
   TaskDetail,
   TaskPresetRead,
 } from "@/lib/api/task-contract"
@@ -193,7 +193,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
             >
               <div className="relative block w-full aspect-16/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
                 <Image
-                  src={taskPhotoUrl(photo)}
+                  src={taskMediaUrl(photo.url)}
                   alt={`${title} — фото ${index + 1}`}
                   fill
                   loading="eager"
@@ -227,7 +227,7 @@ function TaskPhotoCarousel({ photos, title }: { photos: PhotoRead[]; title: stri
             {selectedImage && (
               <>
                 <Image
-                  src={taskPhotoUrl(selectedImage)}
+                  src={taskMediaUrl(selectedImage.url)}
                   alt={selectedImage.original_filename}
                   fill
                   unoptimized
@@ -248,8 +248,8 @@ function TaskOverview({ task }: { task: TaskDetail }) {
     <SectionLayout className="flex sm:h-full flex-col justify-between gap-6 sm:gap-0">
       <div className="flex flex-col gap-3">
         <span className="flex gap-2">
-          <Badge variant="free" size="xl">
-            Бесплатно
+          <Badge variant={task.is_paid ? "secondary" : "free"} size="xl">
+            {task.is_paid ? "По подписке" : "Бесплатно"}
           </Badge>
           <Badge variant={task.developer_type} size="xl">
             {developerTypeLabels[task.developer_type]}
@@ -306,7 +306,7 @@ function TaskOverview({ task }: { task: TaskDetail }) {
   )
 }
 
-function AttachmentIcon({ file }: { file: ResourceDownloadRead }) {
+function AttachmentIcon({ file }: { file: ResourceRead }) {
   const props = { "aria-hidden": true as const, className: "size-6 shrink-0 text-primary" }
   const name = file.original_filename.toLowerCase()
   if (file.content_type?.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|fig|psd)$/.test(name))
@@ -318,7 +318,7 @@ function AttachmentIcon({ file }: { file: ResourceDownloadRead }) {
   return <FileIcon {...props} />
 }
 
-function Attachment({ file }: { file: ResourceDownloadRead }) {
+function Attachment({ file }: { file: ResourceRead }) {
   const [pending, setPending] = useState(false)
   const download = async () => {
     if (pending) return

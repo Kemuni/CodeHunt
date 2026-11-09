@@ -1,3 +1,4 @@
+import { jpegPhoto } from "./photo-fixture"
 import { TaskLevel } from "@/lib/tasks/task-level"
 import type { Page } from "@playwright/test"
 import { test, expect } from "./auth-fixture"
@@ -263,9 +264,19 @@ test(
       expect(publicationDraftResponse.ok()).toBeTruthy()
       const publicationDraft = (await publicationDraftResponse.json()).data
       publicationDraftId = publicationDraft.id
+      const photoResponse = await request.post(
+        `/api/backend/editor/task-drafts/${publicationDraftId}/photos`,
+        {
+          multipart: {
+            revision: String(publicationDraft.revision),
+            files: { name: "cover.jpg", mimeType: "image/jpeg", buffer: jpegPhoto },
+          },
+        },
+      )
+      expect(photoResponse.ok()).toBeTruthy()
       const taskResponse = await request.post(
         `/api/backend/editor/task-drafts/${publicationDraftId}/publish`,
-        { data: { revision: publicationDraft.revision } },
+        { data: { revision: (await photoResponse.json()).data.revision } },
       )
       expect(taskResponse.ok()).toBeTruthy()
       taskId = (await taskResponse.json()).data.id

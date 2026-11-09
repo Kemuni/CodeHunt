@@ -1,4 +1,5 @@
 import { TaskLevel } from "@/lib/tasks/task-level"
+import { jpegPhoto } from "./photo-fixture"
 import { taskMediaUrl } from "@/lib/api/task-media"
 import { test, expect } from "@playwright/test"
 
@@ -45,6 +46,10 @@ test(
         .fill("Полное описание интеграционного теста")
       await page.getByRole("combobox").click()
       await page.getByRole("option", { name: "Фронтенд", exact: true }).click()
+      await page.getByRole("checkbox", { name: "Доступ только по подписке" }).check()
+      await expect
+        .poll(async () => (await api(`editor/task-drafts/${draftId}`)).payload.is_paid)
+        .toBe(true)
       await page.locator('[id="presets.easy.description"]').fill("Базовый результат")
       await page.locator('[id="presets.easy.averageDays"]').fill("3")
       await page.getByRole("tab", { name: "Продвинутый (0 пунктов)", exact: true }).click()
@@ -70,18 +75,15 @@ test(
         .toBe(1)
       await expect(page.getByLabel("Загрузить фотографии")).toBeEnabled()
       await page.getByLabel("Загрузить фотографии").setInputFiles({
-        name: "test.png",
-        mimeType: "image/png",
-        buffer: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEUlEQVR4nGP4z8AARGDiPwMAHfAD/aAzCYkAAAAASUVORK5CYII=",
-          "base64",
-        ),
+        name: "test.jpg",
+        mimeType: "image/jpeg",
+        buffer: jpegPhoto,
       })
-      await expect(page.getByRole("img", { name: "test.png", exact: true })).toBeVisible()
+      await expect(page.getByRole("img", { name: "test.jpg", exact: true })).toBeVisible()
       await expect
         .poll(() =>
           page
-            .getByRole("img", { name: "test.png", exact: true })
+            .getByRole("img", { name: "test.jpg", exact: true })
             .evaluate((image) => (image as HTMLImageElement).naturalWidth),
         )
         .toBeGreaterThan(0)
@@ -94,7 +96,16 @@ test(
       await expect(
         page.getByRole("button", { name: "Скачать integration.txt", exact: true }),
       ).toBeVisible()
+      await page
+        .getByRole("button", { name: "Изменить подпись integration.txt", exact: true })
+        .click()
+      await page.getByLabel("Подпись", { exact: true }).fill("Условия задачи")
+      await page.getByRole("button", { name: "Сохранить подпись", exact: true }).click()
+      await expect(
+        page.getByRole("button", { name: "Скачать Условия задачи", exact: true }),
+      ).toBeVisible()
       const savedDraft = await api(`editor/task-drafts/${draftId}`)
+      expect(savedDraft.resources[0].title).toBe("Условия задачи")
       expect(savedDraft.photos).toHaveLength(1)
       expect(savedDraft.resources).toHaveLength(1)
       expect(savedDraft.payload.presets).toEqual([
@@ -106,6 +117,8 @@ test(
       taskId = Number(new URL(page.url()).searchParams.get("taskId"))
       await expect(page.getByLabel("Название задачи", { exact: true })).toHaveValue(title)
       const published = await api(`tasks/by-slug/frontend-test-${stamp}`)
+      expect(published.is_paid).toBe(true)
+      await expect(page.getByRole("checkbox", { name: "Доступ только по подписке" })).toBeChecked()
       expect(published.photos).toHaveLength(1)
       expect(published.resources).toHaveLength(1)
       expect(published.presets.easy.complications).toHaveLength(1)
@@ -117,6 +130,7 @@ test(
         (await api(`editor/tasks/${taskId}`)).presets.easy.complications[0].acceptance_criteria,
       ).toBe("Условие выполнено")
       const draftsAfterPublish = (await api("editor/task-drafts?limit=100")).total
+      await page.getByRole("checkbox", { name: "Доступ только по подписке" }).uncheck()
       await page.getByLabel("Название задачи", { exact: true }).fill(`${title} изменено`)
       await page.waitForTimeout(1000)
       expect((await api(`editor/tasks/${taskId}`)).title).toBe(title)
@@ -137,7 +151,7 @@ test(
       await expect
         .poll(async () => (await api(`editor/tasks/${taskId}`)).photos[0].original_filename)
         .toBe("second.png")
-      await page.getByRole("button", { name: "Удалить test.png", exact: true }).click()
+      await page.getByRole("button", { name: "Удалить test.jpg", exact: true }).click()
       await expect.poll(async () => (await api(`editor/tasks/${taskId}`)).photos.length).toBe(1)
       expect((await api(`editor/tasks/${taskId}`)).title).toBe(title)
       await page.getByLabel("Прикрепить файлы").setInputFiles({
@@ -149,13 +163,21 @@ test(
         page.getByText("Файлы добавлены. Изменения уже сохранены в задаче."),
       ).toBeVisible()
       expect((await api(`editor/tasks/${taskId}`)).resources).toHaveLength(2)
-      await page.getByRole("button", { name: "Удалить integration.txt", exact: true }).click()
+      await page.getByRole("button", { name: "Изменить подпись existing.txt", exact: true }).click()
+      await page.getByLabel("Подпись", { exact: true }).fill("Материалы задачи")
+      await page.getByRole("button", { name: "Сохранить подпись", exact: true }).click()
+      await expect(
+        page.getByRole("button", { name: "Скачать Материалы задачи", exact: true }),
+      ).toBeVisible()
+      expect((await api(`editor/tasks/${taskId}`)).resources.at(-1).title).toBe("Материалы задачи")
+      await page.getByRole("button", { name: "Удалить Условия задачи", exact: true }).click()
       await expect(page.getByText("Файл удалён. Изменения уже сохранены в задаче.")).toBeVisible()
       expect((await api(`editor/tasks/${taskId}`)).resources).toHaveLength(1)
       expect((await api(`editor/tasks/${taskId}`)).title).toBe(title)
       await page.getByRole("button", { name: "Сохранить задачу", exact: true }).click()
       await expect(page.getByText("Основная информация и пункты задачи сохранены")).toBeVisible()
       expect((await api(`editor/tasks/${taskId}`)).title).toBe(`${title} изменено`)
+      expect((await api(`editor/tasks/${taskId}`)).is_paid).toBe(false)
       const savedItem = (await api(`editor/tasks/${taskId}`)).presets.easy.complications[0]
       expect(savedItem.id).toBe(published.presets.easy.complications[0].id)
       expect(savedItem.acceptance_criteria).toBe("Обновлённый критерий")
@@ -163,8 +185,15 @@ test(
       await expect(page.getByRole("dialog")).toBeVisible()
       await page.keyboard.press("Escape")
       await expect(page.getByRole("dialog")).toHaveCount(0)
-      await page.getByRole("button", { name: "Очистить все", exact: true }).click()
-      await expect.poll(async () => (await api(`editor/tasks/${taskId}`)).photos.length).toBe(0)
+      await expect(page.getByRole("button", { name: "Очистить все", exact: true })).toBeDisabled()
+      await expect(
+        page.getByRole("button", { name: "Удалить second.png", exact: true }),
+      ).toBeDisabled()
+      const clear = await request.put(`/api/backend/editor/tasks/${taskId}/photos`, {
+        data: { photo_ids: [] },
+      })
+      expect(clear.status()).toBe(422)
+      expect((await api(`editor/tasks/${taskId}`)).photos).toHaveLength(1)
       await page.goto("/admin/tasks")
       await expect(page.getByText(`${title} изменено`, { exact: true })).toBeVisible()
       await page.goto(`/tasks/${published.slug}`)

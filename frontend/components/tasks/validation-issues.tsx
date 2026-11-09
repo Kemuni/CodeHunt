@@ -2,6 +2,7 @@ import type { ValidationProblem } from "@/lib/api/request"
 
 const fields: Record<string, string> = {
   slug: "Адрес задачи",
+  photos: "Фотографии",
   title: "Название",
   short_description: "Краткое описание",
   full_description: "Описание",

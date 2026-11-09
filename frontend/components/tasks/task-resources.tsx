@@ -1,11 +1,13 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { FileIcon, UploadIcon, Trash2Icon, DownloadIcon } from "lucide-react"
+import { FileIcon, UploadIcon, Trash2Icon, DownloadIcon, PencilIcon } from "lucide-react"
 import { formatBytes } from "@/lib/hooks/use-file-upload"
 import type { ResourceRead } from "@/lib/api/task-contract"
+
+import { ResourceTitleEditor } from "./resource-title-editor"
 
 interface TaskResourcesProps {
   resources: ResourceRead[]
@@ -13,6 +15,7 @@ interface TaskResourcesProps {
   onUpload: (files: File[]) => Promise<void>
   onRemove: (id: number) => Promise<void>
   onDownload: (id: number) => Promise<void>
+  onRename: (id: number, title: string) => Promise<void>
 }
 
 /** Показывает подтверждённые сервером вложения; сохранение и toast об ошибках выполняет владелец редактора. */
@@ -22,7 +25,9 @@ export function TaskResources({
   onUpload,
   onRemove,
   onDownload,
+  onRename,
 }: TaskResourcesProps) {
+  const [editing, setEditing] = useState<ResourceRead | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const upload = (files: File[]) => {
     if (busy || !files.length) return
@@ -81,6 +86,16 @@ export function TaskResources({
               type="button"
               variant="ghost"
               size="icon-sm"
+              disabled={busy}
+              aria-label={`Изменить подпись ${file.title}`}
+              onClick={() => setEditing(file)}
+            >
+              <PencilIcon />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
               aria-label={`Скачать ${file.title}`}
               onClick={() => void onDownload(file.id).catch(() => {})}
             >
@@ -99,6 +114,16 @@ export function TaskResources({
           </li>
         ))}
       </ul>
+      {editing && (
+        <ResourceTitleEditor
+          key={editing.id}
+          title={editing.title}
+          filename={editing.original_filename}
+          busy={busy}
+          onSave={(title) => onRename(editing.id, title)}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }

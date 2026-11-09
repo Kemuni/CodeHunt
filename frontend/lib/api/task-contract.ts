@@ -1,7 +1,7 @@
 import type { TaskLevel } from "@/lib/tasks/task-level"
 
-/** Контракт задач из предоставленного OpenAPI 3.1. UI-модели и преобразования находятся в lib/tasks. */
-export type TaskPublication = {
+/** Используемые frontend типы текущего API. UI-модели и преобразования находятся в lib/tasks. */
+type TaskFields = {
   parent_task_id?: number | null
   slug: string
   title: string
@@ -13,44 +13,15 @@ export type TaskPublication = {
   design_author_name?: string | null
   design_author_link?: string | null
   is_hidden?: boolean
-  items?: Array<CompositionLink | CompositionGroup>
-  presets: Array<PresetCreate>
+  is_paid?: boolean
 }
 
-export type TaskUpdate = {
-  parent_task_id?: number | null
-  slug?: string | null
-  title?: string | null
-  short_description?: string | null
-  full_description?: string | null
-  developer_type?: DeveloperType | null
-  difficulty_from?: number | null
-  difficulty_to?: number | null
-  design_author_name?: string | null
-  design_author_link?: string | null
-  status?: TaskStatus | null
-  is_hidden?: boolean | null
-}
+export type TaskUpdate = Partial<TaskFields> & { status?: TaskStatus }
 
-export type TaskDetail = {
-  parent_task_id?: number | null
-  slug: string
-  title: string
-  short_description: string
-  full_description: string
-  developer_type: DeveloperType
-  difficulty_from: number
-  difficulty_to: number
-  design_author_name?: string | null
-  design_author_link?: string | null
-  is_hidden?: boolean
-  created_at: string
-  updated_at: string
-  id: number
-  status: TaskStatus
+export type TaskDetail = TaskRead & {
   presets: TaskPresets
-  photos: Array<PhotoRead>
-  resources: Array<ResourceDownloadRead>
+  photos: PhotoRead[]
+  resources: ResourceRead[]
 }
 
 /** Все уровни присутствуют; каждый содержит только собственные пункты. */
@@ -61,23 +32,12 @@ export type TaskPresetRead = {
   complications: Array<ComplicationItem | ComplicationGroupRead>
 }
 
-export type TaskRead = {
-  parent_task_id?: number | null
-  slug: string
-  title: string
-  short_description: string
-  full_description: string
-  developer_type: DeveloperType
-  difficulty_from: number
-  difficulty_to: number
-  design_author_name?: string | null
-  design_author_link?: string | null
-  is_hidden?: boolean
+export type TaskRead = TaskFields & {
   created_at: string
   updated_at: string
   id: number
   status: TaskStatus
-  cover_photo?: PhotoRead
+  cover_photo?: PhotoRead | null
 }
 
 export type DraftRead = {
@@ -90,24 +50,7 @@ export type DraftRead = {
   validation_errors: Array<ValidationIssue>
   is_valid: boolean
   photos: Array<PhotoRead>
-  resources: Array<ResourceDownloadRead>
-}
-
-export type DraftCreate = {
-  payload?: Record<string, JsonValue>
-}
-
-export type DraftUpdate = {
-  payload?: Record<string, JsonValue>
-  revision: number
-}
-
-export type DraftPublish = {
-  revision: number
-}
-
-export type CompositionUpdate = {
-  items: Array<CompositionLink | CompositionGroup>
+  resources: Array<ResourceRead>
 }
 
 export type PhotoRead = {
@@ -135,46 +78,11 @@ export type ResourceRead = {
   original_filename: string
   content_type: string | null
   size_bytes: number | null
-}
-
-export type ResourceDownloadRead = {
-  created_at: string
-  updated_at: string
-  id: number
-  task_id: number | null
-  draft_id: number | null
-  title: string
-  type: ResourceType
-  original_filename: string
-  content_type: string | null
-  size_bytes: number | null
   url: string
 }
 
-export type DraftGalleryUpdate = {
-  photo_ids: Array<number>
-  revision: number
-}
-
-export type GalleryUpdate = {
-  photo_ids: Array<number>
-}
-
-export type ErrorResponse = {
-  success?: false
-  data?: null
-  errors: ErrorDetail
-}
-
-export type Page_TaskRead_ = {
-  items: Array<TaskRead>
-  total: number
-  limit: number
-  offset: number
-}
-
-export type Page_DraftSummary_ = {
-  items: Array<DraftSummary>
+export type Page<T> = {
+  items: T[]
   total: number
   limit: number
   offset: number
@@ -265,12 +173,6 @@ export type ValidationIssue = {
 
 export type ResourceType = "design" | "specification" | "asset" | "other"
 
-export type ErrorDetail = {
-  code: string
-  message: string
-  details?: Array<Record<string, unknown>> | null
-}
-
 export type CategoryLibrary = {
   title: string
   parent_id?: number | null
@@ -290,7 +192,8 @@ export type TemplateRead = {
 }
 
 /** Полная запись готовой задачи; уровни сохраняют ID существующих пресетов. */
-export type TaskSave = Omit<TaskPublication, "items"> & {
+export type TaskSave = TaskFields & {
+  presets: PresetCreate[]
   items: Array<CompositionLink | CompositionGroup>
 }
 

@@ -1,10 +1,5 @@
-import type { DraftRead, PhotoRead, ResourceDownloadRead } from "./task-contract"
+import type { DraftRead, PhotoRead, ResourceRead } from "./task-contract"
 import { apiRequest } from "./request"
-
-/** Постоянные адреса фото проходят через тот же origin; доступ проверяется по сессии. */
-export function taskPhotoUrl(photo: PhotoRead): string {
-  return taskMediaUrl(photo.url)
-}
 
 /** Скачивание файлов и показ фотографий используют общий прокси с проверкой доступа. */
 export function taskMediaUrl(url: string): string {
@@ -46,6 +41,11 @@ export const draftMediaApi = {
       method: "POST",
       body: resourceForm(file, revision),
     }),
+  updateResource: (id: number, revision: number, resourceId: number, title: string) =>
+    apiRequest<DraftRead>(`editor/task-drafts/${id}/resources/${resourceId}`, {
+      method: "PATCH",
+      body: { revision, title },
+    }),
   deleteResource: (id: number, revision: number, resourceId: number) =>
     apiRequest<DraftRead>(`editor/task-drafts/${id}/resources/${resourceId}?revision=${revision}`, {
       method: "DELETE",
@@ -65,9 +65,14 @@ export const taskMediaApi = {
       body: { photo_ids: photoIds },
     }),
   uploadResource: (id: number, file: File) =>
-    apiRequest<ResourceDownloadRead>(`editor/tasks/${id}/resources`, {
+    apiRequest<ResourceRead>(`editor/tasks/${id}/resources`, {
       method: "POST",
       body: resourceForm(file),
+    }),
+  updateResource: (id: number, resourceId: number, title: string) =>
+    apiRequest<ResourceRead>(`editor/tasks/${id}/resources/${resourceId}`, {
+      method: "PATCH",
+      body: { title },
     }),
   deleteResource: (id: number, resourceId: number) =>
     apiRequest<null>(`editor/tasks/${id}/resources/${resourceId}`, { method: "DELETE" }),

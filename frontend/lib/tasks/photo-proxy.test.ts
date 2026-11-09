@@ -2,12 +2,12 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 import { proxyBackend } from "../backend-proxy"
 import { sessionCookie } from "../../tests/proxy-session"
-import { taskMediaUrl, taskPhotoUrl } from "../api/task-media"
+import { taskMediaUrl } from "../api/task-media"
 import type { PhotoRead } from "../api/task-contract"
 
 test("stable photo URLs and conditional proxy requests preserve public and editor access", async (context) => {
   const photo = { id: 42, url: "/api/media/photos/42" } as PhotoRead
-  assert.equal(taskPhotoUrl(photo), "/api/backend/media/photos/42")
+  assert.equal(taskMediaUrl(photo.url), "/api/backend/media/photos/42")
   const seen: { path: string; user: string | null; etag: string | null }[] = []
   context.mock.method(globalThis, "fetch", async (url: URL, init: RequestInit) => {
     const headers = new Headers(init.headers)
@@ -24,7 +24,7 @@ test("stable photo URLs and conditional proxy requests preserve public and edito
   for (const signedIn of [false, true]) {
     const path = ["media", "photos", "42"]
     const response = await proxyBackend(
-      new Request(`http://localhost${taskPhotoUrl(photo)}`, {
+      new Request(`http://localhost${taskMediaUrl(photo.url)}`, {
         headers: {
           "If-None-Match": '"image"',
           "X-User-ID": "999",

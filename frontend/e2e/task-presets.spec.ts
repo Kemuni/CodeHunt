@@ -1,3 +1,4 @@
+import { jpegPhoto } from "./photo-fixture"
 import { TaskLevel } from "@/lib/tasks/task-level"
 import { test, expect } from "./auth-fixture"
 import { readFile } from "node:fs/promises"
@@ -6,7 +7,7 @@ import type {
   TaskSave,
   ComplicationItem,
   DraftRead,
-  ResourceDownloadRead,
+  ResourceRead,
 } from "../lib/api/task-contract"
 
 function taskFixture(): TaskDetail {
@@ -69,7 +70,7 @@ for (const kind of ["task", "draft"] as const) {
   }) => {
     const task = taskFixture()
     const filename = "Материалы проекта.zip"
-    const resource: ResourceDownloadRead = {
+    const resource: ResourceRead = {
       id: 42,
       task_id: kind === "task" ? task.id : null,
       draft_id: kind === "draft" ? task.id : null,
@@ -196,6 +197,27 @@ test("editor loads keyed presets and saves existing IDs without creating duplica
     await route.fulfill({ json: { success: true, data } })
   })
   await page.goto(`/admin/tasks/editor?taskId=${task.id}`)
+  await page.getByRole("button", { name: "Сохранить задачу", exact: true }).click()
+  await expect(page.getByRole("alert").filter({ hasText: "Что нужно исправить" })).toContainText(
+    "Добавьте хотя бы одну фотографию задачи",
+  )
+  expect(methods).toEqual(["GET"])
+  task.photos = [
+    {
+      id: 1,
+      task_id: task.id,
+      draft_id: null,
+      position: 1,
+      is_cover: true,
+      original_filename: "cover.jpg",
+      content_type: "image/jpeg",
+      size_bytes: jpegPhoto.length,
+      url: `data:image/jpeg;base64,${jpegPhoto.toString("base64")}`,
+      created_at: task.created_at,
+      updated_at: task.updated_at,
+    },
+  ]
+  await page.reload()
   await expect(page.locator('[id="presets.easy.description"]')).toHaveValue("Описание easy")
   await page.getByRole("tab", { name: "Продвинутый (1 пункт)", exact: true }).click()
   await expect(page.locator('[id="presets.medium.description"]')).toHaveValue("Описание medium")
@@ -213,7 +235,7 @@ test("editor loads keyed presets and saves existing IDs without creating duplica
   expect(savedComposition?.items.map((item) => item.id)).toEqual([1, 2, 3])
   expect(updatedLevels).toEqual([TaskLevel.Easy, TaskLevel.Medium, TaskLevel.High])
   expect(unexpected).toEqual([])
-  expect(methods).toEqual(["GET", "PUT"])
+  expect(methods).toEqual(["GET", "GET", "PUT"])
   await page.reload()
   await page.getByRole("tab", { name: "Продвинутый (1 пункт)", exact: true }).click()
   await expect(page.locator('[id="presets.medium.description"]')).toHaveValue(

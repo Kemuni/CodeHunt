@@ -89,6 +89,14 @@ export default function TaskInfoFields({ children }: { children: ReactNode }) {
           <FormSlider name="difficulty" range min={0} max={10} />
         </FormField>
         <FormField
+          name="isPaid"
+          label="Доступ только по подписке"
+          orientation="horizontal"
+          className="*:font-normal col-span-2 sm:col-span-1"
+        >
+          <FormCheckbox name="isPaid" />
+        </FormField>
+        <FormField
           name="isHidden"
           label="Скрытая (только для модерации)"
           orientation="horizontal"

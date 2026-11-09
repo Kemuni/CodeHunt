@@ -1,12 +1,12 @@
 "use client"
 
-import { taskPhotoUrl } from "@/lib/api/task-media"
+import { taskMediaUrl } from "@/lib/api/task-media"
 
 import TaskDifficulty from "@/components/tasks/task-difficulty"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import Link from "next/link"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ImageOffIcon, PlusIcon, Trash2Icon, ArrowRightIcon } from "lucide-react"
 import { toast } from "sonner"
 import { tasksApi } from "@/lib/api/tasks"
@@ -14,7 +14,8 @@ import { ApiError } from "@/lib/api/request"
 import type { DraftSummary, TaskRead } from "@/lib/api/task-contract"
 import { PageLayout, PageLayoutHeader, PageLayoutContent } from "@/components/ui/layouts/page"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import TaskCatalogControls from "@/components/tasks/task-catalog-controls"
+import { activeCatalogFilterCount, defaultCatalogFilters } from "@/lib/tasks/catalog-filters"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
@@ -43,13 +44,31 @@ export default function TaskCatalog({
   adminActions?: ReactNode
 }) {
   const [tab, setTab] = useState("tasks")
-  const [offset, setOffset] = useState(0)
-  const [search, setSearch] = useState("")
-  const [query, setQuery] = useState("")
+  const [filters, setFilters] = useState(defaultCatalogFilters)
+  const [request, setRequest] = useState({ filters: defaultCatalogFilters, offset: 0 })
+  const { offset } = request
+  const setOffset = (value: number | ((previous: number) => number)) =>
+    setRequest((previous) => ({
+      ...previous,
+      offset: typeof value === "function" ? value(previous.offset) : value,
+    }))
+
+  useEffect(() => {
+    // Обновляем фильтры и страницу вместе: новый поиск не запрашивает старый offset.
+    const timer = setTimeout(
+      () =>
+        setRequest((previous) =>
+          previous.filters === filters ? previous : { filters, offset: 0 },
+        ),
+      300,
+    )
+    return () => clearTimeout(timer)
+  }, [filters])
   const isDrafts = admin && tab === "drafts"
   const tasksQuery = useQuery({
-    queryKey: ["task-catalog", admin, "tasks", offset, query],
-    queryFn: () => tasksApi.list(admin, offset, query),
+    queryKey: ["task-catalog", admin, "tasks", offset, request.filters],
+    queryFn: ({ signal }) => tasksApi.list(admin, offset, request.filters, signal),
+    placeholderData: keepPreviousData,
     enabled: !isDrafts,
     retry: false,
   })
@@ -72,19 +91,18 @@ export default function TaskCatalog({
     setOffset(0)
   }
 
-  function handleSearch() {
-    setQuery(search)
-    setOffset(0)
-  }
-
   return (
     <PageLayout>
       <PageLayoutHeader text={admin ? "Управление задачами" : "Каталог задач"} />
       <PageLayoutContent>
-        {admin ? (
+        {admin && (
           <TaskCatalogTabs value={tab} onValueChange={handleTabChange} actions={adminActions} />
-        ) : (
-          <TaskCatalogSearch value={search} onValueChange={setSearch} onSearch={handleSearch} />
+        )}
+        {!isDrafts && <TaskCatalogControls value={filters} onChange={setFilters} />}
+        {result.isFetching && !result.isPending && (
+          <p role="status" className="text-sm text-muted-foreground">
+            Обновляем…
+          </p>
         )}
         <TaskCatalogResults
           isPending={result.isPending}
@@ -92,6 +110,9 @@ export default function TaskCatalog({
           onRetry={() => void result.refetch()}
           total={total}
           isDrafts={isDrafts}
+          filtered={
+            Boolean(request.filters.q.trim()) || activeCatalogFilterCount(request.filters) > 0
+          }
         >
           <div className="grid gap-5 grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {isDrafts
@@ -111,7 +132,12 @@ export default function TaskCatalog({
                   />
                 ))}
           </div>
-          <TaskCatalogPagination total={total} offset={offset} onOffsetChange={setOffset} />
+          <TaskCatalogPagination
+            total={total}
+            offset={offset}
+            onOffsetChange={setOffset}
+            disabled={result.isPlaceholderData}
+          />
         </TaskCatalogResults>
       </PageLayoutContent>
       {deletion.target && (
@@ -153,35 +179,13 @@ function TaskCatalogTabs({ value, onValueChange, actions }: TaskCatalogTabsProps
   )
 }
 
-interface TaskCatalogSearchProps {
-  value: string
-  onValueChange: (value: string) => void
-  onSearch: () => void
-}
-
-function TaskCatalogSearch({ value, onValueChange, onSearch }: TaskCatalogSearchProps) {
-  return (
-    <div className="flex gap-2">
-      <Input
-        aria-label="Поиск задач"
-        placeholder="Поиск по задачам"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") onSearch()
-        }}
-      />
-      <Button onClick={onSearch}>Найти</Button>
-    </div>
-  )
-}
-
 interface TaskCatalogResultsProps {
   isPending: boolean
   error: Error | null
   onRetry: () => void
   total: number
   isDrafts: boolean
+  filtered: boolean
   children: ReactNode
 }
 
@@ -191,6 +195,7 @@ function TaskCatalogResults({
   onRetry,
   total,
   isDrafts,
+  filtered,
   children,
 }: TaskCatalogResultsProps) {
   if (isPending) return <p role="status">Загружаем…</p>
@@ -211,7 +216,11 @@ function TaskCatalogResults({
       <p className="text-sm text-muted-foreground">Всего: {total}</p>
       {!total && (
         <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-          {isDrafts ? "У вас пока нет черновиков" : "Задач пока нет"}
+          {isDrafts
+            ? "У вас пока нет черновиков"
+            : filtered
+              ? "По вашему запросу задач не найдено"
+              : "Задач пока нет"}
         </p>
       )}
       {children}
@@ -231,7 +240,7 @@ function DraftCard({ draft, onDelete }: { draft: DraftSummary; onDelete: () => v
       <div className="absolute inset-0 w-full aspect-video">
         {coverPhoto ? (
           <Image
-            src={taskPhotoUrl(coverPhoto)}
+            src={taskMediaUrl(coverPhoto.url)}
             unoptimized
             alt="taskImage"
             fill
@@ -284,9 +293,9 @@ function TaskCard({
     <Card className="relative pt-0 rounded-xl gap-4 pb-4">
       <Badge
         className={cn("absolute inset-3 z-11", task.is_hidden && "bg-gray-200 text-black")}
-        variant="free"
+        variant={task.is_hidden ? "secondary" : task.is_paid ? "secondary" : "free"}
       >
-        {task.is_hidden ? "Скрыто" : "Бесплатно"}
+        {task.is_hidden ? "Скрыто" : task.is_paid ? "По подписке" : "Бесплатно"}
       </Badge>
       <Badge className="absolute right-3 top-3 z-11" variant={task.developer_type}>
         {developerTypeLabels[task.developer_type]}
@@ -296,7 +305,7 @@ function TaskCard({
       <div className="absolute inset-0 w-full z-10 aspect-video bg-black/15">
         {task.cover_photo ? (
           <Image
-            src={taskPhotoUrl(task.cover_photo)}
+            src={taskMediaUrl(task.cover_photo.url)}
             unoptimized
             alt="taskImage"
             fill
@@ -463,19 +472,25 @@ function DeleteCatalogItemDialog({
 }
 
 interface TaskCatalogPaginationProps {
+  disabled?: boolean
   total: number
   offset: number
   onOffsetChange: (offset: number) => void
 }
 
-function TaskCatalogPagination({ total, offset, onOffsetChange }: TaskCatalogPaginationProps) {
+function TaskCatalogPagination({
+  total,
+  offset,
+  onOffsetChange,
+  disabled,
+}: TaskCatalogPaginationProps) {
   if (total <= PAGE_SIZE) return null
 
   return (
     <div className="flex items-center justify-center gap-3">
       <Button
         variant="outline"
-        disabled={!offset}
+        disabled={disabled || !offset}
         onClick={() => onOffsetChange(Math.max(0, offset - PAGE_SIZE))}
       >
         Назад
@@ -485,7 +500,7 @@ function TaskCatalogPagination({ total, offset, onOffsetChange }: TaskCatalogPag
       </span>
       <Button
         variant="outline"
-        disabled={offset + PAGE_SIZE >= total}
+        disabled={disabled || offset + PAGE_SIZE >= total}
         onClick={() => onOffsetChange(offset + PAGE_SIZE)}
       >
         Далее

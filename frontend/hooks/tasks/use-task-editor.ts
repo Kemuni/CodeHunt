@@ -12,7 +12,7 @@ import type {
   DraftRead,
   TaskDetail,
   PhotoRead,
-  ResourceDownloadRead,
+  ResourceRead,
   CompositionLink,
   CompositionGroup,
 } from "@/lib/api/task-contract"
@@ -102,7 +102,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
   const [itemEditing, setItemEditing] = useState(false)
   const [problems, setProblems] = useState<ValidationProblem[]>([])
   const photos = draftSnapshot.draft?.photos ?? task?.photos ?? []
-  const resources: ResourceDownloadRead[] = draftSnapshot.draft?.resources ?? task?.resources ?? []
+  const resources: ResourceRead[] = draftSnapshot.draft?.resources ?? task?.resources ?? []
 
   const contentChanged = useCallback(() => {
     const payload = toPayload(contentRef.current.info, contentRef.current.nodes, originalPayload)
@@ -150,6 +150,17 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
   /** Публикует черновик либо атомарно сохраняет готовую задачу. */
   const saveTask = async (values: z.infer<typeof taskInfoSchema>) => {
     if (saving || mediaBusy || itemEditing) return
+    if (!photos.length) {
+      setProblems([
+        {
+          field: "photos",
+          code: "missing_photo",
+          message: "Добавьте хотя бы одну фотографию задачи",
+        },
+      ])
+      toast.error("Добавьте хотя бы одну фотографию задачи")
+      return
+    }
     setSaving(true)
     setProblems([])
     try {
@@ -208,6 +219,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
     }
   }
   const updatePhotos = (next: PhotoRead[]) => {
+    setProblems((current) => current.filter((problem) => problem.field !== "photos"))
     if (!persistedTaskRef.current) return
     persistedTaskRef.current = { ...persistedTaskRef.current, photos: next }
     setTask(persistedTaskRef.current)
@@ -265,6 +277,23 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
         }
       }
     }, "Файлы добавлены")
+  const updateResource = (id: number, title: string) =>
+    runMediaOperation(async () => {
+      if (coordinator)
+        await coordinator.mutate((draft) =>
+          draftMediaApi.updateResource(draft.id, draft.revision, id, title),
+        )
+      else {
+        const resource = await taskMediaApi.updateResource(persistedTaskRef.current!.id, id, title)
+        persistedTaskRef.current = {
+          ...persistedTaskRef.current!,
+          resources: persistedTaskRef.current!.resources.map((file) =>
+            file.id === id ? resource : file,
+          ),
+        }
+        setTask(persistedTaskRef.current)
+      }
+    }, "Подпись файла сохранена")
   const removeResource = (id: number) =>
     runMediaOperation(async () => {
       if (coordinator)
@@ -306,7 +335,9 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
     itemEditing,
     draftSnapshot,
     status: editorStatus(mode, dirty, draftSnapshot),
-    issues: problems.length ? problems : (draftSnapshot.draft?.validation_errors ?? []),
+    issues: (problems.length ? problems : (draftSnapshot.draft?.validation_errors ?? [])).filter(
+      (problem) => problem.field !== "photos" || !photos.length,
+    ),
     saveDisabled: saving || mediaBusy || itemEditing || draftSnapshot.conflict,
     mediaDisabled: saving || mediaBusy || draftSnapshot.pending > 0 || draftSnapshot.conflict,
     onInfoChange,
@@ -319,6 +350,7 @@ export function useTaskEditor({ mode, initial }: TaskEditorProps) {
     coverPhoto,
     clearPhotos,
     uploadResources,
+    updateResource,
     removeResource,
     downloadResource,
   }

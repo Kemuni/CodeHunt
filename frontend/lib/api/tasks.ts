@@ -2,25 +2,36 @@ import type {
   DraftRead,
   TaskDetail,
   TaskRead,
-  Page_TaskRead_,
-  Page_DraftSummary_,
+  DraftSummary,
+  Page,
   TaskUpdate,
   TaskSave,
   JsonValue,
 } from "./task-contract"
 
 import { apiRequest } from "./request"
+import {
+  catalogSearchParams,
+  defaultCatalogFilters,
+  type CatalogFilters,
+} from "@/lib/tasks/catalog-filters"
 
 /** Неполная форма черновика: обязательные поля проверяет backend перед публикацией. */
 export type DraftPayload = Record<string, JsonValue>
 /** Операции с данными задач. Кэш и уведомления остаются на стороне React Query и редактора. */
 export const tasksApi = {
-  list: (admin: boolean, offset = 0, q = "") =>
-    apiRequest<Page_TaskRead_>(
-      `${admin ? "editor/tasks" : "tasks"}?limit=20&offset=${offset}${!admin && q ? `&q=${encodeURIComponent(q)}` : ""}`,
+  list: (
+    admin: boolean,
+    offset = 0,
+    filters: CatalogFilters = defaultCatalogFilters,
+    signal?: AbortSignal,
+  ) =>
+    apiRequest<Page<TaskRead>>(
+      `${admin ? "editor/tasks" : "tasks"}?${catalogSearchParams(filters, offset)}`,
+      { signal },
     ),
   drafts: (offset = 0) =>
-    apiRequest<Page_DraftSummary_>(`editor/task-drafts?limit=20&offset=${offset}`),
+    apiRequest<Page<DraftSummary>>(`editor/task-drafts?limit=20&offset=${offset}`),
   task: (id: number) => apiRequest<TaskDetail>(`editor/tasks/${id}`),
   publicTask: (slug: string) => apiRequest<TaskDetail>(`tasks/by-slug/${encodeURIComponent(slug)}`),
   draft: (id: number) => apiRequest<DraftRead>(`editor/task-drafts/${id}`),

@@ -3,7 +3,7 @@ import { z } from "zod"
 import type {
   TaskDetail,
   TaskPresets,
-  TaskPublication,
+  TaskSave,
   CompositionLink,
   CompositionGroup,
   ComplicationItem,
@@ -19,7 +19,6 @@ const presetSchema = z.object({
   description: z.string().trim().max(100000, "Максимум 100000 символов"),
   averageDays: z.string(),
 })
-
 
 /** Zod проверяет заполненную форму при сохранении задачи; для автосохранения допустим неполный ввод. */
 export const taskInfoSchema = z.object({
@@ -44,6 +43,7 @@ export const taskInfoSchema = z.object({
     .tuple([z.number().int().min(0).max(10), z.number().int().min(0).max(10)])
     .refine(([a, b]) => a <= b, "Минимальная сложность больше максимальной"),
   isHidden: z.boolean(),
+  isPaid: z.boolean(),
   presets: z.object({ easy: presetSchema, medium: presetSchema, high: presetSchema }),
 })
 /** Значения react-hook-form до проверки: пустое направление показывает placeholder, но не проходит submit. */
@@ -60,6 +60,7 @@ export const emptyInfo: TaskInfo = {
   developerType: undefined,
   difficulty: [2, 6],
   isHidden: false,
+  isPaid: false,
   presets: {
     easy: { description: "", averageDays: "" },
     medium: { description: "", averageDays: "" },
@@ -203,6 +204,7 @@ function infoFromData(
       typeof data.difficulty_to === "number" ? data.difficulty_to : 6,
     ],
     isHidden: data.is_hidden === true,
+    isPaid: data.is_paid === true,
     presets: Object.fromEntries(
       Object.entries(emptyInfo.presets).map(([key, value]) => {
         const preset = presetForLevel(key as TaskLevel)
@@ -239,6 +241,7 @@ export function toPayload(
     design_author_name: info.designerAuthor || null,
     design_author_link: info.designerLink || null,
     is_hidden: info.isHidden,
+    is_paid: info.isPaid,
     items: toComposition(nodes),
     presets: Object.entries(info.presets)
       .filter(([level]) => hasLevelContent(info, nodes, level as TaskLevel))
@@ -250,9 +253,6 @@ export function toPayload(
   }
 }
 /** Создаёт тело публикации из данных, уже проверенных taskInfoSchema. */
-export function publication(
-  info: z.infer<typeof taskInfoSchema>,
-  nodes: TaskNode[],
-): TaskPublication {
-  return toPayload(info, nodes) as TaskPublication
+export function publication(info: z.infer<typeof taskInfoSchema>, nodes: TaskNode[]): TaskSave {
+  return toPayload(info, nodes) as TaskSave
 }

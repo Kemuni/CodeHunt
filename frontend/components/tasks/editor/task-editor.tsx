@@ -1,6 +1,6 @@
 "use client"
 
-import { taskPhotoUrl } from "@/lib/api/task-media"
+import { taskMediaUrl } from "@/lib/api/task-media"
 
 import { PageLayout, PageLayoutContent, PageLayoutHeader } from "@/components/ui/layouts/page"
 import {
@@ -46,6 +46,7 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
     coverPhoto,
     clearPhotos,
     uploadResources,
+    updateResource,
     removeResource,
     downloadResource,
   } = useTaskEditor({ mode, initial })
@@ -103,16 +104,22 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
                       id: photo.id,
                       name: photo.original_filename,
                       size: photo.size_bytes,
-                      url: taskPhotoUrl(photo),
+                      url: taskMediaUrl(photo.url),
                       isCover: photo.is_cover,
                     }))}
+                    minFiles={mode.kind === "task" ? 1 : 0}
                     busy={mediaDisabled}
                     onUpload={uploadPhotos}
                     onRemove={removePhoto}
                     onCover={coverPhoto}
                     onClear={clearPhotos}
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p
+                    className={
+                      photos.length ? "text-sm text-muted-foreground" : "text-sm text-destructive"
+                    }
+                  >
+                    Нужна хотя бы одна фотография.{" "}
                     {mode.kind === "task"
                       ? "Фото сохраняются сразу, независимо от кнопки сохранения задачи."
                       : "Фото прикрепляются к черновику сразу."}
@@ -141,6 +148,7 @@ export default function TaskEditor({ mode, initial }: TaskEditorProps) {
                   onUpload={uploadResources}
                   onRemove={removeResource}
                   onDownload={downloadResource}
+                  onRename={updateResource}
                 />
                 <p className="mt-3 text-sm text-muted-foreground">
                   {mode.kind === "task"
