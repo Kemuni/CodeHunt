@@ -9,6 +9,7 @@ const eslintConfig = defineConfig([
   prettier,
   globalIgnores([
     ".next/**",
+    ".next-e2e/**",
     "out/**",
     "build/**",
     "coverage/**",
@@ -17,6 +18,7 @@ const eslintConfig = defineConfig([
     ".playwright-cli/**",
     "@/**",
     "next-env.d.ts",
+    "lib/api/generated/**",
   ]),
 ])
 

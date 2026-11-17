@@ -118,7 +118,9 @@ def run():
     logs = Path(tempfile.mkdtemp(prefix="codehunt-live-e2e-results-"))
     logger.info("Логи и артефакты live E2E: %s", logs)
     minio = (
-        DockerContainer("minio/minio")
+        DockerContainer(
+            "pgsty/silo:RELEASE.2026-11-09T00-00-00Z@sha256:08ce1505b5eacefbad1ca07159b242b9ce045a11c2817e3bc257b25f77bbc02d"
+        )
         .with_env("MINIO_ROOT_USER", "codehunt_test")
         .with_env("MINIO_ROOT_PASSWORD", "codehunt_test_secret")
         .with_exposed_ports(9000)

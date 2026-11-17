@@ -1,3 +1,4 @@
+from time import sleep
 from unittest.mock import AsyncMock, Mock
 from urllib.parse import quote
 
@@ -37,7 +38,15 @@ async def test_cache_dependency_reuses_fallback_and_prefers_app_cache(monkeypatc
 @pytest.fixture(scope="session")
 def redis_url():
     with DockerContainer("redis:7-alpine").with_exposed_ports(6379) as container:
-        yield f"redis://{container.get_container_host_ip()}:{container.get_exposed_port(6379)}/0"
+        for attempt in range(50):
+            try:
+                port = container.get_exposed_port(6379)
+                break
+            except OSError:
+                if attempt == 49:
+                    raise
+                sleep(0.1)
+        yield f"redis://{container.get_container_host_ip()}:{port}/0"
 
 
 @pytest.fixture

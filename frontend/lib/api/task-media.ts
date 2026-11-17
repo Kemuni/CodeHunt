@@ -1,5 +1,17 @@
+import {
+  deleteApiEditorTasksTaskIdResourcesResourceIdDelete,
+  deleteResourceApiEditorTaskDraftsDraftIdResourcesResourceIdDelete,
+  updateApiEditorTasksTaskIdResourcesResourceIdPatch,
+  updateGalleryApiEditorTasksTaskIdPhotosPut,
+  updatePhotosApiEditorTaskDraftsDraftIdPhotosPut,
+  updateResourceApiEditorTaskDraftsDraftIdResourcesResourceIdPatch,
+  uploadApiEditorTasksTaskIdResourcesPost,
+  uploadPhotosApiEditorTaskDraftsDraftIdPhotosPost,
+  uploadPhotosApiEditorTasksTaskIdPhotosPost,
+  uploadResourceApiEditorTaskDraftsDraftIdResourcesPost,
+} from "./generated/sdk.gen"
+import { apiData, apiVoid } from "./request"
 import type { DraftRead, PhotoRead, ResourceRead } from "./task-contract"
-import { apiRequest } from "./request"
 
 /** Скачивание файлов и показ фотографий используют общий прокси с проверкой доступа. */
 export function taskMediaUrl(url: string): string {
@@ -8,72 +20,76 @@ export function taskMediaUrl(url: string): string {
     : url
 }
 
-function photoForm(files: File[], revision?: number) {
-  const data = new FormData()
-  files.forEach((file) => data.append("files", file))
-  if (revision !== undefined) data.append("revision", String(revision))
-  return data
-}
-
-function resourceForm(file: File, revision?: number) {
-  const data = new FormData()
-  data.append("file", file)
-  data.append("title", file.name)
-  data.append("type", "other")
-  if (revision !== undefined) data.append("revision", String(revision))
-  return data
-}
-
 /** Каждая операция требует revision и возвращает весь черновик с новой ревизией и ошибками валидации. */
 export const draftMediaApi = {
   uploadPhotos: (id: number, revision: number, files: File[]) =>
-    apiRequest<DraftRead>(`editor/task-drafts/${id}/photos`, {
-      method: "POST",
-      body: photoForm(files, revision),
-    }),
+    apiData(
+      uploadPhotosApiEditorTaskDraftsDraftIdPhotosPost({
+        path: { draft_id: id },
+        body: { revision, files },
+      }),
+    ) as Promise<DraftRead>,
   setPhotos: (id: number, revision: number, photoIds: number[]) =>
-    apiRequest<DraftRead>(`editor/task-drafts/${id}/photos`, {
-      method: "PUT",
-      body: { photo_ids: photoIds, revision },
-    }),
+    apiData(
+      updatePhotosApiEditorTaskDraftsDraftIdPhotosPut({
+        path: { draft_id: id },
+        body: { photo_ids: photoIds, revision },
+      }),
+    ) as Promise<DraftRead>,
   uploadResource: (id: number, revision: number, file: File) =>
-    apiRequest<DraftRead>(`editor/task-drafts/${id}/resources`, {
-      method: "POST",
-      body: resourceForm(file, revision),
-    }),
+    apiData(
+      uploadResourceApiEditorTaskDraftsDraftIdResourcesPost({
+        path: { draft_id: id },
+        body: { file, revision, title: file.name, type: "other" },
+      }),
+    ) as Promise<DraftRead>,
   updateResource: (id: number, revision: number, resourceId: number, title: string) =>
-    apiRequest<DraftRead>(`editor/task-drafts/${id}/resources/${resourceId}`, {
-      method: "PATCH",
-      body: { revision, title },
-    }),
+    apiData(
+      updateResourceApiEditorTaskDraftsDraftIdResourcesResourceIdPatch({
+        path: { draft_id: id, resource_id: resourceId },
+        body: { revision, title },
+      }),
+    ) as Promise<DraftRead>,
   deleteResource: (id: number, revision: number, resourceId: number) =>
-    apiRequest<DraftRead>(`editor/task-drafts/${id}/resources/${resourceId}?revision=${revision}`, {
-      method: "DELETE",
-    }),
+    apiData(
+      deleteResourceApiEditorTaskDraftsDraftIdResourcesResourceIdDelete({
+        path: { draft_id: id, resource_id: resourceId },
+        query: { revision },
+      }),
+    ) as Promise<DraftRead>,
 }
 
 /** Вложения готовой задачи меняются сразу. Тип ответа зависит от операции, revision здесь нет. */
 export const taskMediaApi = {
   uploadPhotos: (id: number, files: File[]) =>
-    apiRequest<PhotoRead[]>(`editor/tasks/${id}/photos`, {
-      method: "POST",
-      body: photoForm(files),
-    }),
+    apiData(
+      uploadPhotosApiEditorTasksTaskIdPhotosPost({ path: { task_id: id }, body: { files } }),
+    ) as Promise<PhotoRead[]>,
   setPhotos: (id: number, photoIds: number[]) =>
-    apiRequest<PhotoRead[]>(`editor/tasks/${id}/photos`, {
-      method: "PUT",
-      body: { photo_ids: photoIds },
-    }),
+    apiData(
+      updateGalleryApiEditorTasksTaskIdPhotosPut({
+        path: { task_id: id },
+        body: { photo_ids: photoIds },
+      }),
+    ) as Promise<PhotoRead[]>,
   uploadResource: (id: number, file: File) =>
-    apiRequest<ResourceRead>(`editor/tasks/${id}/resources`, {
-      method: "POST",
-      body: resourceForm(file),
-    }),
+    apiData(
+      uploadApiEditorTasksTaskIdResourcesPost({
+        path: { task_id: id },
+        body: { file, title: file.name, type: "other" },
+      }),
+    ) as Promise<ResourceRead>,
   updateResource: (id: number, resourceId: number, title: string) =>
-    apiRequest<ResourceRead>(`editor/tasks/${id}/resources/${resourceId}`, {
-      method: "PATCH",
-      body: { title },
-    }),
+    apiData(
+      updateApiEditorTasksTaskIdResourcesResourceIdPatch({
+        path: { task_id: id, resource_id: resourceId },
+        body: { title },
+      }),
+    ) as Promise<ResourceRead>,
   deleteResource: (id: number, resourceId: number) =>
-    apiRequest<null>(`editor/tasks/${id}/resources/${resourceId}`, { method: "DELETE" }),
+    apiVoid(
+      deleteApiEditorTasksTaskIdResourcesResourceIdDelete({
+        path: { task_id: id, resource_id: resourceId },
+      }),
+    ),
 }

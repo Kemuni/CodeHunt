@@ -27,7 +27,7 @@ services:
       - app-db-data:/var/lib/postgresql
 
   minio:
-    image: minio/minio
+    image: pgsty/silo:RELEASE.2026-11-09T00-00-00Z@sha256:08ce1505b5eacefbad1ca07159b242b9ce045a11c2817e3bc257b25f77bbc02d
     command: server /data --console-address ":9001"
     ports:
       - "${MINIO_PORT:-9000}:9000"
@@ -45,7 +45,7 @@ services:
 
   # Однократно создаёт приватный бакет; повторный запуск сохраняет файлы.
   minio-init:
-    image: minio/mc
+    image: pgsty/silo:RELEASE.2026-11-09T00-00-00Z@sha256:08ce1505b5eacefbad1ca07159b242b9ce045a11c2817e3bc257b25f77bbc02d
     depends_on:
       minio:
         condition: service_healthy
@@ -53,6 +53,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-codehunt}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-codehunt-local-password}
       S3_BUCKET: ${S3_BUCKET:-codehunt}
+      MC_CONFIG_DIR: /tmp/.mc
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |

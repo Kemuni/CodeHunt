@@ -31,7 +31,7 @@ NextAuth хранит backend-токен в зашифрованной HttpOnly 
 
 ## Редактор
 
-- `lib/api/task-contract.ts` описывает API. У Task есть is_hidden и is_paid, статуса нет. `parent_task_id` сохранён. `lib/api/request.ts` преобразует ошибки в ApiError, сохраняя HTTP-код, прикладной код и `{field, code, message}`.
+- `lib/api/generated/` содержит типы и операции из OpenAPI; `lib/api/task-contract.ts` сохраняет UI-типы редактора. У Task есть is_hidden и is_paid, статуса нет. `parent_task_id` сохранён. `lib/api/request.ts` преобразует ошибки в ApiError, сохраняя HTTP-код, прикладной код и `{field, code, message}`.
 - TaskDetail содержит объект presets.easy/medium/high; каждый блок содержит preset и собственные complications уровня. Запись использует массив presets и дерево items. Преобразования находятся в `lib/tasks/editor-model.ts`.
 - Дерево обслуживают task-tree.ts, task-items-state.ts и use-task-items.ts. Группы имеют один уровень с потомками, максимум три уровня групп. Для идентичности используется nodeKey: ID группы может совпадать с ID пункта.
 - `hooks/tasks/use-task-editor.ts` связывает форму, сохранение и файлы. `lib/tasks/draft-coordinator.ts` последовательно выполняет автосохранение, файлы и публикацию с актуальной revision. Только draft_revision_conflict блокирует дальнейшие записи до разрешения конфликта; прочие 409 сохраняют возможность повторить действие. Нетронутая пустая форма не создаёт черновик.
@@ -47,6 +47,12 @@ NextAuth хранит backend-токен в зашифрованной HttpOnly 
 `taskMediaUrl(url)` направляет постоянный URL через `/api/backend/media/...`. `lib/backend-proxy.ts` передаёт запросы потоками, ограничивает фактическое тело и ожидание backend. Лимиты JSON/multipart описаны в `lib/request-limits.ts` и [API](../backend/docs/api-contracts.md). Медиа сохраняют ETag и private,no-cache: права проверяются даже перед 304. Next Image Optimization отключён у этих изображений.
 
 Общие компоненты пунктов/групп находятся в tasks/task-requirement-card.tsx и task-requirement-group.tsx; формы внутри свёрнутых групп остаются смонтированными. ResponsiveModal выбирает Dialog/Drawer, ConfirmDialog отвечает за подтверждение. PageLayoutHeader принимает backHref для явной ссылки возврата. На публичной странице сначала видны четыре пункта каждого уровня; вложения открываются в адаптивном окне.
+
+## Генерация API-клиента
+
+Из корня проекта выполните `npm --prefix frontend run gen:api`. Команда собирает текущий backend через Docker Compose, извлекает его OpenAPI и обновляет `frontend/lib/api/generated/`. Папка сгенерированного клиента хранится в Git, поэтому для обычного запуска frontend Docker не требуется. После изменения Pydantic-схем или ручек повторите генерацию и запустите `npm --prefix frontend run typecheck`.
+
+Клиент обращается к `/api/backend`, а существующий Next.js-прокси перенаправляет запросы на `/api` backend. `lib/api/tasks.ts`, `task-media.ts`, `task-library.ts` и `contact.ts` используют сгенерированные функции. `task-contract.ts` пока сохраняет совместимые с UI типы для редактора: его значения уровней представлены enum, а часть полей в OpenAPI необязательна.
 
 ## Проверки
 
