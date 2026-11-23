@@ -59,6 +59,6 @@ E2E_ISOLATED_AUTH=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e -- --grep-invert 
 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e:live
 ```
 
-Typecheck запускает next typegen перед tsc: переименование маршрутов не должно оставлять проверку на старых сгенерированных типах. Изолированные E2E запускают Next.js и тестовый auth-backend, включая серверные фикстуры ТЗ; live-команда поднимает одноразовые настоящие FastAPI/PostgreSQL/MinIO/Redis и копию frontend без рабочего .env. Нужны Docker и Chrome. Подробности и альтернативные команды — в [development.md](../backend/docs/development.md#тесты-и-статические-проверки).
+Typecheck запускает next typegen перед tsc: переименование маршрутов не должно оставлять проверку на старых сгенерированных типах. Изолированные E2E запускают Next.js и тестовый auth-backend, включая серверные фикстуры ТЗ; live-команда поднимает одноразовые настоящие FastAPI/PostgreSQL/RustFS/Redis и копию frontend без рабочего .env. Нужны Docker и Chrome. Подробности и альтернативные команды — в [development.md](../backend/docs/development.md#тесты-и-статические-проверки).
 
 Единственная сводка актуальных результатов проверок — в [CONTEXT.md](../backend/CONTEXT.md). При изменении контракта обновляйте API-типы, преобразования и фикстуры вместе.
