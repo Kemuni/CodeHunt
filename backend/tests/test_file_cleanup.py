@@ -20,8 +20,8 @@ pytestmark = pytest.mark.anyio
 
 
 @pytest.fixture
-def store(client, monkeypatch, minio_endpoint):  # noqa: ARG001 — порядок очистки overrides
-    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
+def store(client, monkeypatch, rustfs_endpoint):  # noqa: ARG001 — порядок очистки overrides
+    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", rustfs_endpoint)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", f"cleanup-{uuid4().hex}")
@@ -56,7 +56,7 @@ async def attach_task(client, task):
     return photo.json()["data"][0], resource.json()["data"]
 
 
-async def test_delete_task_removes_minio_files_only_after_commit(client, db, store):
+async def test_delete_task_removes_rustfs_files_only_after_commit(client, db, store):
     task, _, _ = await make_project(client)
     photo, resource = await attach_task(client, task)
     base = f"/api/editor/tasks/{task['id']}"
@@ -93,7 +93,7 @@ async def test_restricted_task_deletion_preserves_files_and_rolls_back_queue(
         assert not (await session.scalars(select(PendingFileDeletion))).all()
 
 
-async def test_failed_minio_delete_is_retried_from_new_db_session(
+async def test_failed_rustfs_delete_is_retried_from_new_db_session(
     client, db, store, monkeypatch
 ):
     task, _, _ = await make_project(client, hidden=True)
@@ -198,7 +198,7 @@ async def test_shared_key_is_removed_only_after_last_reference(client, db, store
     assert not stored_keys(store)
 
 
-async def test_draft_deletion_and_gallery_removal_delete_minio_objects(client, store):
+async def test_draft_deletion_and_gallery_removal_delete_rustfs_objects(client, store):
     draft = await attach(client, await create_draft(client))
     base = f"/api/editor/task-drafts/{draft['id']}"
     assert len(stored_keys(store)) == 2

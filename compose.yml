@@ -26,38 +26,39 @@ services:
     volumes:
       - app-db-data:/var/lib/postgresql
 
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
+  rustfs:
+    image: &rustfs-image rustfs/rustfs:1.0.6
     ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${RUSTFS_PORT:-9000}:9000"
+      - "127.0.0.1:${RUSTFS_CONSOLE_PORT:-9001}:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-codehunt}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-codehunt-local-password}
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-codehunt}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-codehunt-local-password}
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_REGION: ${S3_REGION:-us-east-1}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health/ready"]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
-      - app-minio-data:/data
+      - app-rustfs-data:/data
 
   # Однократно создаёт приватный бакет; повторный запуск сохраняет файлы.
-  minio-init:
-    image: minio/mc
+  rustfs-init:
+    image: *rustfs-image
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-codehunt}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-codehunt-local-password}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-codehunt}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-codehunt-local-password}
       S3_BUCKET: ${S3_BUCKET:-codehunt}
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        mc alias set storage http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb --ignore-existing "storage/$$S3_BUCKET"
+        rc alias set storage http://rustfs:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"
+        rc bucket create --ignore-existing "storage/$$S3_BUCKET"
 
   backend:
     ports:
@@ -70,7 +71,7 @@ services:
         condition: service_started
       db:
         condition: service_healthy
-      minio-init:
+      rustfs-init:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health-check/', timeout=3)"]
@@ -84,10 +85,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       PROJECT_NAME: ${PROJECT_NAME:-CodeHunt}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Variable not set}@db:5432/${POSTGRES_DB:-CodeHuntDB}
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-codehunt}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-codehunt-local-password}
+      S3_ENDPOINT_URL: http://rustfs:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-codehunt}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-codehunt-local-password}
       S3_BUCKET: ${S3_BUCKET:-codehunt}
+      S3_REGION: ${S3_REGION:-us-east-1}
 
   adminer:
     image: adminer
@@ -102,4 +104,4 @@ services:
 
 volumes:
   app-db-data:
-  app-minio-data:
+  app-rustfs-data:

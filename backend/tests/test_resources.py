@@ -131,13 +131,14 @@ async def test_storage_configuration_error(client, monkeypatch):
     assert reply.json()["errors"]["code"] == "storage_not_configured"
 
 
-async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
+async def test_real_rustfs_upload_download(client, monkeypatch, rustfs_endpoint):
     from pydantic import SecretStr
 
-    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
+    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", rustfs_endpoint)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", "codehunt-test")
+    monkeypatch.setattr(settings, "MAX_RESOURCE_BYTES", 50 * 1024 * 1024)
     store = S3Storage()
     try:
         store.client.create_bucket(Bucket=settings.S3_BUCKET)
@@ -151,16 +152,18 @@ async def test_real_minio_upload_download(client, monkeypatch, minio_endpoint):
     monkeypatch.setattr(media, "get_storage", lambda: store)
     task = (await publish_task(client, json=task_data())).json()["data"]
     base = f"/api/editor/tasks/{task['id']}/resources"
+    # Файл больше стандартного порога multipart-загрузки boto3 в 8 МиБ.
+    attachment = b"spec" * (9 * 1024 * 1024 // 4)
     reply = await client.post(
         base,
-        data={"title": "Файл MinIO", "type": "specification"},
-        files={"file": ("spec.txt", b"real minio roundtrip", "text/plain")},
+        data={"title": "Файл RustFS", "type": "specification"},
+        files={"file": ("spec.txt", attachment, "text/plain")},
     )
     assert reply.status_code == 201, reply.text
     url = reply.json()["data"]["url"]
     downloaded = await client.get(url)
     assert downloaded.status_code == 200
-    assert downloaded.content == b"real minio roundtrip"
+    assert downloaded.content == attachment
 
     monkeypatch.setattr(media, "get_storage", lambda: store)
     picture = BytesIO()

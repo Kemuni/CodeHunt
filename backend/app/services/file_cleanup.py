@@ -96,13 +96,13 @@ async def process_pending(
                         seconds=RETRY_SECONDS
                     )
                     logger.exception(
-                        "Не удалось удалить объект MinIO %s (попытка %s); очистка будет повторена",
+                        "Не удалось удалить объект S3 %s (попытка %s); очистка будет повторена",
                         pending.object_key,
                         pending.attempt_count,
                     )
                     continue
             await session.delete(pending)
-        # Если MinIO удалил файл, а commit не прошёл, повторное удаление безопасно.
+        # Если хранилище удалило файл, а commit не прошёл, повторное удаление безопасно.
         await session.commit()
     except Exception:
         logger.exception("Не удалось обработать очередь удаления файлов")

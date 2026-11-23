@@ -89,7 +89,7 @@ async def test_proxy_caches_bytes_but_rechecks_access_and_etags(
     key = f"media:v1:{settings.S3_BUCKET}:{next(iter(store.objects))}"
     assert cache.client is not None
     assert 0 < await cache.client.ttl(key) <= 30
-    store.objects.clear()  # Повторный GET читает байты из Redis, не из MinIO.
+    store.objects.clear()  # Повторный GET читает байты из Redis, не из S3.
     assert (await client.get(url)).content == image_bytes()
     assert (
         await client.patch(
@@ -202,7 +202,7 @@ async def test_resource_cache_download_headers_and_access(client, store, cache, 
     assert await cache.client.get(key) == body
     assert 0 < await cache.client.ttl(key) <= settings.MEDIA_CACHE_TTL
     store.objects.clear()
-    # Даже пустой файл должен возвращаться из Redis без повторного чтения MinIO.
+    # Даже пустой файл должен возвращаться из Redis без повторного чтения S3.
     assert (await client.get(url)).content == body
     head = await client.head(url)
     assert head.status_code == 200 and head.content == b""

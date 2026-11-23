@@ -1,4 +1,4 @@
-"""Live Playwright с настоящим API в одноразовых PostgreSQL/MinIO/Redis Testcontainers.
+"""Live Playwright с настоящим API в одноразовых PostgreSQL/RustFS/Redis Testcontainers.
 
 Запуск из backend: uv run python scripts/test_live_e2e.py
 Нужны Docker, frontend/node_modules и установленный браузер Playwright/Chrome.
@@ -117,18 +117,17 @@ def running(command, cwd, env, log_path):
 def run():
     logs = Path(tempfile.mkdtemp(prefix="codehunt-live-e2e-results-"))
     logger.info("Логи и артефакты live E2E: %s", logs)
-    minio = (
-        DockerContainer("minio/minio")
-        .with_env("MINIO_ROOT_USER", "codehunt_test")
-        .with_env("MINIO_ROOT_PASSWORD", "codehunt_test_secret")
+    rustfs = (
+        DockerContainer("rustfs/rustfs:1.0.6")
+        .with_env("RUSTFS_ACCESS_KEY", "codehunt_test")
+        .with_env("RUSTFS_SECRET_KEY", "codehunt_test_secret")
         .with_exposed_ports(9000)
-        .with_command("server /data")
-        .waiting_for(HttpWaitStrategy(9000, "/minio/health/ready"))
+        .waiting_for(HttpWaitStrategy(9000, "/health/ready"))
     )
     with (
         tempfile.TemporaryDirectory(prefix="codehunt-live-e2e-") as temporary,
         PostgresContainer("postgres:18-alpine", driver="asyncpg") as postgres,
-        minio,
+        rustfs,
         DockerContainer("redis:7-alpine").with_exposed_ports(6379) as redis,
     ):
         root = Path(temporary)
@@ -152,7 +151,7 @@ def run():
         backend_cwd.mkdir()
         api_port, frontend_port = free_port(), free_port()
         endpoint = (
-            f"http://{minio.get_container_host_ip()}:{minio.get_exposed_port(9000)}"
+            f"http://{rustfs.get_container_host_ip()}:{rustfs.get_exposed_port(9000)}"
         )
         boto3.client(
             "s3",

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
     "/editor/tasks/{task_id}/resources",
     response_model=SuccessResponse[ResourceDownloadRead],
     status_code=201,
-    summary="Загрузить файл в MinIO и сохранить метаданные ресурса.",
+    summary="Загрузить файл в S3 и сохранить метаданные ресурса.",
 )
 async def upload(
     task_id: PositiveID,

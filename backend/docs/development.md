@@ -17,7 +17,7 @@ make fastapi-dev
 
 | Команда из корня | Действие |
 | --- | --- |
-| make up-dev-env | PostgreSQL, MinIO, minio-init, Adminer и Redis |
+| make up-dev-env | PostgreSQL, RustFS, rustfs-init, Adminer и Redis |
 | make stop-dev-env | Остановить инфраструктуру с сохранением контейнеров |
 | make down-dev-env | Удалить контейнеры dev-сервисов, сохранив тома |
 | make up-all | Собрать backend и запустить весь Compose |
@@ -34,8 +34,9 @@ Backend читает корневой `.env`, затем `backend/.env`; пер�
 
 | Настройка | Назначение / значение по умолчанию |
 | --- | --- |
-| S3_ENDPOINT_URL | Адрес для backend; в Compose http://minio:9000 |
-| S3_ACCESS_KEY, S3_SECRET_KEY | Учётные данные хранилища |
+| S3_ENDPOINT_URL | Адрес для backend. В Compose `http://rustfs:9000`, при локальном запуске `http://localhost:${RUSTFS_PORT}` |
+| S3_ACCESS_KEY, S3_SECRET_KEY | Учётные данные хранилища и входа в RustFS Console |
+| RUSTFS_PORT, RUSTFS_CONSOLE_PORT | Порты S3 API и консоли на хосте, 9000 и 9001 |
 | S3_BUCKET, S3_REGION | codehunt, us-east-1 |
 | MAX_PHOTO_BYTES | 5 МиБ; значение выше 5 МиБ ограничивается этим максимумом |
 | MAX_RESOURCE_BYTES | 50 МиБ |
@@ -45,7 +46,15 @@ Backend читает корневой `.env`, затем `backend/.env`; пер�
 | GITHUB_ID, GITHUB_SECRET | То же OAuth-приложение, что у frontend |
 | ADMIN_EMAILS | Подтверждённые адреса администраторов через запятую |
 
-Порты по умолчанию: Redis 6379 (loopback), PostgreSQL 5433, backend 8000, MinIO API 9000, MinIO Console 9001, Adminer 8080. PostgreSQL использует том app-db-data, MinIO — app-minio-data. minio-init повторяемо создаёт приватный бакет. Redis ограничен 256 МиБ, использует allkeys-lru и не сохраняет кеш на диск; его сбой не блокирует чтение из MinIO.
+RustFS Console открывается на `http://localhost:9001`. Для входа используйте `S3_ACCESS_KEY` и `S3_SECRET_KEY` из `.env`. API и консоль опубликованы на loopback. `rustfs-init` создаёт приватный бакет повторяемой командой. Объекты хранятся в томе `app-rustfs-data`.
+
+Остальные порты по умолчанию: Redis 6379 (loopback), PostgreSQL 5433, backend 8000 и Adminer 8080. PostgreSQL использует том `app-db-data`. Redis ограничен 256 МиБ, использует `allkeys-lru` и хранит кеш в памяти. При сбое Redis файлы читаются из S3.
+
+### Переход с MinIO
+
+Для пустого хранилища остановите старый MinIO, если он запущен, и выполните `make up-dev-env`. При нестандартных портах перенесите значения в `RUSTFS_PORT` и `RUSTFS_CONSOLE_PORT` и проверьте `S3_ENDPOINT_URL` для локального backend. Сохраните текущие `S3_ACCESS_KEY`, `S3_SECRET_KEY` и `S3_BUCKET`.
+
+Если в MinIO есть файлы, запустите RustFS на отдельном порту и перенесите объекты через S3 с сохранением имени бакета и ключей. На время финального копирования и сверки приостановите запись, затем переключите backend. Сохраните исходный `app-minio-data` для отката. Порядок копирования и сверки описан в [руководстве RustFS](https://rustfs.com/blog/migrating-from-minio-to-rustfs-a-technical-guide/).
 
 ## GitHub OAuth
 
@@ -86,7 +95,7 @@ Backend проверяет принадлежность GitHub-токена св
 
 ## Тесты и статические проверки
 
-Нужен работающий Docker. Testcontainers запускает отдельные PostgreSQL 18, MinIO и Redis на свободных портах. Рабочие тома, БД и seed не используются. Из backend:
+Нужен работающий Docker. Testcontainers запускает отдельные PostgreSQL 18, RustFS и Redis на свободных портах. Рабочие тома, БД и seed не используются. Из backend:
 
 ```sh
 uv run ruff check .
@@ -107,7 +116,7 @@ E2E_ISOLATED_AUTH=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e -- --grep-invert 
 npm run build
 ```
 
-Изолированный Playwright запускает Next.js на 3100 и тестовый backend на 8101; реальные GitHub, БД и MinIO не нужны. Фикстуры SSR передаются тестовому backend, поскольку browser.route не перехватывает серверный fetch. Для Webpack-сборки явно передайте `-- --webpack`.
+Изолированный Playwright запускает Next.js на 3100 и тестовый backend на 8101 без подключения к GitHub, БД и RustFS. Фикстуры SSR передаются тестовому backend, поскольку browser.route не перехватывает серверный fetch. Для Webpack-сборки явно передайте `-- --webpack`.
 
 ## Live E2E с одноразовым backend
 
@@ -119,4 +128,4 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:e2e:live
 
 Или из backend: `PLAYWRIGHT_CHANNEL=chrome uv run python scripts/test_live_e2e.py`.
 
-Скрипт создаёт отдельные PostgreSQL/MinIO/Redis, настоящий FastAPI и временную копию frontend без рабочих `.env`, использует свободные порты. Схема создаётся через create_all/drop_all. Тестовый администратор получает настоящую запись backend-сессии и зашифрованную cookie NextAuth без обращения к GitHub. Три сценария @live проверяют черновик, фото/вложения, публикацию, редактирование, удаление и конфликт revision. Контейнеры и копия удаляются после прогона; путь к логам и Playwright-артефактам выводится командой.
+Скрипт создаёт отдельные PostgreSQL/RustFS/Redis, настоящий FastAPI и временную копию frontend без рабочих `.env`, использует свободные порты. Схема создаётся через create_all/drop_all. Тестовый администратор получает настоящую запись backend-сессии и зашифрованную cookie NextAuth без обращения к GitHub. Три сценария @live проверяют черновик, фото/вложения, публикацию, редактирование, удаление и конфликт revision. Контейнеры и копия удаляются после прогона; путь к логам и Playwright-артефактам выводится командой.

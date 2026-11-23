@@ -400,10 +400,10 @@ async def test_draft_gallery_limit_and_database_owner_constraints(
     ).status_code == 404
 
 
-async def test_real_minio_draft_files_survive_publication(
-    client, minio_endpoint, monkeypatch
+async def test_real_rustfs_draft_files_survive_publication(
+    client, rustfs_endpoint, monkeypatch
 ):
-    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", minio_endpoint)
+    monkeypatch.setattr(settings, "S3_ENDPOINT_URL", rustfs_endpoint)
     monkeypatch.setattr(settings, "S3_ACCESS_KEY", SecretStr("codehunt_test"))
     monkeypatch.setattr(settings, "S3_SECRET_KEY", SecretStr("codehunt_test_secret"))
     monkeypatch.setattr(settings, "S3_BUCKET", "codehunt-drafts-test")

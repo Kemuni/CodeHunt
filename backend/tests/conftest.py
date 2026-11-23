@@ -48,15 +48,14 @@ def postgres():
 
 
 @pytest.fixture(scope="session")
-def minio_endpoint():
-    """MinIO запускается Testcontainers только для тестов реального хранилища."""
+def rustfs_endpoint():
+    """RustFS запускается Testcontainers только для тестов реального хранилища."""
     container = (
-        DockerContainer("minio/minio")
-        .with_env("MINIO_ROOT_USER", "codehunt_test")
-        .with_env("MINIO_ROOT_PASSWORD", "codehunt_test_secret")
+        DockerContainer("rustfs/rustfs:1.0.6")
+        .with_env("RUSTFS_ACCESS_KEY", "codehunt_test")
+        .with_env("RUSTFS_SECRET_KEY", "codehunt_test_secret")
         .with_exposed_ports(9000)
-        .with_command("server /data")
-        .waiting_for(HttpWaitStrategy(9000, "/minio/health/ready"))
+        .waiting_for(HttpWaitStrategy(9000, "/health/ready"))
     )
     with container:
         yield f"http://{container.get_container_host_ip()}:{container.get_exposed_port(9000)}"
